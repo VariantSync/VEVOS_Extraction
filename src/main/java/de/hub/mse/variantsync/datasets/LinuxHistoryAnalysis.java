@@ -14,6 +14,7 @@ import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -69,7 +70,7 @@ public class LinuxHistoryAnalysis {
         // Create the directories for each thread running the analysis
         File workingDirectory = setUpWorkingDirectory(config, linuxDir);
         // Load git history
-        List<RevCommit> commits = getCommits(firstCommit, lastCommit, linuxDir);
+        List<RevCommit> commits = getCommits(linuxDir, lastCommit, firstCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
@@ -208,7 +209,8 @@ public class LinuxHistoryAnalysis {
         }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(result_file))) {
             // Write the header
-            String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s", "THREAD_ID", "COMMIT", "OVERALL_SUCCESS", "CM", "BM", "VM", "BM_SIZE", "VM_SIZE");
+            // TODO: Move this somewhere else as it only works for one specific analysis, e.g., ExtractorAnalysis.java
+            String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s", "THREAD_ID", "COMMIT", "COMMIT_PARENTS", "OVERALL_SUCCESS", "CM", "BM", "VM", "BM_SIZE", "VM_SIZE");
             writer.write(line);
             writer.newLine();
         } catch (IOException e) {
@@ -216,16 +218,20 @@ public class LinuxHistoryAnalysis {
         }
     }
 
-    private static List<RevCommit> getCommits(String firstCommit, String lastCommit, File linuxDir) throws IOException, GitAPIException {
-        Iterable<RevCommit> commitIterable = getCommits(linuxDir);
+    private static List<RevCommit> getCommits(File linuxDir, String lastCommitId, String firstCommitId) throws IOException, GitAPIException {
+        Git gitRepo = initGitForRepo(linuxDir);
 
         List<RevCommit> commits = new LinkedList<>();
-        if (firstCommit != null && lastCommit != null) {
+        if (firstCommitId != null && lastCommitId != null) {
             LOGGER.logInfo("Commit range specified...filtering commits.");
+            // Get the commit objects
+            ObjectId firstCommit = gitRepo.getRepository().resolve(firstCommitId);
+            ObjectId lastCommit = gitRepo.getRepository().resolve(lastCommitId);
+            Iterable<RevCommit> commitIterable = gitRepo.log().addRange(firstCommit, lastCommit).call();
             // Filter all commits not in the specified range of commits
             boolean inRange = false;
             for (RevCommit commit : commitIterable) {
-                if (commit.getName().equals(firstCommit) || commit.getName().equals(lastCommit)) {
+                if (commit.getName().equals(firstCommitId) || commit.getName().equals(lastCommitId)) {
                     // Invert the value upon reaching one of the boundaries
                     inRange = !inRange;
                 }
@@ -235,21 +241,21 @@ public class LinuxHistoryAnalysis {
             }
             LOGGER.logInfo("" + commits.size() + " remain for analysis.");
         } else {
+            Iterable<RevCommit> commitIterable = gitRepo.log().all().call();
             // Add all commits, if not commit range was specified
             commitIterable.forEach(commits::add);
         }
         return commits;
     }
 
-    private static Iterable<RevCommit> getCommits(File linuxDir) throws IOException, GitAPIException {
+    private static Git initGitForRepo(File linuxDir) throws IOException {
         LOGGER.logDebug("Initializing git repo...");
         Repository repository = new FileRepositoryBuilder()
                 .setGitDir(new File(linuxDir, ".git"))
                 .build();
         Git git = new Git(repository);
         LOGGER.logDebug("...done.");
-        LOGGER.logDebug("Retrieving git history...");
-        return git.log().all().call();
+        return git;
     }
 
     private static List<List<RevCommit>> splitCommitsIntoSubsets(List<RevCommit> commits, int numberOfThreads) {
