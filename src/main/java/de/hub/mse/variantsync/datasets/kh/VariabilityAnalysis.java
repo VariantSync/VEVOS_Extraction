@@ -7,7 +7,7 @@ import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.fe_analysis.pcs.CodeBlockAnalysis;
 
-public class VariabilityAnalysis  extends PipelineAnalysis {
+public class VariabilityAnalysis extends PipelineAnalysis {
 
     /**
      * Creates a new {@link VariabilityAnalysis}.
