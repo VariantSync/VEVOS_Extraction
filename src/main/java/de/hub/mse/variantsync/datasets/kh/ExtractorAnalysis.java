@@ -15,7 +15,6 @@ package de.hub.mse.variantsync.datasets.kh;
  * limitations under the License.
  */
 
-import de.hub.mse.variantsync.datasets.util.CountedThread;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.analysis.AbstractAnalysis;
 import net.ssehub.kernel_haven.build_model.BuildModel;
@@ -70,20 +69,19 @@ public class ExtractorAnalysis extends AbstractAnalysis {
     @Override
     public void run() {
         try {
-            int threadNumber = ((CountedThread) Thread.currentThread()).getInstanceNumber();
-            String threadName = "[" + threadNumber + "] ";
-            LOGGER.logDebug(threadName + "Running ExtractorAnalysis in thread #" + threadName);
             File workDir = new File(config.getValue(WORK_DIR));
+            String taskName = "[" + workDir.getName() + "]";
+            LOGGER.logDebug( taskName + "Running ExtractorAnalysis in directory " + workDir);
             File result_file = new File(workDir, "output/analysis_result.csv");
-            LOGGER.logDebug(threadName + "Result File: " + result_file);
+            LOGGER.logDebug(taskName + "Result File: " + result_file);
             if (!result_file.exists()) {
-                LOGGER.logError(threadName + "The result file was not found...exiting.");
+                LOGGER.logError(taskName + "The result file was not found...exiting.");
                 return;
             }
 
-            RevCommit commit = getRevCommit(threadName);
+            RevCommit commit = getRevCommit(taskName);
             if (commit == null) return;
-            LOGGER.logDebug(threadName + "Working on commit " + commit.getName());
+            LOGGER.logDebug(taskName + "Working on commit " + commit.getName());
 
             boolean checkCME = config.getValue(CHECK_CME);
             if (checkCME) {
@@ -101,16 +99,16 @@ public class ExtractorAnalysis extends AbstractAnalysis {
             int vmSize = 0;
             if (vm != null) {
                 vmSize = vm.getVariables().size();
-                LOGGER.logInfo(threadName + "Got a variability model with " + vm.getVariables().size() + " variables");
+                LOGGER.logInfo(taskName + "Got a variability model with " + vm.getVariables().size() + " variables");
                 vmSuccess = true;
                 // Only start the bmProvider if vm succeeded, otherwise it will fail anyway
                 bmProvider.start();
             } else {
-                LOGGER.logInfo(threadName + "Got no variability model");
+                LOGGER.logInfo(taskName + "Got no variability model");
             }
             ExtractorException vmExc = vmProvider.getException();
             if (vmExc != null) {
-                LOGGER.logExceptionInfo(threadName + "Got an exception from the variability model extractor", vmExc);
+                LOGGER.logExceptionInfo(taskName + "Got an exception from the variability model extractor", vmExc);
             }
 
             // build
@@ -119,14 +117,14 @@ public class ExtractorAnalysis extends AbstractAnalysis {
                 BuildModel bm = bmProvider.getResult();
                 if (bm != null) {
                     bmSize = bm.getSize();
-                    LOGGER.logInfo(threadName + "Got a build model with " + bm.getSize() + " files");
+                    LOGGER.logInfo(taskName + "Got a build model with " + bm.getSize() + " files");
                     bmSuccess = true;
                 } else {
-                    LOGGER.logInfo(threadName + "Got no build model");
+                    LOGGER.logInfo(taskName + "Got no build model");
                 }
                 ExtractorException bmExc = bmProvider.getException();
                 if (bmExc != null) {
-                    LOGGER.logExceptionInfo(threadName + "Got an exception from the build model extractor", bmExc);
+                    LOGGER.logExceptionInfo(taskName + "Got an exception from the build model extractor", bmExc);
                 }
             }
 
@@ -143,13 +141,13 @@ public class ExtractorAnalysis extends AbstractAnalysis {
                 if (numCm > 0) {
                     cmSuccess = true;
                 }
-                LOGGER.logInfo(threadName + "Got " + numCm + " source files in the code model");
+                LOGGER.logInfo(taskName + "Got " + numCm + " source files in the code model");
 
                 ExtractorException cmExc;
                 do {
                     cmExc = cmProvider.getNextException();
                     if (cmExc != null) {
-                        LOGGER.logExceptionInfo(threadName + "Got an exception from the code model extractor", cmExc);
+                        LOGGER.logExceptionInfo(taskName + "Got an exception from the code model extractor", cmExc);
                     }
                 } while (cmExc != null);
             }
@@ -159,9 +157,9 @@ public class ExtractorAnalysis extends AbstractAnalysis {
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(result_file, true))) {
                 String line;
                 if (checkCME) {
-                    line = String.format("%d,%s,%s,%s,%s,%s,%d,%d", threadNumber, commit.getName(), extractorsSucceeded, cmSuccess, bmSuccess, vmSuccess, bmSize, vmSize);
+                    line = String.format("%s,%s,%s,%s,%s,%s,%s,%d,%d", taskName, commit.getName(), parseParents(commit), extractorsSucceeded, cmSuccess, bmSuccess, vmSuccess, bmSize, vmSize);
                 } else {
-                    line = String.format("%d,%s,%s,%s,%s,%s,%d,%d", threadNumber, commit.getName(), extractorsSucceeded, "NOT_CHECKED", bmSuccess, vmSuccess, bmSize, vmSize);
+                    line = String.format("%s,%s,%s,%s,%s,%s,%s,%d,%d", taskName, commit.getName(), parseParents(commit), extractorsSucceeded, "NOT_CHECKED", bmSuccess, vmSuccess, bmSize, vmSize);
                 }
                 writer.write(line);
                 writer.newLine();
@@ -173,9 +171,9 @@ public class ExtractorAnalysis extends AbstractAnalysis {
         }
     }
 
-    private RevCommit getRevCommit(String threadName) {
+    private RevCommit getRevCommit(String taskName) {
         File linuxDir = config.getValue(DefaultSettings.SOURCE_TREE);
-        LOGGER.logDebug(threadName + "Linux Dir: " + linuxDir);
+        LOGGER.logDebug(taskName + "Linux Dir: " + linuxDir);
         Repository repository;
         RevCommit commit = null;
         try {
@@ -189,15 +187,25 @@ public class ExtractorAnalysis extends AbstractAnalysis {
                 commit = c;
             }
             if (count > 1) {
-                LOGGER.logError(threadName + "More than one commit retrieved from the log!");
+                LOGGER.logError(taskName + "More than one commit retrieved from the log!");
             }
         } catch (IOException | GitAPIException e) {
             e.printStackTrace();
         }
         if (commit == null) {
-            LOGGER.logError(threadName + "No commit retrieved from the log!");
+            LOGGER.logError(taskName + "No commit retrieved from the log!");
             return null;
         }
         return commit;
+    }
+
+    private String parseParents(RevCommit commit) {
+        StringBuilder sb = new StringBuilder();
+        for (RevCommit parent : commit.getParents()) {
+            sb.append(parent.getName());
+            sb.append(":");
+        }
+        sb.deleteCharAt(sb.length()-1);
+        return sb.toString();
     }
 }
