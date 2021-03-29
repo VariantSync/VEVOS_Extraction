@@ -164,7 +164,9 @@ public class LinuxHistoryAnalysis {
         if (config.getValue(COLLECT_OUTPUT)) {
             File overallOutputDirectory = new File(workingDirectory, "output");
             if (!overallOutputDirectory.exists()) {
-                LOGGER.logInfo("Creating the overall output directory");
+                if(overallOutputDirectory.mkdirs()) {
+                    LOGGER.logInfo("Created common output directory.");
+                }
             }
         }
 
@@ -346,6 +348,7 @@ public class LinuxHistoryAnalysis {
                 PipelineConfigurator.instance().execute();
 
                 if (Objects.requireNonNull(config).getValue(COLLECT_OUTPUT)) {
+                    LOGGER.logInfo("Moving result to common output directory.");
                     File collection_dir = new File(new File(parentDir, "output"), commit.getName());
                     if (collection_dir.mkdir()) {
                        LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
