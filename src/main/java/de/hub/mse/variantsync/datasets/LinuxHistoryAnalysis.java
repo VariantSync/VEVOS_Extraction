@@ -1,6 +1,6 @@
 package de.hub.mse.variantsync.datasets;
 
-import de.hub.mse.variantsync.datasets.kh.ExtractorAnalysis;
+import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.PipelineConfigurator;
 import net.ssehub.kernel_haven.SetUpException;
@@ -18,6 +18,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,7 +38,10 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
             "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
-    protected static final Logger.Level LOG_LEVEL = Logger.Level.DEBUG;
+    public static final @NonNull Setting<@Nullable Boolean> COLLECT_OUTPUT
+            = new Setting<>("analysis.collect_output", Setting.Type.BOOLEAN, false, "false",
+            "Whether the results of the conducted analysis are to be collected in a common output directory");
+    protected static final Logger.Level LOG_LEVEL = Logger.Level.INFO;
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
 
@@ -125,6 +129,7 @@ public class LinuxHistoryAnalysis {
             config = new Configuration(Objects.requireNonNull(propertiesFile));
             config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
+            config.registerSetting(COLLECT_OUTPUT);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
@@ -154,6 +159,15 @@ public class LinuxHistoryAnalysis {
         workingDirectory = new File(workingDirectory, "commit-analysis");
         LOGGER.logInfo("Working Directory: " + workingDirectory);
         LOGGER.logInfo("Setting up working directory...");
+
+        // Create the directory where the results of the individual runs are collected
+        if (config.getValue(COLLECT_OUTPUT)) {
+            File overallOutputDirectory = new File(workingDirectory, "output");
+            if (!overallOutputDirectory.exists()) {
+                LOGGER.logInfo("Creating the overall output directory");
+            }
+        }
+
         for (int i = 0; i < numberOfThreads; i++) {
             File subDir = new File(workingDirectory, "run-" + i);
             // Create the path to the working directory of each task
@@ -291,9 +305,9 @@ public class LinuxHistoryAnalysis {
                 LOGGER.logDebug("Setting up configuration for " + propertiesFile);
                 config = new Configuration(propertiesFile);
                 DefaultSettings.registerAllSettings(config);
-                config.registerSetting(ExtractorAnalysis.WORK_DIR);
+                config.registerSetting(CommitUsabilityAnalysis.WORK_DIR);
                 // Change the paths to the required directories
-                config.setValue(ExtractorAnalysis.WORK_DIR, workDir.getAbsolutePath());
+                config.setValue(CommitUsabilityAnalysis.WORK_DIR, workDir.getAbsolutePath());
                 config.setValue(DefaultSettings.SOURCE_TREE, new File(workDir, splName));
                 config.setValue(DefaultSettings.RESOURCE_DIR, new File(workDir, "res"));
                 config.setValue(DefaultSettings.OUTPUT_DIR, new File(workDir, "output"));
@@ -327,7 +341,18 @@ public class LinuxHistoryAnalysis {
                     LOGGER.logError("Invalid configuration detected:", e.getMessage());
                     quitOnError();
                 }
+
+                // Execute the analysis pipeline
                 PipelineConfigurator.instance().execute();
+
+                if (Objects.requireNonNull(config).getValue(COLLECT_OUTPUT)) {
+                    File collection_dir = new File(new File(parentDir, "output"), commit.getName());
+                    if (collection_dir.mkdir()) {
+                       LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
+                    }
+                    // Move the results of the analysis to the collected output directory according to the current commit
+                    EXECUTOR.execute("mv ./output/* ../output/" + commit.getName() + "/", workDir);
+                }
                 // We have to set the name again because KernelHaven changes it
                 Thread.currentThread().setName(threadName);
                 EXECUTOR.execute("make clean", splDir);

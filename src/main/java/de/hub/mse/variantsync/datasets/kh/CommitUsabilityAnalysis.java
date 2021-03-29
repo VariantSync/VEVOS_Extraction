@@ -27,7 +27,7 @@ import java.io.IOException;
  *
  * @author Alex S.
  */
-public class ExtractorAnalysis extends AbstractAnalysis {
+public class CommitUsabilityAnalysis extends AbstractAnalysis {
     public static final @NonNull Setting<@Nullable String> WORK_DIR
             = new Setting<>("working_directory", Setting.Type.STRING, false, null, "" +
             "Path to the working directory.");
@@ -41,7 +41,7 @@ public class ExtractorAnalysis extends AbstractAnalysis {
      *
      * @param config The configuration.
      */
-    public ExtractorAnalysis(@NonNull Configuration config) {
+    public CommitUsabilityAnalysis(@NonNull Configuration config) {
         super(config);
         try {
             config.registerSetting(CHECK_CME);
@@ -55,7 +55,7 @@ public class ExtractorAnalysis extends AbstractAnalysis {
         try {
             File workDir = new File(config.getValue(WORK_DIR));
             String taskName = "[" + workDir.getName() + "]";
-            LOGGER.logDebug( taskName + "Running ExtractorAnalysis in directory " + workDir);
+            LOGGER.logDebug( taskName + "Running CommitUsabilityAnalysis in directory " + workDir);
             File resultFile = new File(workDir, "output/analysis_result.csv");
             LOGGER.logDebug(taskName + "Result File: " + resultFile);
             if (!resultFile.exists()) {
