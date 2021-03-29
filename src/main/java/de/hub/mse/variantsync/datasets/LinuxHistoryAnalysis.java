@@ -1,8 +1,6 @@
 package de.hub.mse.variantsync.datasets;
 
 import de.hub.mse.variantsync.datasets.kh.ExtractorAnalysis;
-import de.hub.mse.variantsync.datasets.util.CountedThread;
-import de.hub.mse.variantsync.datasets.util.CountingThreadFactory;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.PipelineConfigurator;
 import net.ssehub.kernel_haven.SetUpException;
@@ -29,9 +27,11 @@ import java.util.concurrent.Executors;
 
 public class LinuxHistoryAnalysis {
 
-    public static final @NonNull Setting<@Nullable String> PATH_TO_LINUX
+    public static final @NonNull Setting<@Nullable String> PATH_TO_SOURCE_REPO
             = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
-            "Path to the linux sources.");
+            "Path to the folder with the repository in which the investigated SPL is managed.");
+    // TODO: Generify so that linux is no longer the only repo which can be analyzed
+    // TODO: Generify so that the commit analysis is not the only analysis that can be run
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_threads", Setting.Type.INTEGER, false, "1", "" +
             "The number of threads that are used to run the analysis. The linux sources are copied once for each thread.");
@@ -67,18 +67,18 @@ public class LinuxHistoryAnalysis {
         Configuration config = getConfiguration(propertiesFile);
         // Clone linux if necessary and return the File that points to the directory
         File linuxDir = setUpLinuxDirectory(config);
-        // Create the directories for each thread running the analysis
+        // Create the directories for each task running the analysis
         File workingDirectory = setUpWorkingDirectory(config, linuxDir);
         // Load git history
         List<RevCommit> commits = getCommits(linuxDir, lastCommit, firstCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
-        ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads, new CountingThreadFactory(LOGGER));
+        ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
 
         List<List<RevCommit>> commitSubsets = splitCommitsIntoSubsets(commits, numberOfThreads);
 
-        // Create a task for each commit and submit it to the thread pool
+        // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
@@ -123,7 +123,7 @@ public class LinuxHistoryAnalysis {
         Configuration config = null;
         try {
             config = new Configuration(Objects.requireNonNull(propertiesFile));
-            config.registerSetting(PATH_TO_LINUX);
+            config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
@@ -134,7 +134,7 @@ public class LinuxHistoryAnalysis {
 
     private static File setUpLinuxDirectory(Configuration config) {
         // Clone linux if required
-        File linuxDir = new File(config.getValue(PATH_TO_LINUX));
+        File linuxDir = new File(config.getValue(PATH_TO_SOURCE_REPO));
         if (linuxDir.exists()) {
             LOGGER.logInfo("Directory with linux sources found.");
         } else {
@@ -156,10 +156,10 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("Setting up working directory...");
         for (int i = 0; i < numberOfThreads; i++) {
             File subDir = new File(workingDirectory, "run-" + i);
-            // Create the path to the working directory of each thread
+            // Create the path to the working directory of each task
             if (!subDir.exists()) {
                 if (subDir.mkdirs()) {
-                    LOGGER.logDebug("Created directory for thread number #" + i);
+                    LOGGER.logDebug("Created directory for task number #" + i);
                 }
             }
             // Create the directories that are expected by KernelHaven
@@ -177,21 +177,21 @@ public class LinuxHistoryAnalysis {
         return workingDirectory;
     }
 
-    private static void createKernelHavenDirs(File threadDirectory) {
+    private static void createKernelHavenDirs(File taskDirectory) {
         LOGGER.logInfo("Creating directories required by KernelHaven...");
-        if (new File(threadDirectory, "res").mkdirs()) {
+        if (new File(taskDirectory, "res").mkdirs()) {
             LOGGER.logDebug("Resource directory created.");
         }
-        if (new File(threadDirectory, "output").mkdirs()) {
+        if (new File(taskDirectory, "output").mkdirs()) {
             LOGGER.logDebug("Output directory created.");
         }
-        if (new File(threadDirectory, "plugins").mkdirs()) {
+        if (new File(taskDirectory, "plugins").mkdirs()) {
             LOGGER.logDebug("Plugins directory created.");
         }
-        if (new File(threadDirectory, "cache").mkdirs()) {
+        if (new File(taskDirectory, "cache").mkdirs()) {
             LOGGER.logDebug("Cache directory created.");
         }
-        if (new File(threadDirectory, "log").mkdirs()) {
+        if (new File(taskDirectory, "log").mkdirs()) {
             LOGGER.logDebug("Log directory created.");
         }
         LOGGER.logInfo("...done.");
@@ -282,9 +282,10 @@ public class LinuxHistoryAnalysis {
     }
 
     private static class AnalysisTask implements Runnable {
-
         private static final Logger LOGGER = Logger.get();
         private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
+        private static int existingTasksCount = 0;
+        private final int taskNumber;
         private final File parentDir;
         private final List<RevCommit> commits;
         private final File parentPropertiesFile;
@@ -293,14 +294,16 @@ public class LinuxHistoryAnalysis {
             this.commits = commits;
             this.parentDir = parentDir;
             this.parentPropertiesFile = propertiesFile;
+            this.taskNumber = existingTasksCount++;
             LOGGER.setLevel(LOG_LEVEL);
         }
 
         @Override
         public void run() {
-            String threadName = String.valueOf(((CountedThread) Thread.currentThread()).getInstanceNumber());
-            LOGGER.logInfo("Started analysis task that is responsible for " + commits.size() + " commits.");
-            File workDir = new File(parentDir, "run-" + threadName);
+            String taskName = String.valueOf(taskNumber);
+            String threadName = Thread.currentThread().getName();
+            LOGGER.logInfo("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
+            File workDir = new File(parentDir, "run-" + taskName);
             File propertiesFile = new File(workDir, parentPropertiesFile.getName());
             // Load the config
             Configuration config;
@@ -326,7 +329,7 @@ public class LinuxHistoryAnalysis {
             File linuxDir = new File(workDir, "linux");
 
             for (RevCommit commit : commits) {
-                LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in thread " + threadName);
+                LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
 
                 // Make sure the directory is not blocked
                 checkBlocker(linuxDir);
@@ -374,7 +377,7 @@ public class LinuxHistoryAnalysis {
             LOGGER.logInfo("Checking block of directory " + dir);
             File blocker = new File(dir, "BLOCKER.txt");
             if (blocker.exists()) {
-                LOGGER.logError("The linux directory is blocked by another thread! This indicates a bug in the " +
+                LOGGER.logError("The linux directory is blocked by another task! This indicates a bug in the " +
                         "implementation of multi-threading.");
                 quitOnError();
             } else {
