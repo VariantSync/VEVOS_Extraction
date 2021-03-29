@@ -41,7 +41,7 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable Boolean> COLLECT_OUTPUT
             = new Setting<>("analysis.collect_output", Setting.Type.BOOLEAN, false, "false",
             "Whether the results of the conducted analysis are to be collected in a common output directory");
-    protected static final Logger.Level LOG_LEVEL = Logger.Level.INFO;
+    protected static final Logger.Level LOG_LEVEL = Logger.Level.DEBUG;
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
 
@@ -345,7 +345,9 @@ public class LinuxHistoryAnalysis {
                 }
 
                 // Execute the analysis pipeline
+                LOGGER.setLevel(Objects.requireNonNull(config).getValue(DefaultSettings.LOG_LEVEL));
                 PipelineConfigurator.instance().execute();
+                LOGGER.setLevel(LOG_LEVEL);
 
                 if (Objects.requireNonNull(config).getValue(COLLECT_OUTPUT)) {
                     LOGGER.logInfo("Moving result to common output directory.");
