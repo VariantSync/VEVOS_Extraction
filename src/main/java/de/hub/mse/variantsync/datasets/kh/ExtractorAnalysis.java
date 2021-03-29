@@ -1,19 +1,4 @@
 package de.hub.mse.variantsync.datasets.kh;
-/*
- * Copyright 2017-2019 University of Hildesheim, Software Systems Engineering
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.analysis.AbstractAnalysis;
@@ -42,7 +27,6 @@ import java.io.IOException;
  *
  * @author Alex S.
  */
-// TODO: Refactor to AnalysisComponent
 public class ExtractorAnalysis extends AbstractAnalysis {
     public static final @NonNull Setting<@Nullable String> WORK_DIR
             = new Setting<>("working_directory", Setting.Type.STRING, false, null, "" +
@@ -72,11 +56,10 @@ public class ExtractorAnalysis extends AbstractAnalysis {
             File workDir = new File(config.getValue(WORK_DIR));
             String taskName = "[" + workDir.getName() + "]";
             LOGGER.logDebug( taskName + "Running ExtractorAnalysis in directory " + workDir);
-            File result_file = new File(workDir, "output/analysis_result.csv");
-            LOGGER.logDebug(taskName + "Result File: " + result_file);
-            if (!result_file.exists()) {
-                LOGGER.logError(taskName + "The result file was not found...exiting.");
-                return;
+            File resultFile = new File(workDir, "output/analysis_result.csv");
+            LOGGER.logDebug(taskName + "Result File: " + resultFile);
+            if (!resultFile.exists()) {
+                createResultFile(resultFile);
             }
 
             RevCommit commit = getRevCommit(taskName);
@@ -154,7 +137,7 @@ public class ExtractorAnalysis extends AbstractAnalysis {
 
             boolean extractorsSucceeded = bmSuccess && (!checkCME || cmSuccess);
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(result_file, true))) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile, true))) {
                 String line;
                 if (checkCME) {
                     line = String.format("%s,%s,%s,%s,%s,%s,%s,%d,%d", taskName, commit.getName(), parseParents(commit), extractorsSucceeded, cmSuccess, bmSuccess, vmSuccess, bmSize, vmSize);
@@ -171,14 +154,31 @@ public class ExtractorAnalysis extends AbstractAnalysis {
         }
     }
 
+    private static void createResultFile(File resultFile) {
+        // Initialize the result file
+        LOGGER.logInfo("Initializing the result file " + resultFile + "...");
+        if (resultFile.getParentFile().mkdirs()) {
+            LOGGER.logInfo("...created parent folders...");
+
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile))) {
+            // Write the header
+            String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s", "THREAD_ID", "COMMIT", "COMMIT_PARENTS", "OVERALL_SUCCESS", "CM", "BM", "VM", "BM_SIZE", "VM_SIZE");
+            writer.write(line);
+            writer.newLine();
+        } catch (IOException e) {
+            LOGGER.logException("Exception while creating result file", e);
+        }
+    }
+
     private RevCommit getRevCommit(String taskName) {
-        File linuxDir = config.getValue(DefaultSettings.SOURCE_TREE);
-        LOGGER.logDebug(taskName + "Linux Dir: " + linuxDir);
+        File splDir = config.getValue(DefaultSettings.SOURCE_TREE);
+        LOGGER.logDebug(taskName + "SPL Dir: " + splDir);
         Repository repository;
         RevCommit commit = null;
         try {
             repository = new FileRepositoryBuilder()
-                    .setGitDir(new File(linuxDir, ".git"))
+                    .setGitDir(new File(splDir, ".git"))
                     .build();
             Git git = new Git(repository);
             int count = 0;
