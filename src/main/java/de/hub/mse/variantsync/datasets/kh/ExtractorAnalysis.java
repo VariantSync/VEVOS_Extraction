@@ -72,11 +72,10 @@ public class ExtractorAnalysis extends AbstractAnalysis {
             File workDir = new File(config.getValue(WORK_DIR));
             String taskName = "[" + workDir.getName() + "]";
             LOGGER.logDebug( taskName + "Running ExtractorAnalysis in directory " + workDir);
-            File result_file = new File(workDir, "output/analysis_result.csv");
-            LOGGER.logDebug(taskName + "Result File: " + result_file);
-            if (!result_file.exists()) {
-                LOGGER.logError(taskName + "The result file was not found...exiting.");
-                return;
+            File resultFile = new File(workDir, "output/analysis_result.csv");
+            LOGGER.logDebug(taskName + "Result File: " + resultFile);
+            if (!resultFile.exists()) {
+                createResultFile(resultFile);
             }
 
             RevCommit commit = getRevCommit(taskName);
@@ -154,7 +153,7 @@ public class ExtractorAnalysis extends AbstractAnalysis {
 
             boolean extractorsSucceeded = bmSuccess && (!checkCME || cmSuccess);
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(result_file, true))) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile, true))) {
                 String line;
                 if (checkCME) {
                     line = String.format("%s,%s,%s,%s,%s,%s,%s,%d,%d", taskName, commit.getName(), parseParents(commit), extractorsSucceeded, cmSuccess, bmSuccess, vmSuccess, bmSize, vmSize);
@@ -171,14 +170,31 @@ public class ExtractorAnalysis extends AbstractAnalysis {
         }
     }
 
+    private static void createResultFile(File resultFile) {
+        // Initialize the result file
+        LOGGER.logInfo("Initializing the result file " + resultFile + "...");
+        if (resultFile.getParentFile().mkdirs()) {
+            LOGGER.logInfo("...created parent folders...");
+
+        }
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile))) {
+            // Write the header
+            String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s", "THREAD_ID", "COMMIT", "COMMIT_PARENTS", "OVERALL_SUCCESS", "CM", "BM", "VM", "BM_SIZE", "VM_SIZE");
+            writer.write(line);
+            writer.newLine();
+        } catch (IOException e) {
+            LOGGER.logException("Exception while creating result file", e);
+        }
+    }
+
     private RevCommit getRevCommit(String taskName) {
-        File linuxDir = config.getValue(DefaultSettings.SOURCE_TREE);
-        LOGGER.logDebug(taskName + "Linux Dir: " + linuxDir);
+        File splDir = config.getValue(DefaultSettings.SOURCE_TREE);
+        LOGGER.logDebug(taskName + "SPL Dir: " + splDir);
         Repository repository;
         RevCommit commit = null;
         try {
             repository = new FileRepositoryBuilder()
-                    .setGitDir(new File(linuxDir, ".git"))
+                    .setGitDir(new File(splDir, ".git"))
                     .build();
             Git git = new Git(repository);
             int count = 0;

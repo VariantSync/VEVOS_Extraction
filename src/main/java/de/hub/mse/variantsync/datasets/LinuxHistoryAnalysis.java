@@ -30,23 +30,23 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable String> PATH_TO_SOURCE_REPO
             = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
             "Path to the folder with the repository in which the investigated SPL is managed.");
-    // TODO: Generify so that linux is no longer the only repo which can be analyzed
     // TODO: Generify so that the commit analysis is not the only analysis that can be run
+    public static final @NonNull Setting<@Nullable String> URL_OF_SOURCE_REPO
+            = new Setting<>("source_repo_url", Setting.Type.STRING, true, "https://github.com/torvalds/linux.git",
+            "URL of the git repository that manages the sources of the investigated SPL.");
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
-            = new Setting<>("analysis.number_of_threads", Setting.Type.INTEGER, false, "1", "" +
-            "The number of threads that are used to run the analysis. The linux sources are copied once for each thread.");
+            = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
+            "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
     protected static final Logger.Level LOG_LEVEL = Logger.Level.DEBUG;
     private static final Logger LOGGER = Logger.get();
-    private static final String LINUX_REPO = "https://github.com/torvalds/linux.git";
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
-    private static final String PATH_TO_RESULT = "output/analysis_result.csv";
 
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
         LOGGER.setLevel(LOG_LEVEL);
         checkOS(isWindows);
-        LOGGER.logInfo("Starting Linux history analysis.");
+        LOGGER.logInfo("Starting SPL history analysis.");
 
         // Parse the arguments
         File propertiesFile = getPropertiesFile(args);
@@ -65,12 +65,12 @@ public class LinuxHistoryAnalysis {
 
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
-        // Clone linux if necessary and return the File that points to the directory
-        File linuxDir = setUpLinuxDirectory(config);
+        // Clone the SPL if necessary and return the File that points to the directory
+        File splDir = setUpSPLDirectory(config);
         // Create the directories for each task running the analysis
-        File workingDirectory = setUpWorkingDirectory(config, linuxDir);
+        File workingDirectory = setUpWorkingDirectory(config, splDir);
         // Load git history
-        List<RevCommit> commits = getCommits(linuxDir, lastCommit, firstCommit);
+        List<RevCommit> commits = getCommits(splDir, lastCommit, firstCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
@@ -82,7 +82,7 @@ public class LinuxHistoryAnalysis {
         int count = 0;
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName()));
         }
         threadPool.shutdown();
         if (count != commits.size()) {
@@ -132,23 +132,23 @@ public class LinuxHistoryAnalysis {
         return config;
     }
 
-    private static File setUpLinuxDirectory(Configuration config) {
-        // Clone linux if required
-        File linuxDir = new File(config.getValue(PATH_TO_SOURCE_REPO));
-        if (linuxDir.exists()) {
-            LOGGER.logInfo("Directory with linux sources found.");
+    private static File setUpSPLDirectory(Configuration config) {
+        // Clone the SPL repo if required
+        File splDir = new File(config.getValue(PATH_TO_SOURCE_REPO));
+        if (splDir.exists()) {
+            LOGGER.logInfo("Directory with SPL sources found.");
         } else {
-            LOGGER.logInfo("Cloning linux...");
+            LOGGER.logInfo("Cloning SPL...");
             LOGGER.logWarning("Depending on the download speed this might take several minutes.");
             LOGGER.logWarning("Consider cloning the repository manually for a better estimate of the download time.");
-            if (!EXECUTOR.execute("git clone " + LINUX_REPO, linuxDir.getParentFile())) {
+            if (!EXECUTOR.execute("git clone " + config.getValue(URL_OF_SOURCE_REPO), splDir.getParentFile())) {
                 quitOnError();
             }
         }
-        return linuxDir;
+        return splDir;
     }
 
-    private static File setUpWorkingDirectory(Configuration config, File linuxDir) {
+    private static File setUpWorkingDirectory(Configuration config, File splDir) {
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         File workingDirectory = new File(System.getProperty("user.dir"));
         workingDirectory = new File(workingDirectory, "commit-analysis");
@@ -164,11 +164,9 @@ public class LinuxHistoryAnalysis {
             }
             // Create the directories that are expected by KernelHaven
             createKernelHavenDirs(subDir);
-            // Create the result csv file for the analysis
-            createResultFile(subDir);
-            // Copy linux to the subDir, so that it can be analyzed locally
-            if (!new File(subDir, "linux").exists()) {
-                EXECUTOR.execute("cp -rf " + linuxDir.getAbsolutePath() + " .", subDir);
+            // Copy the SPL sources to the subDir, so that it can be analyzed locally
+            if (!new File(subDir, splDir.getName()).exists()) {
+                EXECUTOR.execute("cp -rf " + splDir.getAbsolutePath() + " .", subDir);
             }
             // Copy the properties file to the subDir
             EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
@@ -197,29 +195,8 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("...done.");
     }
 
-
-    // TODO: Move logic for writing the results to analysis pipeline
-    private static void createResultFile(File workingDirectory) {
-        // Initialize the result file
-        File result_file = new File(workingDirectory, PATH_TO_RESULT);
-        LOGGER.logInfo("Initializing the result file " + result_file + "...");
-        if (result_file.getParentFile().mkdirs()) {
-            LOGGER.logInfo("...created parent folders...");
-
-        }
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(result_file))) {
-            // Write the header
-            // TODO: Move this somewhere else as it only works for one specific analysis, e.g., ExtractorAnalysis.java
-            String line = String.format("%s,%s,%s,%s,%s,%s,%s,%s,%s", "THREAD_ID", "COMMIT", "COMMIT_PARENTS", "OVERALL_SUCCESS", "CM", "BM", "VM", "BM_SIZE", "VM_SIZE");
-            writer.write(line);
-            writer.newLine();
-        } catch (IOException e) {
-            LOGGER.logException("Exception while creating result file", e);
-        }
-    }
-
-    private static List<RevCommit> getCommits(File linuxDir, String lastCommitId, String firstCommitId) throws IOException, GitAPIException {
-        Git gitRepo = initGitForRepo(linuxDir);
+    private static List<RevCommit> getCommits(File splDir, String lastCommitId, String firstCommitId) throws IOException, GitAPIException {
+        Git gitRepo = initGitForRepo(splDir);
 
         List<RevCommit> commits = new LinkedList<>();
         if (firstCommitId != null && lastCommitId != null) {
@@ -248,10 +225,10 @@ public class LinuxHistoryAnalysis {
         return commits;
     }
 
-    private static Git initGitForRepo(File linuxDir) throws IOException {
+    private static Git initGitForRepo(File splDir) throws IOException {
         LOGGER.logDebug("Initializing git repo...");
         Repository repository = new FileRepositoryBuilder()
-                .setGitDir(new File(linuxDir, ".git"))
+                .setGitDir(new File(splDir, ".git"))
                 .build();
         Git git = new Git(repository);
         LOGGER.logDebug("...done.");
@@ -289,11 +266,13 @@ public class LinuxHistoryAnalysis {
         private final File parentDir;
         private final List<RevCommit> commits;
         private final File parentPropertiesFile;
+        private final String splName;
 
-        public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile) {
+        public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName) {
             this.commits = commits;
             this.parentDir = parentDir;
             this.parentPropertiesFile = propertiesFile;
+            this.splName = splName;
             this.taskNumber = existingTasksCount++;
             LOGGER.setLevel(LOG_LEVEL);
         }
@@ -305,6 +284,7 @@ public class LinuxHistoryAnalysis {
             LOGGER.logInfo("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
             File workDir = new File(parentDir, "run-" + taskName);
             File propertiesFile = new File(workDir, parentPropertiesFile.getName());
+            File splDir = new File(workDir, splName);
             // Load the config
             Configuration config;
             try {
@@ -314,7 +294,7 @@ public class LinuxHistoryAnalysis {
                 config.registerSetting(ExtractorAnalysis.WORK_DIR);
                 // Change the paths to the required directories
                 config.setValue(ExtractorAnalysis.WORK_DIR, workDir.getAbsolutePath());
-                config.setValue(DefaultSettings.SOURCE_TREE, new File(workDir, "linux"));
+                config.setValue(DefaultSettings.SOURCE_TREE, new File(workDir, splName));
                 config.setValue(DefaultSettings.RESOURCE_DIR, new File(workDir, "res"));
                 config.setValue(DefaultSettings.OUTPUT_DIR, new File(workDir, "output"));
                 config.setValue(DefaultSettings.PLUGINS_DIR, new File(workDir, "plugins"));
@@ -326,19 +306,18 @@ public class LinuxHistoryAnalysis {
                 quitOnError();
             }
 
-            File linuxDir = new File(workDir, "linux");
 
             for (RevCommit commit : commits) {
                 LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
 
                 // Make sure the directory is not blocked
-                checkBlocker(linuxDir);
+                checkBlocker(splDir);
 
                 // Check out the next commit
-                EXECUTOR.execute("git checkout " + commit.getName(), linuxDir);
+                EXECUTOR.execute("git checkout " + commit.getName(), splDir);
 
                 // Block the directory
-                createBlocker(linuxDir);
+                createBlocker(splDir);
 
                 // Start the analysis pipeline
                 LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
@@ -351,10 +330,10 @@ public class LinuxHistoryAnalysis {
                 PipelineConfigurator.instance().execute();
                 // We have to set the name again because KernelHaven changes it
                 Thread.currentThread().setName(threadName);
-                EXECUTOR.execute("make clean", linuxDir);
+                EXECUTOR.execute("make clean", splDir);
 
                 // Delete the blocker
-                deleteBlocker(linuxDir);
+                deleteBlocker(splDir);
             }
         }
 
@@ -377,7 +356,7 @@ public class LinuxHistoryAnalysis {
             LOGGER.logInfo("Checking block of directory " + dir);
             File blocker = new File(dir, "BLOCKER.txt");
             if (blocker.exists()) {
-                LOGGER.logError("The linux directory is blocked by another task! This indicates a bug in the " +
+                LOGGER.logError("The SPL directory is blocked by another task! This indicates a bug in the " +
                         "implementation of multi-threading.");
                 quitOnError();
             } else {
