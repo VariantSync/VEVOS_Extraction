@@ -348,7 +348,8 @@ public class LinuxHistoryAnalysis {
                 LOGGER.setLevel(Objects.requireNonNull(config).getValue(DefaultSettings.LOG_LEVEL));
                 PipelineConfigurator.instance().execute();
                 LOGGER.setLevel(LOG_LEVEL);
-
+                LOGGER.logInfo("KernelHaven execution finished.");
+                // TODO: Look for bug here
                 if (Objects.requireNonNull(config).getValue(COLLECT_OUTPUT)) {
                     LOGGER.logInfo("Moving result to common output directory.");
                     File collection_dir = new File(new File(parentDir, "output"), commit.getName());
@@ -358,6 +359,7 @@ public class LinuxHistoryAnalysis {
                     // Move the results of the analysis to the collected output directory according to the current commit
                     EXECUTOR.execute("mv ./output/* ../output/" + commit.getName() + "/", workDir);
                 }
+                LOGGER.logInfo("Starting clean up...");
                 // We have to set the name again because KernelHaven changes it
                 Thread.currentThread().setName(threadName);
                 EXECUTOR.execute("make clean", splDir);
