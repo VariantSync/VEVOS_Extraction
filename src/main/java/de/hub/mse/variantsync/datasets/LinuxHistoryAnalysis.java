@@ -359,11 +359,11 @@ public class LinuxHistoryAnalysis {
                        LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
                     }
                     // Move the results of the analysis to the collected output directory according to the current commit
-                    EXECUTOR.execute("mv ./output/* ../output/" + commit.getName() + "/", workDir);
+                    EXECUTOR.execute("mv ./output/*Blocks.csv ../output/code-variability.csv" + commit.getName() + "/", workDir);
 
                     // Move the cache of the extractors to the collected output directory
                     LOGGER.logInfo("Moving extractor cache to common output directory.");
-                    EXECUTOR.execute("mv ./cache/* ../output/" + commit.getName() + "/", workDir);
+                    EXECUTOR.execute("mv ./cache/vmCache.json ../output/variability-model.csv" + commit.getName() + "/", workDir);
                     LOGGER.logInfo("...done.");
                 }
                 LOGGER.logInfo("Starting clean up...");
