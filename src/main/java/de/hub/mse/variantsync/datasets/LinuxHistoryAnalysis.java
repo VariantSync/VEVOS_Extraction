@@ -18,7 +18,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -361,6 +360,11 @@ public class LinuxHistoryAnalysis {
                     }
                     // Move the results of the analysis to the collected output directory according to the current commit
                     EXECUTOR.execute("mv ./output/* ../output/" + commit.getName() + "/", workDir);
+
+                    // Move the cache of the extractors to the collected output directory
+                    LOGGER.logInfo("Moving extractor cache to common output directory.");
+                    EXECUTOR.execute("mv ./cache/* ../output/" + commit.getName() + "/", workDir);
+                    LOGGER.logInfo("...done.");
                 }
                 LOGGER.logInfo("Starting clean up...");
                 // We have to set the name again because KernelHaven changes it
