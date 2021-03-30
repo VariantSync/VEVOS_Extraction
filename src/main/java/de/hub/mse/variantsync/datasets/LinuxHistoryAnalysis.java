@@ -18,6 +18,10 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -358,12 +362,33 @@ public class LinuxHistoryAnalysis {
                     if (collection_dir.mkdir()) {
                        LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
                     }
+
+                    Path pathToCommitSubDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                     // Move the results of the analysis to the collected output directory according to the current commit
-                    EXECUTOR.execute("mv ./output/*Blocks.csv ../output/code-variability.csv" + commit.getName() + "/", workDir);
+                    File outputDir = new File(workDir, "output");
+                    File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+                    if (resultFiles != null && resultFiles.length == 1) {
+                        try {
+                            Files.move(resultFiles[0].toPath(), Paths.get(pathToCommitSubDir.toString(), "code-variability.csv"));
+                        } catch (IOException e) {
+                            LOGGER.logException("Was not able to move the result file of the analysis: ", e);
+                        }
+                    } else {
+                        LOGGER.logError("FOUND MORE THAN ONE RESULT FILE!");
+                    }
 
                     // Move the cache of the extractors to the collected output directory
                     LOGGER.logInfo("Moving extractor cache to common output directory.");
-                    EXECUTOR.execute("mv ./cache/vmCache.json ../output/variability-model.csv" + commit.getName() + "/", workDir);
+                    File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
+                    if (vmCache.exists()) {
+                        try {
+                            Files.move(vmCache.toPath(), Paths.get(pathToCommitSubDir.toString(), "variability-model.csv"));
+                        } catch (IOException e) {
+                            LOGGER.logException("Was not able to move the cached variability model: ", e);
+                        }
+                    } else {
+                        LOGGER.logError("NO VARIABILITY MODEL EXTRACTED!");
+                    }
                     LOGGER.logInfo("...done.");
                 }
                 LOGGER.logInfo("Starting clean up...");
