@@ -22,6 +22,7 @@ public class VariabilityAnalysis extends PipelineAnalysis {
     protected @NonNull AnalysisComponent<?> createPipeline() throws SetUpException {
         // TODO: Implement feature model extraction
         // TODO: Reintegrate BM extractor into properties file
+        // TODO: Change name of csv file to a more generic one
         return new CodeBlockAnalysis(config, getCmComponent(), getBmComponent());
     }
 
