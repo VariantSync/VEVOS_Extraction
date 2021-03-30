@@ -20,7 +20,7 @@ public class VariabilityAnalysis extends PipelineAnalysis {
 
     @Override
     protected @NonNull AnalysisComponent<?> createPipeline() throws SetUpException {
-        return new CodeBlockAnalysis(config, getCmComponent());
+        return new CodeBlockAnalysis(config, getCmComponent(), getBmComponent());
     }
 
 }
