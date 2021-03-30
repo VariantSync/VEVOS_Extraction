@@ -31,7 +31,6 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable String> PATH_TO_SOURCE_REPO
             = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
             "Path to the folder with the repository in which the investigated SPL is managed.");
-    // TODO: Generify so that the commit analysis is not the only analysis that can be run
     public static final @NonNull Setting<@Nullable String> URL_OF_SOURCE_REPO
             = new Setting<>("source_repo_url", Setting.Type.STRING, true, "https://github.com/torvalds/linux.git",
             "URL of the git repository that manages the sources of the investigated SPL.");
@@ -39,11 +38,12 @@ public class LinuxHistoryAnalysis {
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
             "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
     public static final @NonNull Setting<@Nullable Boolean> COLLECT_OUTPUT
-            = new Setting<>("analysis.collect_output", Setting.Type.BOOLEAN, false, "false",
+            = new Setting<>("analysis.output_by_commit", Setting.Type.BOOLEAN, false, "false",
             "Whether the results of the conducted analysis are to be collected in a common output directory");
     protected static final Logger.Level LOG_LEVEL = Logger.Level.DEBUG;
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
+    private static boolean collectOutput;
 
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
@@ -69,12 +69,18 @@ public class LinuxHistoryAnalysis {
 
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
+        collectOutput = config.getValue(COLLECT_OUTPUT);
+        if (collectOutput) {
+            LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
+        }
+
         // Clone the SPL if necessary and return the File that points to the directory
         File splDir = setUpSPLDirectory(config);
         // Create the directories for each task running the analysis
         File workingDirectory = setUpWorkingDirectory(config, splDir);
         // Load git history
         List<RevCommit> commits = getCommits(splDir, lastCommit, firstCommit);
+
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
@@ -161,7 +167,7 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
-        if (config.getValue(COLLECT_OUTPUT)) {
+        if (collectOutput) {
             File overallOutputDirectory = new File(workingDirectory, "output");
             if (!overallOutputDirectory.exists()) {
                 if(overallOutputDirectory.mkdirs()) {
@@ -302,7 +308,7 @@ public class LinuxHistoryAnalysis {
             File propertiesFile = new File(workDir, parentPropertiesFile.getName());
             File splDir = new File(workDir, splName);
             // Load the config
-            Configuration config;
+            Configuration config = null;
             try {
                 LOGGER.logDebug("Setting up configuration for " + propertiesFile);
                 config = new Configuration(propertiesFile);
@@ -317,11 +323,9 @@ public class LinuxHistoryAnalysis {
                 config.setValue(DefaultSettings.CACHE_DIR, new File(workDir, "cache"));
                 config.setValue(DefaultSettings.LOG_DIR, new File(workDir, "log"));
             } catch (SetUpException e) {
-                config = null;
                 LOGGER.logError("Invalid configuration detected:", e.getMessage());
                 quitOnError();
             }
-
 
             for (RevCommit commit : commits) {
                 LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
@@ -349,8 +353,7 @@ public class LinuxHistoryAnalysis {
                 PipelineConfigurator.instance().execute();
                 LOGGER.setLevel(LOG_LEVEL);
                 LOGGER.logInfo("KernelHaven execution finished.");
-                // TODO: Look for bug here
-                if (Objects.requireNonNull(config).getValue(COLLECT_OUTPUT)) {
+                if (collectOutput) {
                     LOGGER.logInfo("Moving result to common output directory.");
                     File collection_dir = new File(new File(parentDir, "output"), commit.getName());
                     if (collection_dir.mkdir()) {
