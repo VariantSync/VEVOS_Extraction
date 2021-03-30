@@ -116,6 +116,11 @@
         </dependency>
         <dependency>
             <groupId>net.ssehub.kernel_haven</groupId>
+            <artifactId>fe_analysis</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>net.ssehub.kernel_haven</groupId>
             <artifactId>block_extractor</artifactId>
             <version>1.0.0</version>
         </dependency>
