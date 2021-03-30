@@ -16,12 +16,15 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class LinuxHistoryAnalysis {
 
@@ -185,11 +188,23 @@ public class LinuxHistoryAnalysis {
             // Create the directories that are expected by KernelHaven
             createKernelHavenDirs(subDir);
             // Copy the SPL sources to the subDir, so that it can be analyzed locally
-            if (!new File(subDir, splDir.getName()).exists()) {
-                EXECUTOR.execute("cp -rf " + splDir.getAbsolutePath() + " .", subDir);
+            File targetFile = new File(subDir, splDir.getName());
+            if (!targetFile.exists()) {
+                try {
+                    LOGGER.logDebug("Copying the SPL directory to the sub directory for task #" + i + ".");
+                    Files.copy(splDir.toPath(), targetFile.toPath());
+                } catch (IOException e) {
+                    LOGGER.logException("An Exception occurred while trying to copy the SPL directory: ", e);
+                }
             }
             // Copy the properties file to the subDir
-            EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
+            targetFile = new File(subDir, config.getPropertyFile().getName());
+            try {
+                LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
+                Files.copy(config.getPropertyFile().toPath(), targetFile.toPath(), REPLACE_EXISTING);
+            } catch (IOException e) {
+                LOGGER.logException("An Exception occurred while trying to copy the properties file: ", e);
+            }
         }
         LOGGER.logInfo("...done with setting up working directory.");
         return workingDirectory;
