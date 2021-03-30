@@ -1,8 +1,6 @@
 package de.hub.mse.variantsync.datasets;
 
-import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
-import net.ssehub.kernel_haven.PipelineConfigurator;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
@@ -18,10 +16,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
-import java.nio.file.CopyOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,7 +37,6 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable Boolean> COLLECT_OUTPUT
             = new Setting<>("analysis.output_by_commit", Setting.Type.BOOLEAN, false, "false",
             "Whether the results of the conducted analysis are to be collected in a common output directory");
-    protected static final Logger.Level LOG_LEVEL = Logger.Level.DEBUG;
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
     private static boolean collectOutput;
@@ -51,7 +44,6 @@ public class LinuxHistoryAnalysis {
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
-        LOGGER.setLevel(LOG_LEVEL);
         checkOS(isWindows);
         LOGGER.logInfo("Starting SPL history analysis.");
 
@@ -72,6 +64,7 @@ public class LinuxHistoryAnalysis {
 
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
+        LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
         collectOutput = config.getValue(COLLECT_OUTPUT);
         if (collectOutput) {
             LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
@@ -95,8 +88,9 @@ public class LinuxHistoryAnalysis {
         int count = 0;
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName()));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), collectOutput));
         }
+        // TODO: Check whether the behavior here is valid
         threadPool.shutdown();
         if (count != commits.size()) {
             LOGGER.logException("Subsets not created correctly: ",
@@ -136,6 +130,7 @@ public class LinuxHistoryAnalysis {
         Configuration config = null;
         try {
             config = new Configuration(Objects.requireNonNull(propertiesFile));
+            config.registerSetting(DefaultSettings.LOG_LEVEL);
             config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
             config.registerSetting(COLLECT_OUTPUT);
@@ -278,165 +273,10 @@ public class LinuxHistoryAnalysis {
         return commitSubsets;
     }
 
-    private static void quitOnError() {
+    static void quitOnError() {
         LOGGER.logError("An error occurred and the program has to quit.");
         throw new IllegalStateException("Not able to continue analysis due to previous error");
     }
 
-    private static class AnalysisTask implements Runnable {
-        private static final Logger LOGGER = Logger.get();
-        private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
-        private static int existingTasksCount = 0;
-        private final int taskNumber;
-        private final File parentDir;
-        private final List<RevCommit> commits;
-        private final File parentPropertiesFile;
-        private final String splName;
 
-        public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName) {
-            this.commits = commits;
-            this.parentDir = parentDir;
-            this.parentPropertiesFile = propertiesFile;
-            this.splName = splName;
-            this.taskNumber = existingTasksCount++;
-            LOGGER.setLevel(LOG_LEVEL);
-        }
-
-        @Override
-        public void run() {
-            String taskName = String.valueOf(taskNumber);
-            String threadName = Thread.currentThread().getName();
-            LOGGER.logInfo("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
-            File workDir = new File(parentDir, "run-" + taskName);
-            File propertiesFile = new File(workDir, parentPropertiesFile.getName());
-            File splDir = new File(workDir, splName);
-            // Load the config
-            Configuration config = null;
-            try {
-                LOGGER.logDebug("Setting up configuration for " + propertiesFile);
-                config = new Configuration(propertiesFile);
-                DefaultSettings.registerAllSettings(config);
-                config.registerSetting(CommitUsabilityAnalysis.WORK_DIR);
-                // Change the paths to the required directories
-                config.setValue(CommitUsabilityAnalysis.WORK_DIR, workDir.getAbsolutePath());
-                config.setValue(DefaultSettings.SOURCE_TREE, new File(workDir, splName));
-                config.setValue(DefaultSettings.RESOURCE_DIR, new File(workDir, "res"));
-                config.setValue(DefaultSettings.OUTPUT_DIR, new File(workDir, "output"));
-                config.setValue(DefaultSettings.PLUGINS_DIR, new File(workDir, "plugins"));
-                config.setValue(DefaultSettings.CACHE_DIR, new File(workDir, "cache"));
-                config.setValue(DefaultSettings.LOG_DIR, new File(workDir, "log"));
-            } catch (SetUpException e) {
-                LOGGER.logError("Invalid configuration detected:", e.getMessage());
-                quitOnError();
-            }
-
-            for (RevCommit commit : commits) {
-                LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
-
-                // Make sure the directory is not blocked
-                checkBlocker(splDir);
-
-                // Check out the next commit
-                EXECUTOR.execute("git checkout " + commit.getName(), splDir);
-
-                // Block the directory
-                createBlocker(splDir);
-
-                // Start the analysis pipeline
-                LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
-                try {
-                    PipelineConfigurator.instance().init(config);
-                } catch (SetUpException e) {
-                    LOGGER.logError("Invalid configuration detected:", e.getMessage());
-                    quitOnError();
-                }
-
-                // Execute the analysis pipeline
-                LOGGER.setLevel(Objects.requireNonNull(config).getValue(DefaultSettings.LOG_LEVEL));
-                PipelineConfigurator.instance().execute();
-                LOGGER.setLevel(LOG_LEVEL);
-                LOGGER.logInfo("KernelHaven execution finished.");
-                if (collectOutput) {
-                    LOGGER.logInfo("Moving result to common output directory.");
-                    File collection_dir = new File(new File(parentDir, "output"), commit.getName());
-                    if (collection_dir.mkdir()) {
-                       LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
-                    }
-
-                    Path pathToCommitSubDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                    // Move the results of the analysis to the collected output directory according to the current commit
-                    File outputDir = new File(workDir, "output");
-                    File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
-                    if (resultFiles != null && resultFiles.length == 1) {
-                        try {
-                            Files.move(resultFiles[0].toPath(), Paths.get(pathToCommitSubDir.toString(), "code-variability.csv"));
-                        } catch (IOException e) {
-                            LOGGER.logException("Was not able to move the result file of the analysis: ", e);
-                        }
-                    } else {
-                        LOGGER.logError("FOUND MORE THAN ONE RESULT FILE!");
-                    }
-
-                    // Move the cache of the extractors to the collected output directory
-                    LOGGER.logInfo("Moving extractor cache to common output directory.");
-                    File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
-                    if (vmCache.exists()) {
-                        try {
-                            Files.move(vmCache.toPath(), Paths.get(pathToCommitSubDir.toString(), "variability-model.csv"));
-                        } catch (IOException e) {
-                            LOGGER.logException("Was not able to move the cached variability model: ", e);
-                        }
-                    } else {
-                        LOGGER.logError("NO VARIABILITY MODEL EXTRACTED!");
-                    }
-                    LOGGER.logInfo("...done.");
-                }
-                LOGGER.logInfo("Starting clean up...");
-                // We have to set the name again because KernelHaven changes it
-                Thread.currentThread().setName(threadName);
-                EXECUTOR.execute("make clean", splDir);
-
-                // Delete the blocker
-                deleteBlocker(splDir);
-            }
-        }
-
-        private void createBlocker(File dir) {
-            LOGGER.logInfo("Blocking directory " + dir);
-            File blocker = new File(dir, "BLOCKER.txt");
-            try {
-                if (!blocker.createNewFile()) {
-                    LOGGER.logError("Was not able to create blocker file!");
-                    quitOnError();
-                } else {
-                    LOGGER.logInfo("BLOCKED - OK");
-                }
-            } catch (IOException e) {
-                LOGGER.logException("Exception was thrown upon creating blocker file: ", e);
-            }
-        }
-
-        private void checkBlocker(File dir) {
-            LOGGER.logInfo("Checking block of directory " + dir);
-            File blocker = new File(dir, "BLOCKER.txt");
-            if (blocker.exists()) {
-                LOGGER.logError("The SPL directory is blocked by another task! This indicates a bug in the " +
-                        "implementation of multi-threading.");
-                quitOnError();
-            } else {
-                LOGGER.logInfo("NO BLOCK FOUND - OK");
-            }
-        }
-
-        private void deleteBlocker(File dir) {
-            LOGGER.logInfo("Removing block of directory " + dir);
-            File blocker = new File(dir, "BLOCKER.txt");
-            if (!blocker.delete()) {
-                LOGGER.logError("Was not able to delete blocker file!");
-                quitOnError();
-            } else {
-                LOGGER.logInfo("BLOCK REMOVED - OK");
-            }
-        }
-    }
 }
