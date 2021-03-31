@@ -7,6 +7,10 @@ import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
+import org.eclipse.jgit.api.CommitCommand;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.PushCommand;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.File;
@@ -29,7 +33,8 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final EResultCollection collectOutput;
-    private final String outputRepoURL;
+    private final Configuration config;
+    private int processedCommits = 0;
 
     public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config) {
         this.commits = commits;
@@ -38,7 +43,7 @@ public class AnalysisTask implements Runnable {
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
-        this.outputRepoURL = config.getValue(RESULT_REPO);
+        this.config = config;
     }
 
     @Override
@@ -91,6 +96,7 @@ public class AnalysisTask implements Runnable {
             } else if (collectOutput == EResultCollection.Repository) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 moveResultsToDirectory(workDir, pathToTargetDir);
+                commitResults(pathToTargetDir, commit);
             }
 
             LOGGER.logInfo("Starting clean up...");
@@ -100,6 +106,7 @@ public class AnalysisTask implements Runnable {
 
             // Delete the blocker
             deleteBlocker(splDir);
+            processedCommits++;
         }
     }
 
@@ -151,6 +158,45 @@ public class AnalysisTask implements Runnable {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED!");
         }
         LOGGER.logInfo("...done.");
+    }
+
+    private void commitResults(Path pathToDirectory, RevCommit originalCommit) {
+        Git git;
+        try {
+            git = initGitForRepo(pathToDirectory.toFile());
+        } catch (IOException e) {
+            LOGGER.logException("Exception while trying to load result repo.", e);
+            return;
+        }
+
+        // Add meta data
+        // Map the previous commit
+        if (git.log().call().iterator().hasNext()) {
+        String echoString = 
+        EXECUTOR.execute("echo CURRENT_COMMIT.txt >> COMMIT_MAP.txt)
+        }
+        // Save the commit which was just processed
+        EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", pathToDirectory.toFile());
+
+        try {
+            // Add the changes to the results
+            git.add().call();
+            // Commit the changes
+            CommitCommand commitCommand = git.commit();
+            commitCommand.setCommitter(config.getValue(RESULT_REPO_COMMITTER_NAME), config.getValue(RESULT_REPO_COMMITTER_EMAIL));
+            commitCommand.setMessage(originalCommit.getName());
+            commitCommand.call();
+
+            if (processedCommits == 0 || (processedCommits % 500) == 0 || processedCommits == (commits.size() - 2)) {
+                // Push the changes
+                // TODO: Check whether this works
+                PushCommand pushCommand = git.push();
+                pushCommand.setForce(true);
+                pushCommand.call();
+            }
+        } catch (GitAPIException e) {
+            LOGGER.logException("Exception while trying to commit to result repo.", e);
+        }
     }
 
     private void createBlocker(File dir) {

@@ -40,9 +40,15 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable EResultCollection> RESULT_COLLECTION_TYPE
             = new Setting<>("result.collection_type", Setting.Type.ENUM, false, "None",
             "The way in which the results of several analysis tasks are collected, e.g., in a common output directory");
-    public static final @NonNull Setting<@Nullable String> RESULT_REPO
-            = new Setting<>("result.repository_url", Setting.Type.STRING, false, null,
+    public static final @NonNull Setting<@Nullable String> RESULT_REPO_URL
+            = new Setting<>("result.repo.url", Setting.Type.STRING, false, null,
             "The url to the repository to which the results are pushed to if result.collection_type is set to 'Repository'");
+    public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_NAME
+            = new Setting<>("result.repo.committer.name", Setting.Type.STRING, false, "DatasetGenerator",
+            "The name of the committer if result.collection_type is set to 'Repository'");
+    public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_EMAIL
+            = new Setting<>("result.repo.committer.email", Setting.Type.STRING, false, null,
+            "The email of the committer if result.collection_type is set to 'Repository'");
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
     private static EResultCollection resultCollectionType;
@@ -140,7 +146,7 @@ public class LinuxHistoryAnalysis {
             config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
             config.registerSetting(RESULT_COLLECTION_TYPE);
-            config.registerSetting(RESULT_REPO);
+            config.registerSetting(RESULT_REPO_URL);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
@@ -177,6 +183,10 @@ public class LinuxHistoryAnalysis {
             if (!overallOutputDirectory.exists()) {
                 if(overallOutputDirectory.mkdirs()) {
                     LOGGER.logInfo("Created common output directory.");
+                    if (resultCollectionType == EResultCollection.Repository) {
+                        // Initialize a git repository
+                        EXECUTOR.execute("git init", overallOutputDirectory);
+                    }
                 }
             }
         }
@@ -264,7 +274,7 @@ public class LinuxHistoryAnalysis {
         return commits;
     }
 
-    private static Git initGitForRepo(File splDir) throws IOException {
+    public static Git initGitForRepo(File splDir) throws IOException {
         LOGGER.logDebug("Initializing git repo...");
         Repository repository = new FileRepositoryBuilder()
                 .setGitDir(new File(splDir, ".git"))
