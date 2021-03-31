@@ -86,15 +86,17 @@ public class LinuxHistoryAnalysis {
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
         ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
-
+        LOGGER.logInfo("Splitting commits into " + numberOfThreads + " subset(s).");
         List<List<RevCommit>> commitSubsets = splitCommitsIntoSubsets(commits, numberOfThreads);
-
+        LOGGER.logInfo("...done.");
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
+        LOGGER.logInfo("Scheduling tasks...");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
         }
+        LOGGER.logInfo("all " + commitSubsets.size() + " tasks scheduled.");
         // TODO: Check whether the behavior here is valid
         threadPool.shutdown();
         if (count != commits.size()) {
@@ -185,6 +187,10 @@ public class LinuxHistoryAnalysis {
                         EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git config user.email \"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
+                        EXECUTOR.execute("touch init", overallOutputDirectory);
+                        EXECUTOR.execute("git add .", overallOutputDirectory);
+                        EXECUTOR.execute("git commit -m \"Initial commit\"", overallOutputDirectory);
+                        EXECUTOR.execute("git push -uf origin main", overallOutputDirectory);
                     }
                 }
             }
@@ -238,7 +244,7 @@ public class LinuxHistoryAnalysis {
 
     private static List<RevCommit> getCommits(File splDir, String firstCommitId, String lastCommitId) throws IOException, GitAPIException {
         Git gitRepo = initGitForRepo(splDir);
-
+        LOGGER.logInfo("Retrieving commits in SPL repo...");
         List<RevCommit> commits = new LinkedList<>();
         if (firstCommitId != null && lastCommitId != null) {
             LOGGER.logInfo("Commit range specified...filtering commits.");
@@ -257,12 +263,13 @@ public class LinuxHistoryAnalysis {
                 }
                 justChanged = false;
             }
-            LOGGER.logInfo("" + commits.size() + " remain for analysis.");
         } else {
+            LOGGER.logInfo("Considering all commits...");
             Iterable<RevCommit> commitIterable = gitRepo.log().all().call();
             // Add all commits, if not commit range was specified
             commitIterable.forEach(commits::add);
         }
+        LOGGER.logInfo("" + commits.size() + " selected for analysis.");
         Collections.reverse(commits);
         return commits;
     }
@@ -279,6 +286,10 @@ public class LinuxHistoryAnalysis {
 
     private static List<List<RevCommit>> splitCommitsIntoSubsets(List<RevCommit> commits, int numberOfThreads) {
         List<List<RevCommit>> commitSubsets = new ArrayList<>(numberOfThreads);
+        if (numberOfThreads == 1) {
+            commitSubsets.add(commits);
+            return commitSubsets;
+        }
         for (int i = 0; i < numberOfThreads; i++) {
             commitSubsets.add(new LinkedList<>());
         }

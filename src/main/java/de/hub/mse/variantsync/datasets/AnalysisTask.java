@@ -82,23 +82,23 @@ public class AnalysisTask implements Runnable {
             // Execute the analysis pipeline
             LOGGER.setLevel(Objects.requireNonNull(config).getValue(DefaultSettings.LOG_LEVEL));
             PipelineConfigurator.instance().execute();
+            Thread.currentThread().setName(threadName);
             LOGGER.logInfo("KernelHaven execution finished.");
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                moveResultsToDirectory(workDir, pathToTargetDir);
+                moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
             } else if (collectOutput == EResultCollection.REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
-                synchronized (this) {
-                    moveResultsToDirectory(workDir, pathToTargetDir);
+                synchronized (AnalysisTask.class) {
+                    moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
                     commitResults(pathToTargetDir.toFile(), commit);
                 }
             }
 
             LOGGER.logInfo("Starting clean up...");
             // We have to set the name again because KernelHaven changes it
-            Thread.currentThread().setName(threadName);
             EXECUTOR.execute("make clean", splDir);
 
             // Delete the blocker
@@ -121,7 +121,7 @@ public class AnalysisTask implements Runnable {
         LOGGER.logDebug("Set up configuration for " + propertiesFile);
     }
 
-    private void moveResultsToDirectory(File workDir, Path pathToTargetDir) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
         LOGGER.logInfo("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -131,14 +131,19 @@ public class AnalysisTask implements Runnable {
         // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
-        if (resultFiles != null && resultFiles.length == 1) {
+        if (resultFiles == null || resultFiles.length == 0) {
+            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(pathToTargetDir, commitId);
+        } else if (resultFiles.length == 1) {
             try {
+                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
                 Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }
         } else {
-            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE!");
+            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(pathToTargetDir, commitId);
         }
 
         // Move the cache of the extractors to the collected output directory
@@ -146,17 +151,20 @@ public class AnalysisTask implements Runnable {
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
+                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + pathToTargetDir);
                 Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
+                logError(pathToTargetDir, commitId);
             }
         } else {
-            LOGGER.logError("NO VARIABILITY MODEL EXTRACTED!");
+            LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
+            logError(pathToTargetDir, commitId);
         }
         LOGGER.logInfo("...done.");
     }
 
-    private void commitResults(File workingDirectory, RevCommit originalCommit) {
+    private static void commitResults(File workingDirectory, RevCommit originalCommit) {
         // Save the commit which was just processed
         EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", workingDirectory);
         // Add the changes to the results
@@ -164,7 +172,7 @@ public class AnalysisTask implements Runnable {
         // Commit the changes
         EXECUTOR.execute("git commit -m \"" + originalCommit.getName() + "\"", workingDirectory);
         // Push the changes
-        EXECUTOR.execute("git push -uf origin master", workingDirectory);
+        EXECUTOR.execute("git push origin main", workingDirectory);
     }
 
     private void createBlocker(File dir) {
@@ -203,5 +211,9 @@ public class AnalysisTask implements Runnable {
         } else {
             LOGGER.logInfo("BLOCK REMOVED - OK");
         }
+    }
+
+    private static void logError(Path dir, String commitId) {
+        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir.toFile());
     }
 }
