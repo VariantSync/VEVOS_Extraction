@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static de.hub.mse.variantsync.datasets.LinuxHistoryAnalysis.*;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
     private static final Logger LOGGER = Logger.get();
@@ -132,7 +133,7 @@ public class AnalysisTask implements Runnable {
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles != null && resultFiles.length == 1) {
             try {
-                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"));
+                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }
@@ -145,7 +146,7 @@ public class AnalysisTask implements Runnable {
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
-                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.csv"));
+                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.csv"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
             }

@@ -11,16 +11,12 @@ import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -85,8 +81,7 @@ public class LinuxHistoryAnalysis {
         // Create the directories for each task running the analysis
         File workingDirectory = setUpWorkingDirectory(config, splDir);
         // Load git history
-        List<RevCommit> commits = getCommits(splDir, lastCommit, firstCommit);
-
+        List<RevCommit> commits = getCommits(splDir, firstCommit, lastCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
@@ -142,6 +137,7 @@ public class LinuxHistoryAnalysis {
             config = new Configuration(Objects.requireNonNull(propertiesFile));
             config.registerSetting(DefaultSettings.LOG_LEVEL);
             config.registerSetting(PATH_TO_SOURCE_REPO);
+            config.registerSetting(URL_OF_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
             config.registerSetting(RESULT_COLLECTION_TYPE);
             config.registerSetting(RESULT_REPO_URL);
@@ -240,26 +236,26 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("...done.");
     }
 
-    private static List<RevCommit> getCommits(File splDir, String lastCommitId, String firstCommitId) throws IOException, GitAPIException {
+    private static List<RevCommit> getCommits(File splDir, String firstCommitId, String lastCommitId) throws IOException, GitAPIException {
         Git gitRepo = initGitForRepo(splDir);
 
         List<RevCommit> commits = new LinkedList<>();
         if (firstCommitId != null && lastCommitId != null) {
             LOGGER.logInfo("Commit range specified...filtering commits.");
-            // Get the commit objects
-            ObjectId firstCommit = gitRepo.getRepository().resolve(firstCommitId);
-            ObjectId lastCommit = gitRepo.getRepository().resolve(lastCommitId);
-            Iterable<RevCommit> commitIterable = gitRepo.log().addRange(firstCommit, lastCommit).call();
+            Iterable<RevCommit> commitIterable = gitRepo.log().call();
             // Filter all commits not in the specified range of commits
             boolean inRange = false;
+            boolean justChanged = false;
             for (RevCommit commit : commitIterable) {
                 if (commit.getName().equals(firstCommitId) || commit.getName().equals(lastCommitId)) {
                     // Invert the value upon reaching one of the boundaries
                     inRange = !inRange;
+                    justChanged = true;
                 }
-                if (inRange) {
+                if (inRange || justChanged) {
                     commits.add(commit);
                 }
+                justChanged = false;
             }
             LOGGER.logInfo("" + commits.size() + " remain for analysis.");
         } else {
@@ -267,6 +263,7 @@ public class LinuxHistoryAnalysis {
             // Add all commits, if not commit range was specified
             commitIterable.forEach(commits::add);
         }
+        Collections.reverse(commits);
         return commits;
     }
 
