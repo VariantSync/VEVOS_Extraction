@@ -189,8 +189,8 @@ public class LinuxHistoryAnalysis {
                     if (resultCollectionType == EResultCollection.REPOSITORY) {
                         // Initialize a git repository
                         EXECUTOR.execute("git init", overallOutputDirectory);
-                        EXECUTOR.execute("git config user.name=\"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
-                        EXECUTOR.execute("git config user.email=\"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
+                        EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
+                        EXECUTOR.execute("git config user.email \"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
                     }
                 }
