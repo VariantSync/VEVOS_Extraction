@@ -7,10 +7,6 @@ import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
-import org.eclipse.jgit.api.CommitCommand;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.PushCommand;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.File;
@@ -33,8 +29,6 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final EResultCollection collectOutput;
-    private final Configuration config;
-    private int processedCommits = 0;
 
     public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config) {
         this.commits = commits;
@@ -43,7 +37,6 @@ public class AnalysisTask implements Runnable {
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
-        this.config = config;
     }
 
     @Override
@@ -95,8 +88,11 @@ public class AnalysisTask implements Runnable {
                 moveResultsToDirectory(workDir, pathToTargetDir);
             } else if (collectOutput == EResultCollection.REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
-                moveResultsToDirectory(workDir, pathToTargetDir);
-                commitResults(pathToTargetDir.toFile(), commit);
+                // This part need to be synchronized or it might break if multiple tasks are used
+                synchronized (this) {
+                    moveResultsToDirectory(workDir, pathToTargetDir);
+                    commitResults(pathToTargetDir.toFile(), commit);
+                }
             }
 
             LOGGER.logInfo("Starting clean up...");
@@ -106,7 +102,6 @@ public class AnalysisTask implements Runnable {
 
             // Delete the blocker
             deleteBlocker(splDir);
-            processedCommits++;
         }
     }
 
@@ -167,11 +162,8 @@ public class AnalysisTask implements Runnable {
         EXECUTOR.execute("git add .", workingDirectory);
         // Commit the changes
         EXECUTOR.execute("git commit -m \"" + originalCommit.getName() + "\"", workingDirectory);
-
-        if (processedCommits == 0 || (processedCommits % 500) == 0 || processedCommits == (commits.size() - 2)) {
-            // Push the changes
-            EXECUTOR.execute("git push -uf origin master", workingDirectory);
-        }
+        // Push the changes
+        EXECUTOR.execute("git push -uf origin master", workingDirectory);
     }
 
     private void createBlocker(File dir) {
