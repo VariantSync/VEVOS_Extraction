@@ -87,12 +87,12 @@ public class AnalysisTask implements Runnable {
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                moveResultsToDirectory(workDir, pathToTargetDir);
+                moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
             } else if (collectOutput == EResultCollection.REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir);
+                    moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
                     commitResults(pathToTargetDir.toFile(), commit);
                 }
             }
@@ -121,7 +121,7 @@ public class AnalysisTask implements Runnable {
         LOGGER.logDebug("Set up configuration for " + propertiesFile);
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
         LOGGER.logInfo("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -133,6 +133,7 @@ public class AnalysisTask implements Runnable {
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles == null || resultFiles.length == 0) {
             LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(outputDir, commitId);
         } else if (resultFiles.length == 1) {
             try {
                 LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
@@ -142,6 +143,7 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(outputDir, commitId);
         }
 
         // Move the cache of the extractors to the collected output directory
@@ -153,9 +155,11 @@ public class AnalysisTask implements Runnable {
                 Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
+                logError(outputDir, commitId);
             }
         } else {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
+            logError(outputDir, commitId);
         }
         LOGGER.logInfo("...done.");
     }
@@ -207,5 +211,9 @@ public class AnalysisTask implements Runnable {
         } else {
             LOGGER.logInfo("BLOCK REMOVED - OK");
         }
+    }
+
+    private static void logError(File dir, String commitId) {
+        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir);
     }
 }
