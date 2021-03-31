@@ -4,6 +4,7 @@ import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
+import net.ssehub.kernel_haven.config.EnumSetting;
 import net.ssehub.kernel_haven.config.Setting;
 import net.ssehub.kernel_haven.util.Logger;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
@@ -37,8 +38,8 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
             "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
-    public static final @NonNull Setting<@Nullable EResultCollection> RESULT_COLLECTION_TYPE
-            = new Setting<>("result.collection_type", Setting.Type.ENUM, false, "None",
+    public static final @NonNull EnumSetting<EResultCollection> RESULT_COLLECTION_TYPE
+            = new EnumSetting<>("result.collection_type", EResultCollection.class, false, EResultCollection.NONE,
             "The way in which the results of several analysis tasks are collected, e.g., in a common output directory");
     public static final @NonNull Setting<@Nullable String> RESULT_REPO_URL
             = new Setting<>("result.repo.url", Setting.Type.STRING, false, null,
@@ -78,7 +79,7 @@ public class LinuxHistoryAnalysis {
         Configuration config = getConfiguration(propertiesFile);
         LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
         resultCollectionType = config.getValue(RESULT_COLLECTION_TYPE);
-        if (resultCollectionType != EResultCollection.None) {
+        if (resultCollectionType != EResultCollection.NONE) {
             LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
         }
 
@@ -147,6 +148,8 @@ public class LinuxHistoryAnalysis {
             config.registerSetting(NUMBER_OF_THREADS);
             config.registerSetting(RESULT_COLLECTION_TYPE);
             config.registerSetting(RESULT_REPO_URL);
+            config.registerSetting(RESULT_REPO_COMMITTER_NAME);
+            config.registerSetting(RESULT_REPO_COMMITTER_EMAIL);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
@@ -178,14 +181,17 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
-        if (resultCollectionType != EResultCollection.None) {
+        if (resultCollectionType != EResultCollection.NONE) {
             File overallOutputDirectory = new File(workingDirectory, "output");
             if (!overallOutputDirectory.exists()) {
-                if(overallOutputDirectory.mkdirs()) {
+                if (overallOutputDirectory.mkdirs()) {
                     LOGGER.logInfo("Created common output directory.");
-                    if (resultCollectionType == EResultCollection.Repository) {
+                    if (resultCollectionType == EResultCollection.REPOSITORY) {
                         // Initialize a git repository
                         EXECUTOR.execute("git init", overallOutputDirectory);
+                        EXECUTOR.execute("git config user.name=\"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
+                        EXECUTOR.execute("git config user.email=\"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
+                        EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
                     }
                 }
             }
@@ -204,21 +210,14 @@ public class LinuxHistoryAnalysis {
             // Copy the SPL sources to the subDir, so that it can be analyzed locally
             File targetFile = new File(subDir, splDir.getName());
             if (!targetFile.exists()) {
-                try {
-                    LOGGER.logDebug("Copying the SPL directory to the sub directory for task #" + i + ".");
-                    Files.copy(splDir.toPath(), targetFile.toPath());
-                } catch (IOException e) {
-                    LOGGER.logException("An Exception occurred while trying to copy the SPL directory: ", e);
-                }
+                LOGGER.logDebug("Copying the SPL directory to the sub directory for task #" + i + ".");
+                EXECUTOR.execute("cp -rf " + splDir.getAbsolutePath() + " .", subDir);
+            } else {
+                LOGGER.logDebug("SPL directory exists in sub dir.");
             }
             // Copy the properties file to the subDir
-            targetFile = new File(subDir, config.getPropertyFile().getName());
-            try {
-                LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
-                Files.copy(config.getPropertyFile().toPath(), targetFile.toPath(), REPLACE_EXISTING);
-            } catch (IOException e) {
-                LOGGER.logException("An Exception occurred while trying to copy the properties file: ", e);
-            }
+            LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
         }
         LOGGER.logInfo("...done with setting up working directory.");
         return workingDirectory;

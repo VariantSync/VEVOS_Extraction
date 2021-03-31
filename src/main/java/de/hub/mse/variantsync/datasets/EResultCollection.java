@@ -26,7 +26,7 @@ package de.hub.mse.variantsync.datasets;
  *
  */
 public enum EResultCollection {
-    None,
-    CollectedDirectories,
-    Repository,
+    NONE,
+    COLLECTED_DIRECTORIES,
+    REPOSITORY,
 }

@@ -90,13 +90,13 @@ public class AnalysisTask implements Runnable {
             PipelineConfigurator.instance().execute();
             LOGGER.logInfo("KernelHaven execution finished.");
 
-            if (collectOutput == EResultCollection.CollectedDirectories) {
+            if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 moveResultsToDirectory(workDir, pathToTargetDir);
-            } else if (collectOutput == EResultCollection.Repository) {
+            } else if (collectOutput == EResultCollection.REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 moveResultsToDirectory(workDir, pathToTargetDir);
-                commitResults(pathToTargetDir, commit);
+                commitResults(pathToTargetDir.toFile(), commit);
             }
 
             LOGGER.logInfo("Starting clean up...");
@@ -160,42 +160,17 @@ public class AnalysisTask implements Runnable {
         LOGGER.logInfo("...done.");
     }
 
-    private void commitResults(Path pathToDirectory, RevCommit originalCommit) {
-        Git git;
-        try {
-            git = initGitForRepo(pathToDirectory.toFile());
-        } catch (IOException e) {
-            LOGGER.logException("Exception while trying to load result repo.", e);
-            return;
-        }
-
-        // Add meta data
-        // Map the previous commit
-        if (git.log().call().iterator().hasNext()) {
-        String echoString = 
-        EXECUTOR.execute("echo CURRENT_COMMIT.txt >> COMMIT_MAP.txt)
-        }
+    private void commitResults(File workingDirectory, RevCommit originalCommit) {
         // Save the commit which was just processed
-        EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", pathToDirectory.toFile());
+        EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", workingDirectory);
+        // Add the changes to the results
+        EXECUTOR.execute("git add .", workingDirectory);
+        // Commit the changes
+        EXECUTOR.execute("git commit -m \"" + originalCommit.getName() + "\"", workingDirectory);
 
-        try {
-            // Add the changes to the results
-            git.add().call();
-            // Commit the changes
-            CommitCommand commitCommand = git.commit();
-            commitCommand.setCommitter(config.getValue(RESULT_REPO_COMMITTER_NAME), config.getValue(RESULT_REPO_COMMITTER_EMAIL));
-            commitCommand.setMessage(originalCommit.getName());
-            commitCommand.call();
-
-            if (processedCommits == 0 || (processedCommits % 500) == 0 || processedCommits == (commits.size() - 2)) {
-                // Push the changes
-                // TODO: Check whether this works
-                PushCommand pushCommand = git.push();
-                pushCommand.setForce(true);
-                pushCommand.call();
-            }
-        } catch (GitAPIException e) {
-            LOGGER.logException("Exception while trying to commit to result repo.", e);
+        if (processedCommits == 0 || (processedCommits % 500) == 0 || processedCommits == (commits.size() - 2)) {
+            // Push the changes
+            EXECUTOR.execute("git push -uf origin master", workingDirectory);
         }
     }
 
