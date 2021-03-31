@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-public class StreamLogger implements Runnable {
+public class StreamLogger {
     private final Logger logger;
     private final BufferedReader reader;
     private final Logger.Level logChannel;
@@ -22,8 +22,7 @@ public class StreamLogger implements Runnable {
         this.logger = logger;
     }
 
-    @Override
-    public void run() {
+    public void log() {
         while (true) {
             try {
                 if (!reader.ready()) {
