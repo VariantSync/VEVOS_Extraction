@@ -37,12 +37,15 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
             "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
-    public static final @NonNull Setting<@Nullable Boolean> COLLECT_OUTPUT
-            = new Setting<>("analysis.output_by_commit", Setting.Type.BOOLEAN, false, "false",
-            "Whether the results of the conducted analysis are to be collected in a common output directory");
+    public static final @NonNull Setting<@Nullable EResultCollection> RESULT_COLLECTION_TYPE
+            = new Setting<>("result.collection_type", Setting.Type.ENUM, false, "None",
+            "The way in which the results of several analysis tasks are collected, e.g., in a common output directory");
+    public static final @NonNull Setting<@Nullable String> RESULT_REPO
+            = new Setting<>("result.repository_url", Setting.Type.STRING, false, null,
+            "The url to the repository to which the results are pushed to if result.collection_type is set to 'Repository'");
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
-    private static boolean collectOutput;
+    private static EResultCollection resultCollectionType;
 
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
@@ -68,8 +71,8 @@ public class LinuxHistoryAnalysis {
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
         LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
-        collectOutput = config.getValue(COLLECT_OUTPUT);
-        if (collectOutput) {
+        resultCollectionType = config.getValue(RESULT_COLLECTION_TYPE);
+        if (resultCollectionType != EResultCollection.None) {
             LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
         }
 
@@ -91,7 +94,7 @@ public class LinuxHistoryAnalysis {
         int count = 0;
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), collectOutput));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
         }
         // TODO: Check whether the behavior here is valid
         threadPool.shutdown();
@@ -136,7 +139,8 @@ public class LinuxHistoryAnalysis {
             config.registerSetting(DefaultSettings.LOG_LEVEL);
             config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
-            config.registerSetting(COLLECT_OUTPUT);
+            config.registerSetting(RESULT_COLLECTION_TYPE);
+            config.registerSetting(RESULT_REPO);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
@@ -168,7 +172,7 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
-        if (collectOutput) {
+        if (resultCollectionType != EResultCollection.None) {
             File overallOutputDirectory = new File(workingDirectory, "output");
             if (!overallOutputDirectory.exists()) {
                 if(overallOutputDirectory.mkdirs()) {

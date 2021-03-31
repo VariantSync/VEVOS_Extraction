@@ -17,7 +17,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Objects;
 
-import static de.hub.mse.variantsync.datasets.LinuxHistoryAnalysis.quitOnError;
+import static de.hub.mse.variantsync.datasets.LinuxHistoryAnalysis.*;
 
 public class AnalysisTask implements Runnable {
     private static final Logger LOGGER = Logger.get();
@@ -28,15 +28,17 @@ public class AnalysisTask implements Runnable {
     private final List<RevCommit> commits;
     private final File parentPropertiesFile;
     private final String splName;
-    private final boolean collectOutput;
+    private final EResultCollection collectOutput;
+    private final String outputRepoURL;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, boolean collectOutput) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
-        this.collectOutput = collectOutput;
+        this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
+        this.outputRepoURL = config.getValue(RESULT_REPO);
     }
 
     @Override
@@ -83,8 +85,12 @@ public class AnalysisTask implements Runnable {
             PipelineConfigurator.instance().execute();
             LOGGER.logInfo("KernelHaven execution finished.");
 
-            if (collectOutput) {
-                collectResults(workDir, commit);
+            if (collectOutput == EResultCollection.CollectedDirectories) {
+                Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
+                moveResultsToDirectory(workDir, pathToTargetDir);
+            } else if (collectOutput == EResultCollection.Repository) {
+                Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
+                moveResultsToDirectory(workDir, pathToTargetDir);
             }
 
             LOGGER.logInfo("Starting clean up...");
@@ -112,20 +118,19 @@ public class AnalysisTask implements Runnable {
         LOGGER.logDebug("Set up configuration for " + propertiesFile);
     }
 
-    private void collectResults(File workDir, RevCommit commit) {
+    private void moveResultsToDirectory(File workDir, Path pathToTargetDir) {
         LOGGER.logInfo("Moving result to common output directory.");
-        File collection_dir = new File(new File(parentDir, "output"), commit.getName());
+        File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
-            LOGGER.logDebug("Created sub-dir for collecting the results for commit " + commit.getName());
+            LOGGER.logDebug("Created sub-dir for collecting the results for commit " + collection_dir.getName());
         }
 
-        Path pathToCommitSubDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
         // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles != null && resultFiles.length == 1) {
             try {
-                Files.move(resultFiles[0].toPath(), Paths.get(pathToCommitSubDir.toString(), "code-variability.csv"));
+                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"));
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }
@@ -138,7 +143,7 @@ public class AnalysisTask implements Runnable {
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
-                Files.move(vmCache.toPath(), Paths.get(pathToCommitSubDir.toString(), "variability-model.csv"));
+                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.csv"));
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
             }
