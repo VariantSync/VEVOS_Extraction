@@ -185,6 +185,10 @@ public class LinuxHistoryAnalysis {
                         EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git config user.email \"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
+                        EXECUTOR.execute("touch init", overallOutputDirectory);
+                        EXECUTOR.execute("git add .", overallOutputDirectory);
+                        EXECUTOR.execute("git commit -m \"Initial commit\"", overallOutputDirectory);
+                        EXECUTOR.execute("git push -uf origin main", overallOutputDirectory);
                     }
                 }
             }
