@@ -133,7 +133,7 @@ public class AnalysisTask implements Runnable {
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles == null || resultFiles.length == 0) {
             LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(outputDir, commitId);
+            logError(pathToTargetDir, commitId);
         } else if (resultFiles.length == 1) {
             try {
                 LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
@@ -143,7 +143,7 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(outputDir, commitId);
+            logError(pathToTargetDir, commitId);
         }
 
         // Move the cache of the extractors to the collected output directory
@@ -155,11 +155,11 @@ public class AnalysisTask implements Runnable {
                 Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
-                logError(outputDir, commitId);
+                logError(pathToTargetDir, commitId);
             }
         } else {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
-            logError(outputDir, commitId);
+            logError(pathToTargetDir, commitId);
         }
         LOGGER.logInfo("...done.");
     }
@@ -213,7 +213,7 @@ public class AnalysisTask implements Runnable {
         }
     }
 
-    private static void logError(File dir, String commitId) {
-        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir);
+    private static void logError(Path dir, String commitId) {
+        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir.toFile());
     }
 }
