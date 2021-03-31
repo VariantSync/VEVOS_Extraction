@@ -146,7 +146,7 @@ public class AnalysisTask implements Runnable {
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
-                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.csv"), REPLACE_EXISTING);
+                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
             }
