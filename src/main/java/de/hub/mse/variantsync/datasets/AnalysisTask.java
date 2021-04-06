@@ -1,6 +1,7 @@
 package de.hub.mse.variantsync.datasets;
 
 import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
+import de.hub.mse.variantsync.datasets.util.ConfigManipulator;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.PipelineConfigurator;
 import net.ssehub.kernel_haven.SetUpException;
@@ -9,7 +10,9 @@ import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.revwalk.RevCommit;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,10 +55,12 @@ public class AnalysisTask implements Runnable {
         LOGGER.logInfo("Properties File: " + propertiesFile);
         LOGGER.logInfo("SPL Dir: " + splDir);
         // Load the config
-        Configuration config = null;
         try {
+            Configuration config = null;
             config = new Configuration(propertiesFile);
-            prepareConfig(workDir, propertiesFile, config);
+            config.registerSetting(DefaultSettings.LOG_LEVEL);
+            LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
+            prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
@@ -75,17 +80,8 @@ public class AnalysisTask implements Runnable {
 
             // Start the analysis pipeline
             LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
-            try {
-                // TODO: Multi-threading breaks probably due to this singleton here! Fix it!
-                PipelineConfigurator.instance().init(config);
-            } catch (SetUpException e) {
-                LOGGER.logError("Invalid configuration detected:", e.getMessage());
-                quitOnError();
-            }
-
-            // Execute the analysis pipeline
-            LOGGER.setLevel(Objects.requireNonNull(config).getValue(DefaultSettings.LOG_LEVEL));
-            PipelineConfigurator.instance().execute();
+            // TODO: Multi-threading breaks probably due to this singleton here! Fix it!
+            EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir);
             Thread.currentThread().setName(threadName);
             LOGGER.logInfo("KernelHaven execution finished.");
 
@@ -110,19 +106,19 @@ public class AnalysisTask implements Runnable {
         }
     }
 
-    private void prepareConfig(File workDir, File propertiesFile, Configuration config) throws SetUpException {
-        DefaultSettings.registerAllSettings(config);
-        LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
-        config.registerSetting(CommitUsabilityAnalysis.WORK_DIR);
+    private void prepareConfig(File workDir, File propertiesFile) throws SetUpException {
+        ConfigManipulator manipulator = new ConfigManipulator(propertiesFile);
         // Change the paths to the required directories
-        config.setValue(CommitUsabilityAnalysis.WORK_DIR, workDir.getAbsolutePath());
-        config.setValue(DefaultSettings.SOURCE_TREE, new File(workDir, splName));
-        config.setValue(DefaultSettings.RESOURCE_DIR, new File(workDir, "res"));
-        config.setValue(DefaultSettings.OUTPUT_DIR, new File(workDir, "output"));
-        config.setValue(DefaultSettings.PLUGINS_DIR, new File(workDir, "plugins"));
-        config.setValue(DefaultSettings.CACHE_DIR, new File(workDir, "cache"));
-        config.setValue(DefaultSettings.LOG_DIR, new File(workDir, "log"));
-        LOGGER.logDebug("Set up configuration for " + propertiesFile);
+        manipulator.put(CommitUsabilityAnalysis.WORK_DIR.getKey(), workDir.getAbsolutePath());
+        manipulator.put(DefaultSettings.SOURCE_TREE.getKey(), new File(workDir, splName).getAbsolutePath());
+        manipulator.put(DefaultSettings.RESOURCE_DIR.getKey(), new File(workDir, "res").getAbsolutePath());
+        manipulator.put(DefaultSettings.OUTPUT_DIR.getKey(), new File(workDir, "output").getAbsolutePath());
+        manipulator.put(DefaultSettings.PLUGINS_DIR.getKey(), new File(workDir, "plugins").getAbsolutePath());
+        manipulator.put(DefaultSettings.CACHE_DIR.getKey(), new File(workDir, "cache").getAbsolutePath());
+        manipulator.put(DefaultSettings.LOG_DIR.getKey(), new File(workDir, "log").getAbsolutePath());
+        LOGGER.logInfo("Set up configuration for " + propertiesFile);
+        LOGGER.logInfo("Saving configuration " + propertiesFile);
+        manipulator.writeToFile();
     }
 
     private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
