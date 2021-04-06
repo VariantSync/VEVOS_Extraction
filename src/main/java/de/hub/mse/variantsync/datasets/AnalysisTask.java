@@ -3,22 +3,18 @@ package de.hub.mse.variantsync.datasets;
 import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
 import de.hub.mse.variantsync.datasets.util.ConfigManipulator;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
-import net.ssehub.kernel_haven.PipelineConfigurator;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Objects;
 
 import static de.hub.mse.variantsync.datasets.LinuxHistoryAnalysis.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -56,7 +52,7 @@ public class AnalysisTask implements Runnable {
         LOGGER.logInfo("SPL Dir: " + splDir);
         // Load the config
         try {
-            Configuration config = null;
+            Configuration config;
             config = new Configuration(propertiesFile);
             config.registerSetting(DefaultSettings.LOG_LEVEL);
             LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
