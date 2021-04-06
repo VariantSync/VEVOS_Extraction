@@ -44,10 +44,13 @@ public class AnalysisTask implements Runnable {
     public void run() {
         String taskName = String.valueOf(taskNumber);
         String threadName = Thread.currentThread().getName();
-        LOGGER.logInfo("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
+        LOGGER.logStatus("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
         File workDir = new File(parentDir, "run-" + taskName);
         File propertiesFile = new File(workDir, parentPropertiesFile.getName());
         File splDir = new File(workDir, splName);
+        LOGGER.logInfo("Work Dir: " + workDir);
+        LOGGER.logInfo("Properties File: " + propertiesFile);
+        LOGGER.logInfo("SPL Dir: " + splDir);
         // Load the config
         Configuration config = null;
         try {
@@ -59,7 +62,7 @@ public class AnalysisTask implements Runnable {
         }
 
         for (RevCommit commit : commits) {
-            LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
+            LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
 
             // Make sure the directory is not blocked
             checkBlocker(splDir);
@@ -73,6 +76,7 @@ public class AnalysisTask implements Runnable {
             // Start the analysis pipeline
             LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
             try {
+                // TODO: Multi-threading breaks probably due to this singleton here! Fix it!
                 PipelineConfigurator.instance().init(config);
             } catch (SetUpException e) {
                 LOGGER.logError("Invalid configuration detected:", e.getMessage());
