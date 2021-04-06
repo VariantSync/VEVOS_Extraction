@@ -44,10 +44,13 @@ public class AnalysisTask implements Runnable {
     public void run() {
         String taskName = String.valueOf(taskNumber);
         String threadName = Thread.currentThread().getName();
-        LOGGER.logInfo("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
+        LOGGER.logStatus("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
         File workDir = new File(parentDir, "run-" + taskName);
         File propertiesFile = new File(workDir, parentPropertiesFile.getName());
         File splDir = new File(workDir, splName);
+        LOGGER.logInfo("Work Dir: " + workDir);
+        LOGGER.logInfo("Properties File: " + propertiesFile);
+        LOGGER.logInfo("SPL Dir: " + splDir);
         // Load the config
         Configuration config = null;
         try {
@@ -59,7 +62,7 @@ public class AnalysisTask implements Runnable {
         }
 
         for (RevCommit commit : commits) {
-            LOGGER.logInfo("Started analysis of commit " + commit.getName() + " in task #" + taskName);
+            LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
 
             // Make sure the directory is not blocked
             checkBlocker(splDir);
@@ -73,6 +76,7 @@ public class AnalysisTask implements Runnable {
             // Start the analysis pipeline
             LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
             try {
+                // TODO: Multi-threading breaks probably due to this singleton here! Fix it!
                 PipelineConfigurator.instance().init(config);
             } catch (SetUpException e) {
                 LOGGER.logError("Invalid configuration detected:", e.getMessage());
@@ -132,18 +136,29 @@ public class AnalysisTask implements Runnable {
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles == null || resultFiles.length == 0) {
-            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
-        } else if (resultFiles.length == 1) {
+            LOGGER.logWarning("Found no result file in " + outputDir);
+            EXECUTOR.execute("ls -al", outputDir);
+            // Try once more after a timeout
             try {
-                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
-                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
-            } catch (IOException e) {
-                LOGGER.logException("Was not able to move the result file of the analysis: ", e);
+                Thread.sleep(10_000);
+            } catch (InterruptedException e) {
+                LOGGER.logException("Exception while sleeping: ", e);
             }
-        } else {
-            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
+            resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+            if (resultFiles == null || resultFiles.length == 0) {
+                LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+                logError(pathToTargetDir, commitId);
+            } else if (resultFiles.length == 1) {
+                try {
+                    LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
+                    Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
+                } catch (IOException e) {
+                    LOGGER.logException("Was not able to move the result file of the analysis: ", e);
+                }
+            } else {
+                LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+                logError(pathToTargetDir, commitId);
+            }
         }
 
         // Move the cache of the extractors to the collected output directory

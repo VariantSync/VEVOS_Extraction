@@ -55,7 +55,7 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
         try {
             File workDir = new File(config.getValue(WORK_DIR));
             String taskName = "[" + workDir.getName() + "]";
-            LOGGER.logDebug( taskName + "Running CommitUsabilityAnalysis in directory " + workDir);
+            LOGGER.logDebug(taskName + "Running CommitUsabilityAnalysis in directory " + workDir);
             File resultFile = new File(workDir, "output/analysis_result.csv");
             LOGGER.logDebug(taskName + "Result File: " + resultFile);
             if (!resultFile.exists()) {
@@ -63,7 +63,11 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
             }
 
             RevCommit commit = getRevCommit(taskName);
-            if (commit == null) return;
+            if (commit == null) {
+                LOGGER.logError("Was not able to retrieve commit ID");
+                return;
+            }
+
             LOGGER.logDebug(taskName + "Working on commit " + commit.getName());
 
             boolean checkCME = config.getValue(CHECK_CME);
@@ -87,7 +91,7 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
                 // Only start the bmProvider if vm succeeded, otherwise it will fail anyway
                 bmProvider.start();
             } else {
-                LOGGER.logInfo(taskName + "Got no variability model");
+                LOGGER.logError(taskName + "Got no variability model");
             }
             ExtractorException vmExc = vmProvider.getException();
             if (vmExc != null) {
@@ -103,11 +107,11 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
                     LOGGER.logInfo(taskName + "Got a build model with " + bm.getSize() + " files");
                     bmSuccess = true;
                 } else {
-                    LOGGER.logInfo(taskName + "Got no build model");
+                    LOGGER.logError(taskName + "Got no build model");
                 }
                 ExtractorException bmExc = bmProvider.getException();
                 if (bmExc != null) {
-                    LOGGER.logExceptionInfo(taskName + "Got an exception from the build model extractor", bmExc);
+                    LOGGER.logException(taskName + "Got an exception from the build model extractor", bmExc);
                 }
             }
 
@@ -130,14 +134,15 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
                 do {
                     cmExc = cmProvider.getNextException();
                     if (cmExc != null) {
-                        LOGGER.logExceptionInfo(taskName + "Got an exception from the code model extractor", cmExc);
+                        LOGGER.logException(taskName + "Got an exception from the code model extractor", cmExc);
                     }
                 } while (cmExc != null);
             }
-
+            LOGGER.logInfo(taskName + "Finished extraction.");
             boolean extractorsSucceeded = bmSuccess && (!checkCME || cmSuccess);
 
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile, true))) {
+                LOGGER.logInfo(taskName + "Saving results.");
                 String line;
                 if (checkCME) {
                     line = String.format("%s,%s,%s,%s,%s,%s,%s,%d,%d", taskName, commit.getName(), parseParents(commit), extractorsSucceeded, cmSuccess, bmSuccess, vmSuccess, bmSize, vmSize);
@@ -159,7 +164,6 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
         LOGGER.logInfo("Initializing the result file " + resultFile + "...");
         if (resultFile.getParentFile().mkdirs()) {
             LOGGER.logInfo("...created parent folders...");
-
         }
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(resultFile))) {
             // Write the header
@@ -205,7 +209,7 @@ public class CommitUsabilityAnalysis extends AbstractAnalysis {
             sb.append(parent.getName());
             sb.append(":");
         }
-        sb.deleteCharAt(sb.length()-1);
+        sb.deleteCharAt(sb.length() - 1);
         return sb.toString();
     }
 }
