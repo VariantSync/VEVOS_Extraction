@@ -76,7 +76,6 @@ public class AnalysisTask implements Runnable {
 
             // Start the analysis pipeline
             LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
-            // TODO: Multi-threading breaks probably due to this singleton here! Fix it!
             EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir);
             Thread.currentThread().setName(threadName);
             LOGGER.logInfo("KernelHaven execution finished.");

@@ -97,7 +97,6 @@ public class LinuxHistoryAnalysis {
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
         }
         LOGGER.logInfo("all " + commitSubsets.size() + " tasks scheduled.");
-        // TODO: Check whether the behavior here is valid
         threadPool.shutdown();
         if (count != commits.size()) {
             LOGGER.logException("Subsets not created correctly: ",
