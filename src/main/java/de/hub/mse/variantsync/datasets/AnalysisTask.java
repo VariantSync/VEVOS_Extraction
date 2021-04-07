@@ -84,12 +84,16 @@ public class AnalysisTask implements Runnable {
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
-            } else if (collectOutput == EResultCollection.REPOSITORY) {
+            } else if (collectOutput == EResultCollection.REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
                     moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
                     commitResults(pathToTargetDir.toFile(), commit);
+                    if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
+                        // Push the changes
+                        EXECUTOR.execute("git push origin main", pathToTargetDir.toFile());
+                    }
                 }
             }
 
@@ -178,8 +182,6 @@ public class AnalysisTask implements Runnable {
         EXECUTOR.execute("git add .", workingDirectory);
         // Commit the changes
         EXECUTOR.execute("git commit -m \"" + originalCommit.getName() + "\"", workingDirectory);
-        // Push the changes
-        EXECUTOR.execute("git push origin main", workingDirectory);
     }
 
     private void createBlocker(File dir) {
