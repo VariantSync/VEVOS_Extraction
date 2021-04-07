@@ -1,4 +1,4 @@
-package de.hub.mse.variantsync.datasets;
+package de.hub.mse.variantsync.datasets.extraction;
 
 /***
  * <p>

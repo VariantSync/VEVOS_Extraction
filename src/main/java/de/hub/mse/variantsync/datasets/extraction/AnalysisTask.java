@@ -1,4 +1,4 @@
-package de.hub.mse.variantsync.datasets;
+package de.hub.mse.variantsync.datasets.extraction;
 
 import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
 import de.hub.mse.variantsync.datasets.util.ConfigManipulator;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static de.hub.mse.variantsync.datasets.LinuxHistoryAnalysis.*;
+import static de.hub.mse.variantsync.datasets.extraction.LinuxHistoryAnalysis.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {

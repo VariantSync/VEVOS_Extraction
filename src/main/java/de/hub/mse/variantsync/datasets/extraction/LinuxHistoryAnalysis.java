@@ -1,4 +1,4 @@
-package de.hub.mse.variantsync.datasets;
+package de.hub.mse.variantsync.datasets.extraction;
 
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
