@@ -217,6 +217,13 @@ public class LinuxHistoryAnalysis {
             // Copy the properties file to the subDir
             LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
+            // Copy the KernelHaven plugins to the sub-dir
+            LOGGER.logDebug("Copying the DatasetGenerator as KernelHaven plugin to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f ../DatasetGenerator* " + subDir + "/plugins/", workingDirectory);
+            //EXECUTOR.execute("cp -f ../plugins/* " + subDir + "/plugins/", workingDirectory);
+            // Copy KernelHaven to the sub-dir
+            LOGGER.logDebug("Copying KernelHaven to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f ../KernelHaven.jar " + subDir + "/", workingDirectory);
         }
         LOGGER.logInfo("...done with setting up working directory.");
         return workingDirectory;
