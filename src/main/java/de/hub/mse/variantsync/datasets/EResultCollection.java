@@ -29,4 +29,5 @@ public enum EResultCollection {
     NONE,
     COLLECTED_DIRECTORIES,
     REPOSITORY,
+    REMOTE_REPOSITORY
 }

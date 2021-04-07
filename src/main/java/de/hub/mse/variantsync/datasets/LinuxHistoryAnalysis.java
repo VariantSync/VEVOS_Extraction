@@ -97,7 +97,6 @@ public class LinuxHistoryAnalysis {
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
         }
         LOGGER.logInfo("all " + commitSubsets.size() + " tasks scheduled.");
-        // TODO: Check whether the behavior here is valid
         threadPool.shutdown();
         if (count != commits.size()) {
             LOGGER.logException("Subsets not created correctly: ",
@@ -181,16 +180,18 @@ public class LinuxHistoryAnalysis {
             if (!overallOutputDirectory.exists()) {
                 if (overallOutputDirectory.mkdirs()) {
                     LOGGER.logInfo("Created common output directory.");
-                    if (resultCollectionType == EResultCollection.REPOSITORY) {
+                    if (resultCollectionType == EResultCollection.REPOSITORY || resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
                         // Initialize a git repository
                         EXECUTOR.execute("git init", overallOutputDirectory);
                         EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
                         EXECUTOR.execute("git config user.email \"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
-                        EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
                         EXECUTOR.execute("touch init", overallOutputDirectory);
                         EXECUTOR.execute("git add .", overallOutputDirectory);
                         EXECUTOR.execute("git commit -m \"Initial commit\"", overallOutputDirectory);
-                        EXECUTOR.execute("git push -uf origin main", overallOutputDirectory);
+                        if (resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
+                            EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
+                            EXECUTOR.execute("git push -uf origin main", overallOutputDirectory);
+                        }
                     }
                 }
             }
