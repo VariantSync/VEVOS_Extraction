@@ -1,5 +1,6 @@
 package de.hub.mse.variantsync.datasets.extraction;
 
+import de.hub.mse.variantsync.datasets.util.GitUtil;
 import de.hub.mse.variantsync.datasets.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
@@ -9,11 +10,8 @@ import net.ssehub.kernel_haven.config.Setting;
 import net.ssehub.kernel_haven.util.Logger;
 import net.ssehub.kernel_haven.util.null_checks.NonNull;
 import net.ssehub.kernel_haven.util.null_checks.Nullable;
-import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.*;
 import java.util.*;
@@ -81,13 +79,13 @@ public class LinuxHistoryAnalysis {
         // Create the directories for each task running the analysis
         File workingDirectory = setUpWorkingDirectory(config, splDir);
         // Load git history
-        List<RevCommit> commits = getCommits(splDir, firstCommit, lastCommit);
+        List<RevCommit> commits = GitUtil.getCommits(splDir, firstCommit, lastCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         LOGGER.logStatus("Starting thread pool with " + numberOfThreads + " threads.");
         ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
         LOGGER.logStatus("Splitting commits into " + numberOfThreads + " subset(s).");
-        List<List<RevCommit>> commitSubsets = splitCommitsIntoSubsets(commits, numberOfThreads);
+        List<List<RevCommit>> commitSubsets = GitUtil.splitCommitsIntoSubsets(commits, numberOfThreads);
         LOGGER.logStatus("...done.");
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
@@ -248,70 +246,6 @@ public class LinuxHistoryAnalysis {
             LOGGER.logDebug("Log directory created.");
         }
         LOGGER.logInfo("...done.");
-    }
-
-    private static List<RevCommit> getCommits(File splDir, String firstCommitId, String lastCommitId) throws IOException, GitAPIException {
-        Git gitRepo = initGitForRepo(splDir);
-        LOGGER.logStatus("Retrieving commits in SPL repo...");
-        List<RevCommit> commits = new LinkedList<>();
-        if (firstCommitId != null && lastCommitId != null) {
-            LOGGER.logInfo("Commit range specified...filtering commits.");
-            Iterable<RevCommit> commitIterable = gitRepo.log().call();
-            // Filter all commits not in the specified range of commits
-            boolean inRange = false;
-            boolean justChanged = false;
-            for (RevCommit commit : commitIterable) {
-                if (commit.getName().equals(firstCommitId) || commit.getName().equals(lastCommitId)) {
-                    // Invert the value upon reaching one of the boundaries
-                    inRange = !inRange;
-                    justChanged = true;
-                }
-                if (inRange || justChanged) {
-                    commits.add(commit);
-                }
-                justChanged = false;
-            }
-        } else {
-            LOGGER.logInfo("Considering all commits...");
-            Iterable<RevCommit> commitIterable = gitRepo.log().all().call();
-            // Add all commits, if not commit range was specified
-            commitIterable.forEach(commits::add);
-        }
-        LOGGER.logInfo("" + commits.size() + " selected for analysis.");
-        Collections.reverse(commits);
-        return commits;
-    }
-
-    public static Git initGitForRepo(File splDir) throws IOException {
-        LOGGER.logStatus("Initializing git repo...");
-        Repository repository = new FileRepositoryBuilder()
-                .setGitDir(new File(splDir, ".git"))
-                .build();
-        Git git = new Git(repository);
-        LOGGER.logDebug("...done.");
-        return git;
-    }
-
-    private static List<List<RevCommit>> splitCommitsIntoSubsets(List<RevCommit> commits, int numberOfThreads) {
-        List<List<RevCommit>> commitSubsets = new ArrayList<>(numberOfThreads);
-        if (numberOfThreads == 1) {
-            commitSubsets.add(commits);
-            return commitSubsets;
-        }
-        for (int i = 0; i < numberOfThreads; i++) {
-            commitSubsets.add(new LinkedList<>());
-        }
-        for (int i = 0; i < commits.size(); ) {
-            for (int k = 0; k < numberOfThreads; k++) {
-                RevCommit nextCommit = commits.get(i);
-                commitSubsets.get(k).add(nextCommit);
-                i++;
-                if (i >= commits.size()) {
-                    break;
-                }
-            }
-        }
-        return commitSubsets;
     }
 
     static void quitOnError() {
