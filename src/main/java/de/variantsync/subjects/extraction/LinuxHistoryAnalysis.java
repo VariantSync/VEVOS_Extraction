@@ -1,7 +1,9 @@
-package de.hub.mse.variantsync.datasets.extraction;
+package de.variantsync.subjects.extraction;
 
-import de.hub.mse.variantsync.datasets.util.GitUtil;
-import de.hub.mse.variantsync.datasets.util.ShellExecutor;
+import de.variantsync.subjects.extraction.extraction.AnalysisTask;
+import de.variantsync.subjects.extraction.extraction.EResultCollection;
+import de.variantsync.subjects.extraction.util.GitUtil;
+import de.variantsync.subjects.extraction.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
@@ -248,7 +250,7 @@ public class LinuxHistoryAnalysis {
         LOGGER.logInfo("...done.");
     }
 
-    static void quitOnError() {
+    public static void quitOnError() {
         LOGGER.logError("An error occurred and the program has to quit.");
         throw new IllegalStateException("Not able to continue analysis due to previous error");
     }

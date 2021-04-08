@@ -1,4 +1,4 @@
-package de.hub.mse.variantsync.datasets.util;
+package de.variantsync.subjects.extraction.util;
 
 import net.ssehub.kernel_haven.util.Logger;
 

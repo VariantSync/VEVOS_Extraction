@@ -1,4 +1,4 @@
-package de.hub.mse.variantsync.datasets.kh;
+package de.variantsync.subjects.extraction.kh;
 
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.analysis.AnalysisComponent;

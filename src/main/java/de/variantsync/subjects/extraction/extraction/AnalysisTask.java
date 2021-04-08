@@ -1,8 +1,8 @@
-package de.hub.mse.variantsync.datasets.extraction;
+package de.variantsync.subjects.extraction.extraction;
 
-import de.hub.mse.variantsync.datasets.kh.CommitUsabilityAnalysis;
-import de.hub.mse.variantsync.datasets.util.ConfigManipulator;
-import de.hub.mse.variantsync.datasets.util.ShellExecutor;
+import de.variantsync.subjects.extraction.kh.CommitUsabilityAnalysis;
+import de.variantsync.subjects.extraction.util.ConfigManipulator;
+import de.variantsync.subjects.extraction.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
@@ -16,7 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static de.hub.mse.variantsync.datasets.extraction.LinuxHistoryAnalysis.*;
+import static de.variantsync.subjects.extraction.LinuxHistoryAnalysis.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
@@ -59,7 +59,7 @@ public class AnalysisTask implements Runnable {
             prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
-            quitOnError();
+            return;
         }
 
         for (RevCommit commit : commits) {
