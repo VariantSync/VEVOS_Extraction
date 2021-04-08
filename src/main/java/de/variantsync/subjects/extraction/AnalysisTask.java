@@ -1,4 +1,4 @@
-package de.variantsync.subjects.extraction.extraction;
+package de.variantsync.subjects.extraction;
 
 import de.variantsync.subjects.extraction.kh.CommitUsabilityAnalysis;
 import de.variantsync.subjects.extraction.util.ConfigManipulator;

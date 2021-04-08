@@ -1,7 +1,5 @@
 package de.variantsync.subjects.extraction;
 
-import de.variantsync.subjects.extraction.extraction.AnalysisTask;
-import de.variantsync.subjects.extraction.extraction.EResultCollection;
 import de.variantsync.subjects.extraction.util.GitUtil;
 import de.variantsync.subjects.extraction.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;

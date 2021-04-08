@@ -1,4 +1,4 @@
-package de.variantsync.subjects.extraction.extraction;
+package de.variantsync.subjects.extraction;
 
 /***
  * <p>
