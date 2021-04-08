@@ -28,6 +28,6 @@ package de.hub.mse.variantsync.datasets;
 public enum EResultCollection {
     NONE,
     COLLECTED_DIRECTORIES,
-    REPOSITORY,
+    LOCAL_REPOSITORY,
     REMOTE_REPOSITORY
 }

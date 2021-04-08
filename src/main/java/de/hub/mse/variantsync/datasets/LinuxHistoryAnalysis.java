@@ -51,7 +51,7 @@ public class LinuxHistoryAnalysis {
         boolean isWindows = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
         checkOS(isWindows);
-        LOGGER.logInfo("Starting SPL history analysis.");
+        LOGGER.logStatus("Starting SPL history analysis.");
 
         // Parse the arguments
         File propertiesFile = getPropertiesFile(args);
@@ -84,27 +84,27 @@ public class LinuxHistoryAnalysis {
         List<RevCommit> commits = getCommits(splDir, firstCommit, lastCommit);
 
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
-        LOGGER.logInfo("Starting thread pool with " + numberOfThreads + " threads.");
+        LOGGER.logStatus("Starting thread pool with " + numberOfThreads + " threads.");
         ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
-        LOGGER.logInfo("Splitting commits into " + numberOfThreads + " subset(s).");
+        LOGGER.logStatus("Splitting commits into " + numberOfThreads + " subset(s).");
         List<List<RevCommit>> commitSubsets = splitCommitsIntoSubsets(commits, numberOfThreads);
-        LOGGER.logInfo("...done.");
+        LOGGER.logStatus("...done.");
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
-        LOGGER.logInfo("Scheduling tasks...");
+        LOGGER.logStatus("Scheduling tasks...");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
         }
-        LOGGER.logInfo("all " + commitSubsets.size() + " tasks scheduled.");
+        LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
         if (count != commits.size()) {
             LOGGER.logException("Subsets not created correctly: ",
                     new IllegalStateException("Expected the subsets to contain " + commits.size() +
                             " commits but only processed " + count + " commits."));
         }
-        LOGGER.logInfo("All tasks submitted...");
-        LOGGER.logInfo("Submitted a total of " + commits.size() + " commits.");
+        LOGGER.logStatus("All tasks submitted...");
+        LOGGER.logStatus("Submitted a total of " + commits.size() + " commits.");
     }
 
     private static void checkOS(boolean isWindows) {
@@ -157,7 +157,7 @@ public class LinuxHistoryAnalysis {
         if (splDir.exists()) {
             LOGGER.logInfo("Directory with SPL sources found.");
         } else {
-            LOGGER.logInfo("Cloning SPL...");
+            LOGGER.logStatus("Cloning SPL...");
             LOGGER.logWarning("Depending on the download speed this might take several minutes.");
             LOGGER.logWarning("Consider cloning the repository manually for a better estimate of the download time.");
             if (!EXECUTOR.execute("git clone " + config.getValue(URL_OF_SOURCE_REPO), splDir.getParentFile())) {
@@ -172,7 +172,7 @@ public class LinuxHistoryAnalysis {
         File workingDirectory = new File(System.getProperty("user.dir"));
         workingDirectory = new File(workingDirectory, "commit-analysis");
         LOGGER.logInfo("Working Directory: " + workingDirectory);
-        LOGGER.logInfo("Setting up working directory...");
+        LOGGER.logStatus("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
         if (resultCollectionType != EResultCollection.NONE) {
@@ -180,7 +180,7 @@ public class LinuxHistoryAnalysis {
             if (!overallOutputDirectory.exists()) {
                 if (overallOutputDirectory.mkdirs()) {
                     LOGGER.logInfo("Created common output directory.");
-                    if (resultCollectionType == EResultCollection.REPOSITORY || resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
+                    if (resultCollectionType == EResultCollection.LOCAL_REPOSITORY || resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
                         // Initialize a git repository
                         EXECUTOR.execute("git init", overallOutputDirectory);
                         EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
@@ -210,7 +210,7 @@ public class LinuxHistoryAnalysis {
             // Copy the SPL sources to the subDir, so that it can be analyzed locally
             File targetFile = new File(subDir, splDir.getName());
             if (!targetFile.exists()) {
-                LOGGER.logDebug("Copying the SPL directory to the sub directory for task #" + i + ".");
+                LOGGER.logStatus("Copying the SPL directory to the sub directory for task #" + i + ".");
                 EXECUTOR.execute("cp -rf " + splDir.getAbsolutePath() + " .", subDir);
             } else {
                 LOGGER.logDebug("SPL directory exists in sub dir.");
@@ -226,12 +226,12 @@ public class LinuxHistoryAnalysis {
             LOGGER.logDebug("Copying KernelHaven to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f ../KernelHaven.jar " + subDir + "/", workingDirectory);
         }
-        LOGGER.logInfo("...done with setting up working directory.");
+        LOGGER.logStatus("...done with setting up working directory.");
         return workingDirectory;
     }
 
     private static void createKernelHavenDirs(File taskDirectory) {
-        LOGGER.logInfo("Creating directories required by KernelHaven...");
+        LOGGER.logStatus("Creating directories required by KernelHaven...");
         if (new File(taskDirectory, "res").mkdirs()) {
             LOGGER.logDebug("Resource directory created.");
         }
@@ -252,7 +252,7 @@ public class LinuxHistoryAnalysis {
 
     private static List<RevCommit> getCommits(File splDir, String firstCommitId, String lastCommitId) throws IOException, GitAPIException {
         Git gitRepo = initGitForRepo(splDir);
-        LOGGER.logInfo("Retrieving commits in SPL repo...");
+        LOGGER.logStatus("Retrieving commits in SPL repo...");
         List<RevCommit> commits = new LinkedList<>();
         if (firstCommitId != null && lastCommitId != null) {
             LOGGER.logInfo("Commit range specified...filtering commits.");
@@ -283,7 +283,7 @@ public class LinuxHistoryAnalysis {
     }
 
     public static Git initGitForRepo(File splDir) throws IOException {
-        LOGGER.logDebug("Initializing git repo...");
+        LOGGER.logStatus("Initializing git repo...");
         Repository repository = new FileRepositoryBuilder()
                 .setGitDir(new File(splDir, ".git"))
                 .build();

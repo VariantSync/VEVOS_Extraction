@@ -75,28 +75,29 @@ public class AnalysisTask implements Runnable {
             createBlocker(splDir);
 
             // Start the analysis pipeline
-            LOGGER.logInfo("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
+            LOGGER.logStatus("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
             EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir);
             Thread.currentThread().setName(threadName);
-            LOGGER.logInfo("KernelHaven execution finished.");
+            LOGGER.logStatus("KernelHaven execution finished.");
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
-            } else if (collectOutput == EResultCollection.REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
+            } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
                     moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
+                        LOGGER.logStatus("Pushing result to remote repository.");
                         // Push the changes
                         EXECUTOR.execute("git push origin main", pathToTargetDir.toFile());
                     }
                 }
             }
 
-            LOGGER.logInfo("Starting clean up...");
+            LOGGER.logStatus("Starting clean up...");
             // We have to set the name again because KernelHaven changes it
             EXECUTOR.execute("make clean", splDir);
 
@@ -121,7 +122,7 @@ public class AnalysisTask implements Runnable {
     }
 
     private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
-        LOGGER.logInfo("Moving result to common output directory.");
+        LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
             LOGGER.logDebug("Created sub-dir for collecting the results for commit " + collection_dir.getName());
@@ -157,7 +158,7 @@ public class AnalysisTask implements Runnable {
         }
 
         // Move the cache of the extractors to the collected output directory
-        LOGGER.logInfo("Moving extractor cache to common output directory.");
+        LOGGER.logStatus("Moving extractor cache to common output directory.");
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
@@ -175,6 +176,7 @@ public class AnalysisTask implements Runnable {
     }
 
     private static void commitResults(File workingDirectory, RevCommit originalCommit) {
+        LOGGER.logStatus("Committing results to repository.");
         // Save the commit which was just processed
         EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", workingDirectory);
         // Add the changes to the results
