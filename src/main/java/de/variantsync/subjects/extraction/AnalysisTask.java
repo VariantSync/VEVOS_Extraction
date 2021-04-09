@@ -62,9 +62,10 @@ public class AnalysisTask implements Runnable {
             return;
         }
 
+        int count = 1;
         for (RevCommit commit : commits) {
             LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
-
+            LOGGER.logStatus("Commit number " + count + " of " + commits.size());
             // Make sure the directory is not blocked
             checkBlocker(splDir);
 
@@ -103,6 +104,7 @@ public class AnalysisTask implements Runnable {
 
             // Delete the blocker
             deleteBlocker(splDir);
+            count++;
         }
     }
 
@@ -131,30 +133,20 @@ public class AnalysisTask implements Runnable {
         // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+
         if (resultFiles == null || resultFiles.length == 0) {
-            LOGGER.logWarning("Found no result file in " + outputDir);
-            EXECUTOR.execute("ls -al", outputDir);
-            // Try once more after a timeout
+            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(pathToTargetDir, commitId);
+        } else if (resultFiles.length == 1) {
             try {
-                Thread.sleep(10_000);
-            } catch (InterruptedException e) {
-                LOGGER.logException("Exception while sleeping: ", e);
+                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
+                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }
-            resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
-            if (resultFiles == null || resultFiles.length == 0) {
-                LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-                logError(pathToTargetDir, commitId);
-            } else if (resultFiles.length == 1) {
-                try {
-                    LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
-                    Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
-                } catch (IOException e) {
-                    LOGGER.logException("Was not able to move the result file of the analysis: ", e);
-                }
-            } else {
-                LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-                logError(pathToTargetDir, commitId);
-            }
+        } else {
+            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            logError(pathToTargetDir, commitId);
         }
 
         // Move the cache of the extractors to the collected output directory
