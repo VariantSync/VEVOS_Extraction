@@ -36,7 +36,7 @@ public class LinuxHistoryAnalysis {
             = new Setting<>("result.repo.url", Setting.Type.STRING, false, null,
             "The url to the repository to which the results are pushed to if result.collection_type is set to 'Repository'");
     public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_NAME
-            = new Setting<>("result.repo.committer.name", Setting.Type.STRING, false, "DatasetGenerator",
+            = new Setting<>("result.repo.committer.name", Setting.Type.STRING, false, "Variability Extraction",
             "The name of the committer if result.collection_type is set to 'Repository'");
     public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_EMAIL
             = new Setting<>("result.repo.committer.email", Setting.Type.STRING, false, null,
@@ -168,7 +168,7 @@ public class LinuxHistoryAnalysis {
     private static File setUpWorkingDirectory(Configuration config, File splDir) {
         int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
         File workingDirectory = new File(System.getProperty("user.dir"));
-        workingDirectory = new File(workingDirectory, "commit-analysis");
+        workingDirectory = new File(workingDirectory, "evolution-analysis");
         LOGGER.logInfo("Working Directory: " + workingDirectory);
         LOGGER.logStatus("Setting up working directory...");
 
@@ -217,8 +217,8 @@ public class LinuxHistoryAnalysis {
             LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
             // Copy the KernelHaven plugins to the sub-dir
-            LOGGER.logDebug("Copying the DatasetGenerator as KernelHaven plugin to the sub directory for task #" + i + ".");
-            EXECUTOR.execute("cp -f ../DatasetGenerator* " + subDir + "/plugins/", workingDirectory);
+            LOGGER.logDebug("Copying the VariabilityExtraction as KernelHaven plugin to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f ../VariabilityExtraction* " + subDir + "/plugins/", workingDirectory);
             //EXECUTOR.execute("cp -f ../plugins/* " + subDir + "/plugins/", workingDirectory);
             // Copy KernelHaven to the sub-dir
             LOGGER.logDebug("Copying KernelHaven to the sub directory for task #" + i + ".");
