@@ -7,8 +7,8 @@
 	<!-- Adjust group id for anonymous projects -->
     <groupId>de.variantsync.subjects.extraction</groupId>
 	<!-- Adjust the project name -->
-    <artifactId>DatasetGenerator</artifactId>
-    <version>0.1.0</version>
+    <artifactId>VariabilityExtraction</artifactId>
+    <version>1.0.0</version>
 
     <properties>
         <!-- Adjust your java version here -->
