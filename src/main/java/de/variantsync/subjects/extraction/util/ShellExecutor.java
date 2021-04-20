@@ -30,7 +30,7 @@ public class ShellExecutor {
                 LOGGER.logInfo("...done. SUCCESS!");
                 result = true;
             } else {
-                LOGGER.logWarning("...done. PROCESS FAILED!");
+                LOGGER.logError("...done. PROCESS FAILED!");
             }
             infoLogger.log();
             errorLogger.log();

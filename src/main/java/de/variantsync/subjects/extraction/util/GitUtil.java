@@ -3,6 +3,7 @@ package de.variantsync.subjects.extraction.util;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -23,21 +24,11 @@ public class GitUtil {
         List<RevCommit> commits = new LinkedList<>();
         if (firstCommitId != null && lastCommitId != null) {
             LOGGER.logInfo("Commit range specified...filtering commits.");
-            Iterable<RevCommit> commitIterable = gitRepo.log().call();
+            ObjectId firstCommitObjId = gitRepo.getRepository().resolve(firstCommitId);
+            ObjectId lastCommitObjId = gitRepo.getRepository().resolve(lastCommitId);
             // Filter all commits not in the specified range of commits
-            boolean inRange = false;
-            boolean justChanged = false;
-            for (RevCommit commit : commitIterable) {
-                if (commit.getName().equals(firstCommitId) || commit.getName().equals(lastCommitId)) {
-                    // Invert the value upon reaching one of the boundaries
-                    inRange = !inRange;
-                    justChanged = true;
-                }
-                if (inRange || justChanged) {
-                    commits.add(commit);
-                }
-                justChanged = false;
-            }
+            Iterable<RevCommit> commitIterable = gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call();
+            commitIterable.forEach(commits::add);
         } else {
             LOGGER.logInfo("Considering all commits...");
             Iterable<RevCommit> commitIterable = gitRepo.log().all().call();

@@ -171,6 +171,8 @@ public class AnalysisTask implements Runnable {
         LOGGER.logStatus("Committing results to repository.");
         // Save the commit which was just processed
         EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", workingDirectory);
+        // Save the message of the commit which was just processed
+        EXECUTOR.execute("echo \"" + originalCommit.getFullMessage() + "\" > COMMIT_MESSAGE.txt", workingDirectory);
         // Add the changes to the results
         EXECUTOR.execute("git add .", workingDirectory);
         // Commit the changes
