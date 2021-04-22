@@ -34,7 +34,7 @@ extraction on Linux (and possibly Mac). However, you can use a virtual machine o
 - openJDK-8
 - gcc v4.7.4 (or older)
 
-## Windows Subsystem for Linux (WSL)
+## Setup Guide for Windows Subsystem for Linux (WSL) and Ubuntu
 It is possible to use WSL to run the extraction on a Windows machine.
 
 ### Installing WSL2 with Ubuntu 20 LTS
