@@ -10,86 +10,162 @@ accroding to the history of the extracted variants.
 The extracted dataset comprises the source code of the different variants, their evolution history in 
 form of git branches, matchings of the cloned artifacts, and feature mappings for the artefacts.
 </p>
+# Variability Extraction for Linux
 
-## Getting Started
+## Limitations
+### Linux Versions
+Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract the variability of linux revisions without prior setup of the operating system on which the extraction is run. More specifically, we were not able to get KernelHaven to run for linux versions above v5.0. This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader.
 
-These instructions will get you a copy of the project up and running on your local machine for development.
+### Operating System
+Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability extraction on Linux (and possibly Mac). However, you can use a virtual machine or Windows Subsystem for Linux.
 
-### Prerequisites
+# System Setup
+## Requirements
+- build-essential packages or similar (depending on OS)
+- git
+- libelf-dev
+- libssl-dev
+- flex
+- bison
+- maven
+- openJDK-8
+- gcc v4.7.4 (or older)
 
-What things you need to install the software and how to install them
+## Windows Subsystem for Linux
+It is possible to use WSL to run the extraction on a Windows machine.
 
+### Installing WSL with Ubuntu 20 LTS
+- Follow the guide at https://docs.microsoft.com/en-us/windows/wsl/install-win10
+- Install Ubuntu 20 LTS via the Microsoft store
+
+### Install required packages
+Install essential build packages
+```sudo apt install build-essential```
+
+Install required libs
+```sudo apt install libelf-dev libssl-dev```
+
+Install flex
+```sudo apt install flex```
+
+Install bison
+```sudo apt install bison```
+
+Remove too recent jdks, sadly we can only use jdk8
+```sudo apt remove openjdk-*```
+
+Install JDK-8
+````sudo apt install openjdk-8-jdk```
+
+Assert that the correct java version is used:
+```java -version```
+
+Install maven
+```sudo apt install maven```
+
+### Installing old gcc
+Older linux sources can only be compiled with old gcc versions, due to changes in gcc over time. In order to install an older gcc version follow these steps.
+
+Remove currently installed gcc
+```sudo apt remove gcc```
+
+Make sure it is gone. The following should **not work**.
+```gcc --version```
+
+In Ubuntu copy the following into your /etc/apt/sources.list:
 ```
-- JDK-8
-- IDE with Maven Support
+###### Ubuntu Main Repos
+deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe multiverse
+
+###### Ubuntu Update Repos
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-security main restricted universe multiverse
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted universe multiverse
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted universe multiverse
+deb http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-security main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted universe multiverse
+deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
+```
+Update the package list:
+```sudo apt update```
+
+Install old gcc:
+```sudo apt install gcc-4.4```
+
+Because the linux makefiles are using `gcc ...` we have to set a link to gcc-4
+```sudo ln -s /bin/gcc-4.4 /bin/gcc```
+
+Assert the correct gcc is used:
+```gcc --version```
+
+→ sudo mkdir -p /usr/lib/gcc/x86_64-linux-gnu/5/include
+⇒ We require the path to gcc 5 include, as the path is currently hard-coded in the extractor and checked. It should be ok if it is empty. Set the correct path to your gcc in the properties
+- properties setup:
+  → code.extractor.post_include_dir = /usr/lib/gcc/x86_64-linux-gnu/9/include
+
+## Deploy VariabilityExtraction.jar
+Clone the VariabilityExtraction repository
+```git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git```
+
+Navigate into the repo
+```cd VariabilityExtraction```
+
+Build the jar
+```mvn package```
+
+Copy the required files to the work dir
+```
+IF the VariabilityExtractionRepo is part of your work dir run:
+
+cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_Linux.properties ..
+
+ELSE
+
+cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_Linux.properties WORKDIR/
 ```
 
-#### JDK-8 
-TODO
-
-If you are using Intellij, you can easily download and add a suitable JDK to your project by following
-the official [instructions](https://www.jetbrains.com/help/idea/sdk.html#change-module-sdk). 
-
-#### IDE with Maven Support
-We recommend using [IntelliJ](https://www.jetbrains.com/idea/), as it is by far the best Java IDE out
-there.
-
-Alternatively, you can use Eclipse with Maven plugin.
-
-### Installing (Intellij)
-Clone the project
+Navigate back to the WORKDIR
 ```
-git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/DatasetGenerator.git
-```
-Start Intellij and open the project directory. Intellij imports the Maven project automatically.
-```
-File > Open > (Select the root of the project)
+cd WORKDIR
 ```
 
-## Running the tests
+## Configuration
+Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. If you have Visual Studio Code installed (for Windows if you are on WSL), you can open the file with
+```code variability_analysis_Linux.properties```
 
-TODO
+## Variability Extraction
 
-## Deployment
+## Working Directory Preparation
+We recommend creating a working directory in which all data related to the extraction is managed. In the following, we refer to the working directory as *WORKDIR*.
 
-Call `mvn package` to build the project. This creates a JAR file which is located under 
-```
-DatasetGenerator/target/DatasetGenerator-0.0.1-jar-with-dependencies.jar
-```
-Copy the jar file to your working directory:
-```
-cp ./target/DatasetGenerator-0.0.1-jar-with-dependencies.jar ${WORK_DIR}
-```
-Copy the properties file to your working directory
-```
-cp ./src/main/resources/usable_commits_Linux_w_CodeBlock.properties ${WORK_DIR}
-```
+Navigate to your *WORKDIR*:
+```cd WORKDIR```
 
-## VCS History Analysis
-The things you need to analyze the history of a KBuild-Based SPL, such as Linux, and how to start the 
-analysis. 
+Clone the linux sources repository:
+```git clone https://github.com/torvalds/linux.git```
 
-The analysis iterates over the entire history of the Git repository in which the SPL was developed. 
-For each commit it checks whether it is able to extract the build model, code model, and feature model
-using KernelHaven. 
+Download the VariabilityExtraction jar:
+```TODO```
 
-### Prerequisites
-```
-- The Git repository of the system that is to be analyzed
-- gcc-4.8
-- Linux as OS that is used for analysis (VM or Subsystem possible)
-```
+Download the KernelHaven.jar
+```TODO```
 
-## Built With
-* [Maven](https://maven.apache.org/) - Dependency Management
+## Validation
+The easiest way to check whether everything is set up correctly and whether it is possible to extract the variability for a specific Linux commit, is to run `make allyesconfig prepare` in the linux sources directory.
 
-## Contributing
-TODO
-## Versioning
-TODO
-## Authors
-TODO
-## License
-TODO
-## Acknowledgments
-TODO
+Navigate to the linux sources
+```cd linux```
+
+Checkout the desired commit or revision, e.g.,
+```git checkout v4.2```
+
+Run make:
+```make allyesconfig prepare```
+
+If no errors are thrown, the VariabilityExtraction *should* be successful for this commit. If you are able to complete the preparation for at least one commit, your system should be set up correctly.
+
+Navigate back to working directory
+```cd ..```
+
