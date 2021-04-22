@@ -37,8 +37,14 @@ It is possible to use WSL to run the extraction on a Windows machine.
 ### Installing WSL with Ubuntu 20 LTS
 - Follow the guide at https://docs.microsoft.com/en-us/windows/wsl/install-win10
 - Install Ubuntu 20 LTS via the Microsoft store
+- Installing WSL2 is strongly recommended, because the extraction under WSL1 will take a lifetime.
 
 ### Install required packages
+Tip: You can enable copy-paste with Ctrl+Shift+C/V in WSL by
+`
+right-clicking on the top of the linux terminal window > properties > setting the corrensponding property under edit options (look at the center of the window)
+`
+
 Install essential build packages
 ```sudo apt install build-essential```
 
@@ -72,7 +78,12 @@ Remove currently installed gcc
 Make sure it is gone. The following should **not work**.
 ```gcc --version```
 
-In Ubuntu copy the following into your /etc/apt/sources.list:
+Copy the sources.list to your working directory:
+```cp /etc/apt/sources.list .```
+
+Copy the following into your /etc/apt/sources.list. 
+Tip: If you have Visual Studio Code installed under Windows, you can open the file with
+```code sources.list```:
 ```
 ###### Ubuntu Main Repos
 deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe multiverse
@@ -88,10 +99,14 @@ deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-updates main restricted univ
 deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted universe multiverse
 deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
 ```
-Update the package list:
+
+Move the changed sources.list file back into /etc/:
+```sudo mv ./sources.list /etc/apt/```
+
+Update the package list of apt:
 ```sudo apt update```
 
-Install old gcc:
+Install an old gcc version:
 ```sudo apt install gcc-4.4```
 
 Because the linux makefiles are using `gcc ...` we have to set a link to gcc-4
@@ -132,8 +147,7 @@ cd WORKDIR
 ```
 
 ## Configuration
-Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. If you have Visual Studio Code installed (for Windows if you are on WSL), you can open the file with
-```code variability_analysis_Linux.properties```
+Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. 
 
 ## Variability Extraction
 
