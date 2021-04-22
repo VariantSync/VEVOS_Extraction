@@ -3,9 +3,12 @@ package de.variantsync.subjects.extraction.util;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
 import java.io.File;
@@ -26,9 +29,25 @@ public class GitUtil {
             LOGGER.logInfo("Commit range specified...filtering commits.");
             ObjectId firstCommitObjId = gitRepo.getRepository().resolve(firstCommitId);
             ObjectId lastCommitObjId = gitRepo.getRepository().resolve(lastCommitId);
-            // Filter all commits not in the specified range of commits
-            Iterable<RevCommit> commitIterable = gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call();
-            commitIterable.forEach(commits::add);
+            RevWalk revWalk = new RevWalk(gitRepo.getRepository());
+
+            // Check whether the given ids were revision tags and retrieve the associated commit if so
+            try {
+                firstCommitObjId = revWalk.parseTag(firstCommitObjId).getObject().getId();
+                LOGGER.logStatus("The first commit id " + firstCommitId + " is a revision tag. Retrieved commit id: "+ firstCommitObjId.name() +".");
+            } catch (MissingObjectException | IncorrectObjectTypeException e) {
+                LOGGER.logStatus("First commit id: " + firstCommitId + ".");
+            }
+            try {
+                lastCommitObjId = revWalk.parseTag(lastCommitObjId).getObject().getId();
+                LOGGER.logStatus("The second commit id " + lastCommitId + " is a revision tag. Retrieved commit id: " + lastCommitObjId.name() + ".");
+            } catch (MissingObjectException | IncorrectObjectTypeException e) {
+                LOGGER.logStatus("Second commit id " + lastCommitId + ".");
+            }
+
+            // Filter all commits not in the specified range of commits and add them to the list of commits
+            gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call().forEach(commits::add);
+            commits.add(revWalk.parseCommit(firstCommitObjId));
         } else {
             LOGGER.logInfo("Considering all commits...");
             Iterable<RevCommit> commitIterable = gitRepo.log().all().call();

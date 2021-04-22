@@ -45,37 +45,37 @@ Tip: You can enable copy-paste with Ctrl+Shift+C/V in WSL by
 right-clicking on the top of the linux terminal window > properties > setting the corrensponding property under edit options (look at the center of the window)
 `
 
-Install essential build packages
+Install essential build packages:
 ```sudo apt install build-essential```
 
-Install required libs
+Install required libs:
 ```sudo apt install libelf-dev libssl-dev```
 
-Install flex
+Install flex:
 ```sudo apt install flex```
 
-Install bison
+Install bison:
 ```sudo apt install bison```
 
-Remove too recent jdks, sadly we can only use jdk8
+Remove too recent jdks, sadly we can only use jdk8:
 ```sudo apt remove openjdk-*```
 
-Install JDK-8
-````sudo apt install openjdk-8-jdk```
+Install JDK-8:
+```sudo apt install openjdk-8-jdk```
 
 Assert that the correct java version is used:
 ```java -version```
 
-Install maven
+Install maven:
 ```sudo apt install maven```
 
 ### Installing old gcc
 Older linux sources can only be compiled with old gcc versions, due to changes in gcc over time. In order to install an older gcc version follow these steps.
 
-Remove currently installed gcc
+Remove currently installed gcc:
 ```sudo apt remove gcc```
 
-Make sure it is gone. The following should **not work**.
+Make sure it is gone. The following should **not work**:
 ```gcc --version```
 
 Copy the sources.list to your working directory:
@@ -115,22 +115,25 @@ Because the linux makefiles are using `gcc ...` we have to set a link to gcc-4
 Assert the correct gcc is used:
 ```gcc --version```
 
-→ sudo mkdir -p /usr/lib/gcc/x86_64-linux-gnu/5/include
-⇒ We require the path to gcc 5 include, as the path is currently hard-coded in the extractor and checked. It should be ok if it is empty. Set the correct path to your gcc in the properties
-- properties setup:
-  → code.extractor.post_include_dir = /usr/lib/gcc/x86_64-linux-gnu/9/include
+## Prepare Working Directory
+We recommend creating a working directory in which all data related to the extraction is managed. In the following, we refer to the working directory as *WORKDIR*.
 
-## Deploy VariabilityExtraction.jar
-Clone the VariabilityExtraction repository
+Navigate to your *WORKDIR*:
+```cd WORKDIR```
+
+Clone the linux sources repository:
+```git clone https://github.com/torvalds/linux.git```
+
+Clone the VariabilityExtraction repository:
 ```git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git```
 
-Navigate into the repo
+Navigate into the repo:
 ```cd VariabilityExtraction```
 
-Build the jar
+Build the jar:
 ```mvn package```
 
-Copy the required files to the work dir
+Copy the required files to the work dir:
 ```
 IF the VariabilityExtractionRepo is part of your work dir run:
 
@@ -149,25 +152,12 @@ cd WORKDIR
 ## Configuration
 Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. 
 
-## Variability Extraction
+Adjust the path to the linux sources: ```source_tree = WORKDIR/linux```
 
-## Working Directory Preparation
-We recommend creating a working directory in which all data related to the extraction is managed. In the following, we refer to the working directory as *WORKDIR*.
-
-Navigate to your *WORKDIR*:
-```cd WORKDIR```
-
-Clone the linux sources repository:
-```git clone https://github.com/torvalds/linux.git```
-
-Download the VariabilityExtraction jar:
-```TODO```
-
-Download the KernelHaven.jar
-```TODO```
+Save the file.
 
 ## Validation
-The easiest way to check whether everything is set up correctly and whether it is possible to extract the variability for a specific Linux commit, is to run `make allyesconfig prepare` in the linux sources directory.
+The easiest way to check whether (almost) everything is set up correctly and whether it is possible to extract the variability for a specific Linux commit, is to run `make allyesconfig prepare` in the linux sources directory.
 
 Navigate to the linux sources
 ```cd linux```
@@ -183,3 +173,16 @@ If no errors are thrown, the VariabilityExtraction *should* be successful for th
 Navigate back to working directory
 ```cd ..```
 
+## Variability Extraction
+You can run the variability extraction for a range of commits:
+```
+java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
+OR
+java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
+```
+For example, to extract the variability for all commits between Linux v4.5 and Linux v4.6:
+```
+java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
+OR
+java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties v4.5 v5.6
+```
