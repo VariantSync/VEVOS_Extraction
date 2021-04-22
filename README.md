@@ -1,4 +1,4 @@
-# DatasetGenerator
+# SPL Variability Extraction
 
 <p>
 This tool offers functionality for extracting the source code variants of a KBuild-based SPL, e.g.,
@@ -10,14 +10,17 @@ accroding to the history of the extracted variants.
 The extracted dataset comprises the source code of the different variants, their evolution history in 
 form of git branches, matchings of the cloned artifacts, and feature mappings for the artefacts.
 </p>
-# Variability Extraction for Linux
 
 ## Limitations
 ### Linux Versions
-Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract the variability of linux revisions without prior setup of the operating system on which the extraction is run. More specifically, we were not able to get KernelHaven to run for linux versions above v5.0. This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader.
+Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract 
+the variability of linux revisions without prior setup of the operating system on which the extraction is run. 
+More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. 
+This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader.
 
 ### Operating System
-Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability extraction on Linux (and possibly Mac). However, you can use a virtual machine or Windows Subsystem for Linux.
+Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability 
+extraction on Linux (and possibly Mac). However, you can use a virtual machine or Windows Subsystem for Linux.
 
 # System Setup
 ## Requirements
@@ -31,13 +34,13 @@ Due to the implementation of the VariabilityExtraction and KernelHaven, it is on
 - openJDK-8
 - gcc v4.7.4 (or older)
 
-## Windows Subsystem for Linux
+## Windows Subsystem for Linux (WSL)
 It is possible to use WSL to run the extraction on a Windows machine.
 
-### Installing WSL with Ubuntu 20 LTS
+### Installing WSL2 with Ubuntu 20 LTS
 - Follow the guide at https://docs.microsoft.com/en-us/windows/wsl/install-win10
+- Using WSL2 is strongly recommended, because the extraction under WSL1 will take a lifetime.
 - Install Ubuntu 20 LTS via the Microsoft store
-- Installing WSL2 is strongly recommended, because the extraction under WSL1 will take a lifetime.
 
 ### Install required packages
 Tip: You can enable copy-paste with Ctrl+Shift+C/V in WSL by
@@ -64,7 +67,7 @@ Install JDK-8:
 ```sudo apt install openjdk-8-jdk```
 
 Assert that the correct java version is used:
-```java -version```
+```java -version``` should display jdk-8 (or 1.8)
 
 Install maven:
 ```sudo apt install maven```
@@ -109,7 +112,7 @@ Update the package list of apt:
 Install an old gcc version:
 ```sudo apt install gcc-4.4```
 
-Because the linux makefiles are using `gcc ...` we have to set a link to gcc-4
+Because the linux makefiles are using gcc without specifying a version, we have to set a link to gcc-4:
 ```sudo ln -s /bin/gcc-4.4 /bin/gcc```
 
 Assert the correct gcc is used:
@@ -122,10 +125,14 @@ Navigate to your *WORKDIR*:
 ```cd WORKDIR```
 
 Clone the linux sources repository:
-```git clone https://github.com/torvalds/linux.git```
+```
+git clone https://github.com/torvalds/linux.git
+```
 
 Clone the VariabilityExtraction repository:
-```git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git```
+```
+git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git
+```
 
 Navigate into the repo:
 ```cd VariabilityExtraction```
@@ -144,15 +151,15 @@ ELSE
 cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_Linux.properties WORKDIR/
 ```
 
-Navigate back to the WORKDIR
-```
-cd WORKDIR
-```
+Navigate back to the WORKDIR:
+```cd WORKDIR```
 
 ## Configuration
 Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. 
 
-Adjust the path to the linux sources: ```source_tree = WORKDIR/linux```
+Adjust the path to the linux sources (absolute path): ```source_tree = WORKDIR/linux```
+
+Example: ```source_tree = /home/alice/linux-analysis/linux```
 
 Save the file.
 
@@ -174,15 +181,17 @@ Navigate back to working directory
 ```cd ..```
 
 ## Variability Extraction
-You can run the variability extraction for a range of commits:
+You can run the variability extraction for a range of commits by specifying commit ids:
 ```
 java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
-OR
+```
+or by specifying revision tags:
+```
 java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
 ```
-For example, to extract the variability for all commits between Linux v4.5 and Linux v4.6:
+For example, to extract the variability for all commits between Linux v4.5 and Linux v4.6, the following is possible:
 ```
 java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
-OR
+
 java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties v4.5 v5.6
 ```
