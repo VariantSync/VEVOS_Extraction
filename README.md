@@ -124,11 +124,6 @@ We recommend creating a working directory in which all data related to the extra
 Navigate to your *WORKDIR*:
 ```cd WORKDIR```
 
-Clone the linux sources repository:
-```
-git clone https://github.com/torvalds/linux.git
-```
-
 Clone the VariabilityExtraction repository:
 ```
 git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git
@@ -195,3 +190,5 @@ java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_anal
 
 java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties v4.5 v5.6
 ```
+
+By default, the files with the extracted variability are stored under `WORKDIR/evolution-analysis/output/`
