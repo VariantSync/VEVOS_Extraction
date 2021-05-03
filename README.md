@@ -39,8 +39,19 @@ It is possible to use WSL to run the extraction on a Windows machine.
 
 ### Installing WSL2 with Ubuntu 20 LTS
 - Follow the guide at https://docs.microsoft.com/en-us/windows/wsl/install-win10
-- Using WSL2 is strongly recommended, because the extraction under WSL1 will take a lifetime.
+- Using WSL2 is strongly recommended, because the extraction under WSL1 will take a lifetime. You can check which WSL you 
+  have installed by following the instructions here https://askubuntu.com/questions/1177729/wsl-am-i-running-version-1-or-version-2
+- You can list the installed distributions with `wsl --list --verbose`
 - Install Ubuntu 20 LTS via the Microsoft store
+
+### Problems with WSL
+If you should encounter problems with the steps bellow, one of the following hints might help you
+- Disable compression to avoid problems with starting WSL and/or network connection
+  -- Starting ubuntu -> solved by disabling compression of %USERPROFILE%\AppData\Local\Packages\CanonicalGroupLimited... directory
+  --Network connection -> solved by disabling the compression of the AppData/Local/Temp
+- (otherwise some suggestions to solve network connectivity errors which seem to occur quite often: https://github.com/microsoft/WSL/issues/5336)
+- Colliding paths when cloning linux repo (possibly only a problem when cloning into subdirectories of mnt) 
+  -> enable case sensitivity (https://www.howtogeek.com/354220/how-to-enable-case-sensitive-folders-on-windows-10/) (https://devblogs.microsoft.com/commandline/per-directory-case-sensitivity-and-wsl/)
 
 ### Install required packages
 Tip: You can enable copy-paste with Ctrl+Shift+C/V in WSL by
@@ -84,7 +95,7 @@ Make sure it is gone. The following should **not work**:
 Copy the sources.list to your working directory:
 ```cp /etc/apt/sources.list .```
 
-Copy the following into your /etc/apt/sources.list. 
+Copy the following into the copy of sources.list. 
 Tip: If you have Visual Studio Code installed under Windows, you can open the file with
 ```code sources.list```:
 ```
@@ -103,7 +114,7 @@ deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-proposed main restricted uni
 deb-src http://us.archive.ubuntu.com/ubuntu/ trusty-backports main restricted universe multiverse
 ```
 
-Move the changed sources.list file back into /etc/:
+Move the changed sources.list file back into /etc/apt/:
 ```sudo mv ./sources.list /etc/apt/```
 
 Update the package list of apt:
@@ -123,6 +134,11 @@ We recommend creating a working directory in which all data related to the extra
 
 Navigate to your *WORKDIR*:
 ```cd WORKDIR```
+
+Clone the repository of the SPL that you want to analyze (e.g., Linux):
+```
+git clone https://github.com/torvalds/linux.git
+```
 
 Clone the VariabilityExtraction repository:
 ```
