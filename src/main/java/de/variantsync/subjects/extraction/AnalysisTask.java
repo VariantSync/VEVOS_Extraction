@@ -9,12 +9,16 @@ import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static de.variantsync.subjects.extraction.LinuxHistoryAnalysis.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -74,6 +78,10 @@ public class AnalysisTask implements Runnable {
 
             // Block the directory
             createBlocker(splDir);
+
+            // Adjust the Makefiles in the project to remove all error flags that can cause exceptions
+            // when using newer libraries and compilers
+            adjustMakefiles(splDir);
 
             // Start the analysis pipeline
             LOGGER.logStatus("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
@@ -191,6 +199,61 @@ public class AnalysisTask implements Runnable {
             }
         } catch (IOException e) {
             LOGGER.logException("Exception was thrown upon creating blocker file: ", e);
+        }
+    }
+
+    private void adjustMakefiles(File dir) {
+        LOGGER.logInfo("Adjusting Makefiles in " + dir);
+        try {
+            final Stream<Path> makefiles = Files.find(dir.toPath(),
+                    Integer.MAX_VALUE,
+                    (path, basicFileAttributes) -> path.toFile().isFile() && path.toFile().getName().contains("Makefile"),
+                    FileVisitOption.FOLLOW_LINKS);
+            makefiles.forEach(this::removeErrorFlags);
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to search for Makefiles: ", e);
+            quitOnError();
+        }
+    }
+
+    private void removeErrorFlags(Path pathToFile) {
+        LOGGER.logDebug("Adjusting Makefile: " + pathToFile);
+        List<String> lines = null;
+        // Read the file's content
+        try(BufferedReader reader = new BufferedReader(new FileReader(pathToFile.toFile()))) {
+            lines = reader.lines().collect(Collectors.toList());
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to read Makefile: " + pathToFile, e);
+            quitOnError();
+        }
+        if (lines == null) {
+            LOGGER.logError("The file's content is null: " + pathToFile);
+            quitOnError();
+        }
+
+        // Remove all error flags
+        List<String> fixedLines = new ArrayList<>(Objects.requireNonNull(lines).size());
+        for (String line : lines) {
+            // Replace "-Wall" with "-Wno-error"
+            line = line.replaceAll("-Wall", "-Wno-error");
+            // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
+            line = line.replaceAll("-Werror=", "-Wno-error=");
+            // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
+            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
+            // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with "-Wno-error"
+            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "-Wno-error=");
+            fixedLines.add(line);
+        }
+
+        // Write the content
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(pathToFile.toFile()))) {
+            for (String line : fixedLines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to write adjusted Makefile " + pathToFile, e);
+            quitOnError();
         }
     }
 
