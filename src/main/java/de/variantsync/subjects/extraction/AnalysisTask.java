@@ -115,6 +115,13 @@ public class AnalysisTask implements Runnable {
 
             // Restore the makefiles
             EXECUTOR.execute("git restore .", splDir);
+
+            // Remove the temporary directory created by busyboot
+            // TODO: Move this to a customized variant of busyboot
+            File tempBusyBootDirectory = new File(splDir.getParentFile(), "" + splDir.getName() + "UnchangedCopy");
+            if (tempBusyBootDirectory.exists()) {
+                EXECUTOR.execute("rm -rf ../" + splDir.getName() + "UnchangedCopy", splDir);
+            }
             count++;
         }
     }
