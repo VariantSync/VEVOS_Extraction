@@ -112,6 +112,9 @@ public class AnalysisTask implements Runnable {
 
             // Delete the blocker
             deleteBlocker(splDir);
+
+            // Restore the makefiles
+            EXECUTOR.execute("git restore .", splDir);
             count++;
         }
     }
