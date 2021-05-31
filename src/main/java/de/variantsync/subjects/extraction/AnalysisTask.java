@@ -243,15 +243,16 @@ public class AnalysisTask implements Runnable {
 
         // Remove all error flags
         List<String> fixedLines = new ArrayList<>(Objects.requireNonNull(lines).size());
+        // TODO: Figure out how to adjust Makefiles correclty
         for (String line : lines) {
             // Replace "-Wall" with "-Wno-error"
             line = line.replaceAll("-Wall", "-Wno-error");
             // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
-            line = line.replaceAll("-Werror=", "-Wno-error=");
+//            line = line.replaceAll("-Werror=", "-Wno-error=");
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
-            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
+//            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
             // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with "-Wno-error"
-            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "-Wno-error=");
+//            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "-Wno-error=");
             fixedLines.add(line);
         }
 
