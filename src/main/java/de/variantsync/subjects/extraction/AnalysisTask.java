@@ -91,12 +91,12 @@ public class AnalysisTask implements Runnable {
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
+                moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent(), commit.getName());
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName());
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                         LOGGER.logStatus("Pushing result to remote repository.");
@@ -141,7 +141,7 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToErrorDir, String commitId) {
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -151,10 +151,11 @@ public class AnalysisTask implements Runnable {
         // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+        boolean hasError = false;
 
         if (resultFiles == null || resultFiles.length == 0) {
             LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
+            hasError = true;
         } else if (resultFiles.length == 1) {
             try {
                 LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
@@ -164,7 +165,7 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
+            hasError = true;
         }
 
         // Move the cache of the extractors to the collected output directory
@@ -176,11 +177,21 @@ public class AnalysisTask implements Runnable {
                 Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
-                logError(pathToTargetDir, commitId);
+                hasError = true;
             }
         } else {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
-            logError(pathToTargetDir, commitId);
+            hasError = true;
+        }
+        if (hasError) {
+            logError(pathToErrorDir, commitId);
+            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
+                try {
+                    Files.delete(collection_dir.toPath());
+                } catch (IOException e) {
+                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
+                }
+            }
         }
         LOGGER.logInfo("...done.");
     }
@@ -248,7 +259,7 @@ public class AnalysisTask implements Runnable {
             // Replace "-Wall" with "-Wno-error"
             line = line.replaceAll("-Wall", "-Wno-error");
             // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
-//            line = line.replaceAll("-Werror=", "-Wno-error=");
+            line = line.replaceAll("-Werror=", "-Wno-error=");
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
 //            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
             // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with "-Wno-error"

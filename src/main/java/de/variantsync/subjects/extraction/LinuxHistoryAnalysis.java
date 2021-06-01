@@ -24,7 +24,7 @@ public class LinuxHistoryAnalysis {
             = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
             "Path to the folder with the repository in which the investigated SPL is managed.");
     public static final @NonNull Setting<@Nullable String> WORKING_DIR_NAME
-            = new Setting<>("working_dir_name", Setting.Type.STRING, false, "evolution-analysis", "" +
+            = new Setting<>("working_dir_name", Setting.Type.STRING, false, "extraction-results", "" +
             "Name of the directory in which the analysis results and temporary files are stored.");
     public static final @NonNull Setting<@Nullable String> URL_OF_SOURCE_REPO
             = new Setting<>("source_repo_url", Setting.Type.STRING, true, "https://github.com/torvalds/linux.git",
