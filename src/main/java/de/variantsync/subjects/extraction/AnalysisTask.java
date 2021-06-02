@@ -61,9 +61,9 @@ public class AnalysisTask implements Runnable {
         try {
             Configuration config;
             config = new Configuration(propertiesFile);
-            config.registerSetting(DefaultSettings.LOG_LEVEL);
+            config.registerSetting(LOG_LEVEL_MAIN);
             config.registerSetting(EXTRACTION_TIMEOUT);
-            LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
+            LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
             prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
@@ -112,12 +112,10 @@ public class AnalysisTask implements Runnable {
                 }
             }
 
-            LOGGER.logStatus("Starting clean up...");
-            // We have to set the name again because KernelHaven changes it
-            EXECUTOR.execute("make clean", splDir);
-
             // Delete the blocker
             deleteBlocker(splDir);
+
+            LOGGER.logStatus("Starting clean up...");
 
             // Restore the makefiles
             EXECUTOR.execute("git restore .", splDir);
@@ -150,7 +148,7 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToErrorDir, String commitId) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId) {
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -193,17 +191,6 @@ public class AnalysisTask implements Runnable {
             hasError = true;
         }
 
-        if (hasError) {
-            logError(pathToErrorDir, commitId);
-            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
-                try {
-                    Files.delete(collection_dir.toPath());
-                } catch (IOException e) {
-                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
-                }
-            }
-        }
-
         // Move the log to the common output directory
         LOGGER.logStatus("Moving KernelHaven log to common output directory");
         File logDir = new File(workDir, "log");
@@ -225,6 +212,21 @@ public class AnalysisTask implements Runnable {
                 LOGGER.logException("Was not able to move the log file of the analysis: ", e);
             }
         }
+
+        if (hasError) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", pathToMetaDir.toFile());
+            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
+                try {
+                    Files.delete(collection_dir.toPath());
+                } catch (IOException e) {
+                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
+                }
+            }
+        } else {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> SUCCESS.txt", pathToMetaDir.toFile());
+
+        }
+
         LOGGER.logInfo("...done.");
     }
 
@@ -293,9 +295,9 @@ public class AnalysisTask implements Runnable {
             // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
             line = line.replaceAll("-Werror=", "-Wno-error=");
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
-//            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
-            // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with "-Wno-error"
-//            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "-Wno-error=");
+            line = line.replaceAll("(?!-Wno-error)-W", "-Wno-error=");
+            // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with ""
+            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
             fixedLines.add(line);
         }
 
@@ -335,6 +337,6 @@ public class AnalysisTask implements Runnable {
     }
 
     private static void logError(Path dir, String commitId) {
-        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir.toFile());
+
     }
 }

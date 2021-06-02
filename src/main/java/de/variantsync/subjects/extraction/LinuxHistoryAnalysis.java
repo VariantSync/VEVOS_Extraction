@@ -19,7 +19,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class LinuxHistoryAnalysis {
-
+    public static final @NonNull EnumSetting<Logger.Level> LOG_LEVEL_MAIN
+            = new EnumSetting<>("log.level.main", Logger.Level.class, true, null, "" +
+            "Log level of main execution.");
     public static final @NonNull Setting<@Nullable String> PATH_TO_SOURCE_REPO
             = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
             "Path to the folder with the repository in which the investigated SPL is managed.");
@@ -74,7 +76,7 @@ public class LinuxHistoryAnalysis {
 
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
-        LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
+        LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
         resultCollectionType = config.getValue(RESULT_COLLECTION_TYPE);
         if (resultCollectionType != EResultCollection.NONE) {
             LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
@@ -140,7 +142,7 @@ public class LinuxHistoryAnalysis {
         Configuration config = null;
         try {
             config = new Configuration(Objects.requireNonNull(propertiesFile));
-            config.registerSetting(DefaultSettings.LOG_LEVEL);
+            config.registerSetting(LOG_LEVEL_MAIN);
             config.registerSetting(PATH_TO_SOURCE_REPO);
             config.registerSetting(WORKING_DIR_NAME);
             config.registerSetting(URL_OF_SOURCE_REPO);
