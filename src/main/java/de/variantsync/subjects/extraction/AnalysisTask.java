@@ -17,6 +17,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,14 +34,16 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final EResultCollection collectOutput;
+    private final long timeout;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config, long timeout) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
+        this.timeout = timeout;
     }
 
     @Override
@@ -59,6 +62,7 @@ public class AnalysisTask implements Runnable {
             Configuration config;
             config = new Configuration(propertiesFile);
             config.registerSetting(DefaultSettings.LOG_LEVEL);
+            config.registerSetting(EXTRACTION_TIMEOUT);
             LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
             prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
@@ -74,7 +78,7 @@ public class AnalysisTask implements Runnable {
             checkBlocker(splDir);
 
             // Check out the next commit
-            EXECUTOR.execute("git checkout " + commit.getName(), splDir);
+            EXECUTOR.execute("git checkout --force " + commit.getName(), splDir);
 
             // Block the directory
             createBlocker(splDir);
@@ -85,13 +89,15 @@ public class AnalysisTask implements Runnable {
 
             // Start the analysis pipeline
             LOGGER.logStatus("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
-            EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir);
+            EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir, timeout, TimeUnit.SECONDS);
             Thread.currentThread().setName(threadName);
             LOGGER.logStatus("KernelHaven execution finished.");
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent(), commit.getName());
+                synchronized (AnalysisTask.class) {
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent(), commit.getName());
+                }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
@@ -115,6 +121,9 @@ public class AnalysisTask implements Runnable {
 
             // Restore the makefiles
             EXECUTOR.execute("git restore .", splDir);
+
+            // Remove all untracked files and directories
+            EXECUTOR.execute("git clean -fdx", splDir);
 
             // Remove the temporary directory created by busyboot
             // TODO: Move this to a customized variant of busyboot
@@ -183,6 +192,7 @@ public class AnalysisTask implements Runnable {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
             hasError = true;
         }
+
         if (hasError) {
             logError(pathToErrorDir, commitId);
             if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
@@ -191,6 +201,28 @@ public class AnalysisTask implements Runnable {
                 } catch (IOException e) {
                     LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
                 }
+            }
+        }
+
+        // Move the log to the common output directory
+        LOGGER.logStatus("Moving KernelHaven log to common output directory");
+        File logDir = new File(workDir, "log");
+        File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
+        File targetLogDir = new File(pathToTargetDir.toFile().getParentFile().getParentFile(), "log");
+        if(targetLogDir.mkdir()) {
+            LOGGER.logInfo("Log dir created under " + targetLogDir);
+        }
+        if (logFiles == null || logFiles.length == 0) {
+            LOGGER.logWarning("NO LOG FILE IN " + logDir.getAbsolutePath());
+        } else {
+            if (logFiles.length > 1) {
+                LOGGER.logWarning("FOUND MORE THAN ONE LOG FILE IN " + outputDir.getAbsolutePath());
+            }
+            try {
+                LOGGER.logInfo("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetLogDir);
+                Files.move(logFiles[0].toPath(), Paths.get(targetLogDir.getAbsolutePath(), commitId + ".log"));
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to move the log file of the analysis: ", e);
             }
         }
         LOGGER.logInfo("...done.");

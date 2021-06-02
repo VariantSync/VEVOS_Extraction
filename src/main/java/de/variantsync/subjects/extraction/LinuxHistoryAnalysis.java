@@ -44,6 +44,9 @@ public class LinuxHistoryAnalysis {
     public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_EMAIL
             = new Setting<>("result.repo.committer.email", Setting.Type.STRING, false, null,
             "The email of the committer if result.collection_type is set to 'Repository'");
+    public static final @NonNull Setting<@Nullable Integer> EXTRACTION_TIMEOUT
+            = new Setting<>("extraction.timeout", Setting.Type.INTEGER, false, "0", "" +
+            "The timeout for the KernelHaven execution in seconds.");
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
     private static EResultCollection resultCollectionType;
@@ -95,7 +98,7 @@ public class LinuxHistoryAnalysis {
         LOGGER.logStatus("Scheduling tasks...");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config, config.getValue(EXTRACTION_TIMEOUT)));
         }
         LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
@@ -146,6 +149,7 @@ public class LinuxHistoryAnalysis {
             config.registerSetting(RESULT_REPO_URL);
             config.registerSetting(RESULT_REPO_COMMITTER_NAME);
             config.registerSetting(RESULT_REPO_COMMITTER_EMAIL);
+            config.registerSetting(EXTRACTION_TIMEOUT);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();
