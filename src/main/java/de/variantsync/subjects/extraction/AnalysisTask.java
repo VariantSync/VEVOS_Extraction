@@ -96,7 +96,7 @@ public class AnalysisTask implements Runnable {
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent(), commit.getName());
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName());
                 }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
@@ -224,7 +224,6 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             EXECUTOR.execute("echo \"" + commitId + " \" >> SUCCESS.txt", pathToMetaDir.toFile());
-
         }
 
         LOGGER.logInfo("...done.");
