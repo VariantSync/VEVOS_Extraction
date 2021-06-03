@@ -300,7 +300,7 @@ public class AnalysisTask implements Runnable {
         // TODO: Figure out how to adjust Makefiles correctly
         for (String line : lines) {
             // Replace "-Wall" with "-Wno-error"
-            line = line.replaceAll("-Wall", "-Wno-error");
+            line = line.replaceAll("-Wall", "-w");
             // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
             line = line.replaceAll("-Werror=", "-Wno-error=");
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
