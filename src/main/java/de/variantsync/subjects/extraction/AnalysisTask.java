@@ -83,6 +83,11 @@ public class AnalysisTask implements Runnable {
             // Block the directory
             createBlocker(splDir);
 
+            File prepareFail = new File(splDir, "PREPARE_FAILED");
+            if (prepareFail.exists()) {
+                LOGGER.logError("The prepare fail flag must not exist yet!");
+            }
+
             // Adjust the Makefiles in the project to remove all error flags that can cause exceptions
             // when using newer libraries and compilers
             adjustMakefiles(splDir);
@@ -96,13 +101,13 @@ public class AnalysisTask implements Runnable {
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName());
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName(), prepareFail);
                 }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName());
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName(), prepareFail);
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                         LOGGER.logStatus("Pushing result to remote repository.");
@@ -148,7 +153,7 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId, File prepareFail) {
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -211,6 +216,11 @@ public class AnalysisTask implements Runnable {
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the log file of the analysis: ", e);
             }
+        }
+
+        if (prepareFail.exists()) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> PREPARE_FAILED.txt", pathToMetaDir.toFile());
+            LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions are not complete!");
         }
 
         if (hasError) {
