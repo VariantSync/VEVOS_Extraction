@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class LinuxHistoryAnalysis {
+public class VariabilityExtraction {
     public static final @NonNull EnumSetting<Logger.Level> LOG_LEVEL_MAIN
             = new EnumSetting<>("log.level.main", Logger.Level.class, true, null, "" +
             "Log level of main execution.");
