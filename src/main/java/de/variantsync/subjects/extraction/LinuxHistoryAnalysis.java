@@ -4,7 +4,6 @@ import de.variantsync.subjects.extraction.util.GitUtil;
 import de.variantsync.subjects.extraction.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
-import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.config.EnumSetting;
 import net.ssehub.kernel_haven.config.Setting;
 import net.ssehub.kernel_haven.util.Logger;
@@ -101,8 +100,6 @@ public class LinuxHistoryAnalysis {
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config, config.getValue(EXTRACTION_TIMEOUT)));
-            // TODO: Remove break after error fix
-            break;
         }
         LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
