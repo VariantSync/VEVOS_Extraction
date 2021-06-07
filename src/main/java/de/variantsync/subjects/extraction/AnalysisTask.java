@@ -297,17 +297,19 @@ public class AnalysisTask implements Runnable {
 
         // Remove all error flags
         List<String> fixedLines = new ArrayList<>(Objects.requireNonNull(lines).size());
-        // TODO: Figure out how to adjust Makefiles correctly
         for (String line : lines) {
             // Replace "-Wall" with "-Wno-error"
             line = line.replaceAll("-Wall", "-w");
+
+            // Note: It seems that setting '-w' is the only fix we need. Additionally, the other 'fixes' can break the
+            // Makefile in some cases
             // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
-//            line = line.replaceAll("-Werror=", "-Wno-error=");
+            // line = line.replaceAll("-Werror=", "-Wno-error=");
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
-//            line = line.replaceAll("(?!(-Wno-error|-Wp))-W", "-Wno-error=");
+            // line = line.replaceAll("(?!(-Wno-error|-Wp))-W", "-Wno-error=");
             // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with ""
-//            line = line.replaceAll("-Wno-error=[\\S]+=\\$\\{[\\S]+}", "");
-//            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
+            // line = line.replaceAll("-Wno-error=[\\S]+=\\$\\{[\\S]+}", "");
+            // line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
             fixedLines.add(line);
         }
 
@@ -346,7 +348,4 @@ public class AnalysisTask implements Runnable {
         }
     }
 
-    private static void logError(Path dir, String commitId) {
-
-    }
 }
