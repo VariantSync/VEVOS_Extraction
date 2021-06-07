@@ -306,7 +306,8 @@ public class AnalysisTask implements Runnable {
             // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
             line = line.replaceAll("(?!(-Wno-error|-Wp))-W", "-Wno-error=");
             // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with ""
-            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
+//            line = line.replaceAll("-Wno-error=[\\S]+=\\$\\{[\\S]+}", "");
+//            line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
             fixedLines.add(line);
         }
 

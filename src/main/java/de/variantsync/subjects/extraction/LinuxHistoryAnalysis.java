@@ -101,6 +101,8 @@ public class LinuxHistoryAnalysis {
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config, config.getValue(EXTRACTION_TIMEOUT)));
+            // TODO: Remove break after error fix
+            break;
         }
         LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
