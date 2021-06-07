@@ -84,8 +84,8 @@ Assert that the correct java version is used:
 Install maven:
 ```sudo apt install maven```
 
-Install selinux (For Busybox only)
-```sudo apt install selinux```
+Install libselinux (For Busybox only)
+```sudo apt install libselinux1-dev```
 
 ### Installing old gcc
 Older linux sources can only be compiled with old gcc versions, due to changes in gcc over time. In order to install an older gcc version follow these steps.
