@@ -12,11 +12,11 @@ form of git branches, matchings of the cloned artifacts, and feature mappings fo
 </p>
 
 ## Limitations
-### Linux Versions
+### SPL Versions
 Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract 
-the variability of linux revisions without prior setup of the operating system on which the extraction is run. 
+the variability of SPL revisions without prior setup of the operating system on which the extraction is run. 
 More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. 
-This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader.
+This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader. Similar problems probably also exist for Busybox, Coreboot, etc.
 
 ### Operating System
 Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability 
@@ -28,11 +28,12 @@ extraction on Linux (and possibly Mac). However, you can use a virtual machine o
 - git
 - libelf-dev
 - libssl-dev
+- libselinux (For Busybox only)
 - flex
 - bison
 - maven
 - openJDK-8
-- gcc v4.7.4 (or older)
+- gcc v4.7.4 (or older) (Not required for Busybox)
 
 ## Setup Guide for Windows Subsystem for Linux (WSL) and Ubuntu
 It is possible to use WSL to run the extraction on a Windows machine.
@@ -82,6 +83,9 @@ Assert that the correct java version is used:
 
 Install maven:
 ```sudo apt install maven```
+
+Install libselinux (For Busybox only)
+```sudo apt install libselinux1-dev```
 
 ### Installing old gcc
 Older linux sources can only be compiled with old gcc versions, due to changes in gcc over time. In order to install an older gcc version follow these steps.

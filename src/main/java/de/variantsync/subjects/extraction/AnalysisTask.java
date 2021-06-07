@@ -9,14 +9,19 @@ import net.ssehub.kernel_haven.config.DefaultSettings;
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static de.variantsync.subjects.extraction.LinuxHistoryAnalysis.*;
+import static de.variantsync.subjects.extraction.VariabilityExtraction.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
@@ -29,14 +34,16 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final EResultCollection collectOutput;
+    private final long timeout;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config, long timeout) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
+        this.timeout = timeout;
     }
 
     @Override
@@ -54,8 +61,9 @@ public class AnalysisTask implements Runnable {
         try {
             Configuration config;
             config = new Configuration(propertiesFile);
-            config.registerSetting(DefaultSettings.LOG_LEVEL);
-            LOGGER.setLevel(config.getValue(DefaultSettings.LOG_LEVEL));
+            config.registerSetting(LOG_LEVEL_MAIN);
+            config.registerSetting(EXTRACTION_TIMEOUT);
+            LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
             prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
@@ -70,25 +78,36 @@ public class AnalysisTask implements Runnable {
             checkBlocker(splDir);
 
             // Check out the next commit
-            EXECUTOR.execute("git checkout " + commit.getName(), splDir);
+            EXECUTOR.execute("git checkout --force " + commit.getName(), splDir);
 
             // Block the directory
             createBlocker(splDir);
 
+            File prepareFail = new File(splDir, "PREPARE_FAILED");
+            if (prepareFail.exists()) {
+                LOGGER.logError("The prepare fail flag must not exist yet!");
+            }
+
+            // Adjust the Makefiles in the project to remove all error flags that can cause exceptions
+            // when using newer libraries and compilers
+            adjustMakefiles(splDir);
+
             // Start the analysis pipeline
             LOGGER.logStatus("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
-            EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir);
+            EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir, timeout, TimeUnit.SECONDS);
             Thread.currentThread().setName(threadName);
             LOGGER.logStatus("KernelHaven execution finished.");
 
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
+                synchronized (AnalysisTask.class) {
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName(), prepareFail);
+                }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, commit.getName());
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName(), prepareFail);
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                         LOGGER.logStatus("Pushing result to remote repository.");
@@ -98,12 +117,23 @@ public class AnalysisTask implements Runnable {
                 }
             }
 
-            LOGGER.logStatus("Starting clean up...");
-            // We have to set the name again because KernelHaven changes it
-            EXECUTOR.execute("make clean", splDir);
-
             // Delete the blocker
             deleteBlocker(splDir);
+
+            LOGGER.logStatus("Starting clean up...");
+
+            // Restore the makefiles
+            EXECUTOR.execute("git restore .", splDir);
+
+            // Remove all untracked files and directories
+            EXECUTOR.execute("git clean -fdx", splDir);
+
+            // Remove the temporary directory created by busyboot
+            // TODO: Move this to a customized variant of busyboot
+            File tempBusyBootDirectory = new File(splDir.getParentFile(), "" + splDir.getName() + "UnchangedCopy");
+            if (tempBusyBootDirectory.exists()) {
+                EXECUTOR.execute("rm -rf ../" + splDir.getName() + "UnchangedCopy", splDir);
+            }
             count++;
         }
     }
@@ -123,7 +153,7 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, String commitId) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId, File prepareFail) {
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -133,10 +163,11 @@ public class AnalysisTask implements Runnable {
         // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+        boolean hasError = false;
 
         if (resultFiles == null || resultFiles.length == 0) {
             LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
+            hasError = true;
         } else if (resultFiles.length == 1) {
             try {
                 LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
@@ -146,7 +177,7 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-            logError(pathToTargetDir, commitId);
+            hasError = true;
         }
 
         // Move the cache of the extractors to the collected output directory
@@ -158,12 +189,53 @@ public class AnalysisTask implements Runnable {
                 Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
-                logError(pathToTargetDir, commitId);
+                hasError = true;
             }
         } else {
             LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
-            logError(pathToTargetDir, commitId);
+            hasError = true;
         }
+
+        // Move the log to the common output directory
+        LOGGER.logStatus("Moving KernelHaven log to common output directory");
+        File logDir = new File(workDir, "log");
+        File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
+        File targetLogDir = new File(pathToTargetDir.toFile().getParentFile().getParentFile(), "log");
+        if(targetLogDir.mkdir()) {
+            LOGGER.logInfo("Log dir created under " + targetLogDir);
+        }
+        if (logFiles == null || logFiles.length == 0) {
+            LOGGER.logWarning("NO LOG FILE IN " + logDir.getAbsolutePath());
+        } else {
+            if (logFiles.length > 1) {
+                LOGGER.logWarning("FOUND MORE THAN ONE LOG FILE IN " + outputDir.getAbsolutePath());
+            }
+            try {
+                LOGGER.logInfo("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetLogDir);
+                Files.move(logFiles[0].toPath(), Paths.get(targetLogDir.getAbsolutePath(), commitId + ".log"));
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to move the log file of the analysis: ", e);
+            }
+        }
+
+        if (prepareFail.exists()) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> PREPARE_FAILED.txt", pathToMetaDir.toFile());
+            LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions are not complete!");
+        }
+
+        if (hasError) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", pathToMetaDir.toFile());
+            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
+                try {
+                    Files.delete(collection_dir.toPath());
+                } catch (IOException e) {
+                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
+                }
+            }
+        } else {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> SUCCESS.txt", pathToMetaDir.toFile());
+        }
+
         LOGGER.logInfo("...done.");
     }
 
@@ -194,6 +266,65 @@ public class AnalysisTask implements Runnable {
         }
     }
 
+    private void adjustMakefiles(File dir) {
+        LOGGER.logInfo("Adjusting Makefiles in " + dir);
+        try {
+            final Stream<Path> makefiles = Files.find(dir.toPath(),
+                    Integer.MAX_VALUE,
+                    (path, basicFileAttributes) -> path.toFile().isFile() && path.toFile().getName().contains("Makefile"),
+                    FileVisitOption.FOLLOW_LINKS);
+            makefiles.forEach(this::removeErrorFlags);
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to search for Makefiles: ", e);
+            quitOnError();
+        }
+    }
+
+    private void removeErrorFlags(Path pathToFile) {
+        LOGGER.logDebug("Adjusting Makefile: " + pathToFile);
+        List<String> lines = null;
+        // Read the file's content
+        try(BufferedReader reader = new BufferedReader(new FileReader(pathToFile.toFile()))) {
+            lines = reader.lines().collect(Collectors.toList());
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to read Makefile: " + pathToFile, e);
+            quitOnError();
+        }
+        if (lines == null) {
+            LOGGER.logError("The file's content is null: " + pathToFile);
+            quitOnError();
+        }
+
+        // Remove all error flags
+        List<String> fixedLines = new ArrayList<>(Objects.requireNonNull(lines).size());
+        for (String line : lines) {
+            // Replace "-Wall" with "-Wno-error"
+            line = line.replaceAll("-Wall", "-w");
+
+            // Note: It seems that setting '-w' is the only fix we need. Additionally, the other 'fixes' can break the
+            // Makefile in some cases
+            // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
+            // line = line.replaceAll("-Werror=", "-Wno-error=");
+            // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
+            // line = line.replaceAll("(?!(-Wno-error|-Wp))-W", "-Wno-error=");
+            // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with ""
+            // line = line.replaceAll("-Wno-error=[\\S]+=\\$\\{[\\S]+}", "");
+            // line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
+            fixedLines.add(line);
+        }
+
+        // Write the content
+        try(BufferedWriter writer = new BufferedWriter(new FileWriter(pathToFile.toFile()))) {
+            for (String line : fixedLines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to write adjusted Makefile " + pathToFile, e);
+            quitOnError();
+        }
+    }
+
     private void checkBlocker(File dir) {
         LOGGER.logInfo("Checking block of directory " + dir);
         File blocker = new File(dir, "BLOCKER.txt");
@@ -217,7 +348,4 @@ public class AnalysisTask implements Runnable {
         }
     }
 
-    private static void logError(Path dir, String commitId) {
-        EXECUTOR.execute("echo \"" + commitId + " \" >> ERROR.txt", dir.toFile());
-    }
 }

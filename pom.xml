@@ -134,5 +134,10 @@
             <artifactId>kconfigreader</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>net.ssehub.kernel_haven</groupId>
+            <artifactId>busyboot</artifactId>
+            <version>1.0.0</version>
+        </dependency>
     </dependencies>
 </project>
