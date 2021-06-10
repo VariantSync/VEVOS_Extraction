@@ -29,6 +29,7 @@ public class AnalysisTask implements Runnable {
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
     private final static String INCOMPLETE_PC_COMMIT_FILE = "INCOMPLETE_PC_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
+    private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
     private static int existingTasksCount = 0;
@@ -233,6 +234,7 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             EXECUTOR.execute("git log --pretty=%P -n 1 " + commitId + " >> " + COMMIT_PARENTS_FILE, collection_dir);
+            EXECUTOR.execute("git log --format=%B -n 1 " + commitId + " >> " + COMMIT_MESSAGE_FILE, collection_dir);
             if (prepareFail.exists()) {
                 LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions may not be correct!");
                 EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
