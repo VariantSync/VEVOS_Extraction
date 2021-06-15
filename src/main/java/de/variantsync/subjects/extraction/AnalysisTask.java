@@ -26,7 +26,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public class AnalysisTask implements Runnable {
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
-    private final static String INCOMPLETE_PC_COMMIT_FILE = "INCOMPLETE_PC_COMMITS.txt";
+    private final static String INCOMPLETE_PC_COMMIT_FILE = "PARTIAL_SUCCESS_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final Logger LOGGER = Logger.get();
