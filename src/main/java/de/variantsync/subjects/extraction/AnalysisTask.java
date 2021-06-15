@@ -14,10 +14,9 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -106,13 +105,13 @@ public class AnalysisTask implements Runnable {
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName(), prepareFail);
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit, prepareFail);
                 }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName(), prepareFail);
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit, prepareFail);
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                         LOGGER.logStatus("Pushing result to remote repository.");
@@ -158,7 +157,8 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId, File prepareFail) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, RevCommit commit, File prepareFail) {
+        String commitId = commit.getName();
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
@@ -233,8 +233,9 @@ public class AnalysisTask implements Runnable {
                 }
             }
         } else {
-            EXECUTOR.execute("git log --pretty=%P -n 1 " + commitId + " >> " + COMMIT_PARENTS_FILE, collection_dir);
-            EXECUTOR.execute("git log --format=%B -n 1 " + commitId + " >> " + COMMIT_MESSAGE_FILE, collection_dir);
+            Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName).reduce((s, s2) -> s + " " + s2);
+            parentIds.ifPresent(s -> EXECUTOR.execute("echo " + s + " >> " + COMMIT_PARENTS_FILE, collection_dir));
+            EXECUTOR.execute("echo \"" + commit.getFullMessage() + "\" >> " + COMMIT_MESSAGE_FILE, collection_dir);
             if (prepareFail.exists()) {
                 LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions may not be correct!");
                 EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
