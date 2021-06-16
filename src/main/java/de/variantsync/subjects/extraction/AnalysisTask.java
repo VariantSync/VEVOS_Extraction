@@ -254,7 +254,7 @@ public class AnalysisTask implements Runnable {
                 LOGGER.logException("Was not able to write " + pathToCommitFile, e);
             }
             if (prepareFail.exists()) {
-                LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions may not be correct!");
+                LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
                 EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
             } else {
                 EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToMetaDir.toFile());
