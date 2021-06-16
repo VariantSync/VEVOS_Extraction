@@ -239,8 +239,20 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName).reduce((s, s2) -> s + " " + s2);
-            parentIds.ifPresent(s -> EXECUTOR.execute("echo " + s + " >> " + COMMIT_PARENTS_FILE, collection_dir));
-            EXECUTOR.execute("echo \"" + commit.getFullMessage() + "\" >> " + COMMIT_MESSAGE_FILE, collection_dir);
+            if(parentIds.isPresent()) {
+                Path pathToParentsFile = collection_dir.toPath().resolve(COMMIT_PARENTS_FILE);
+                try (BufferedWriter bw = new BufferedWriter(new FileWriter(pathToParentsFile.toFile()))){
+                    bw.write(parentIds.get());
+                } catch (IOException e) {
+                    LOGGER.logException("Was not able to write " + pathToParentsFile, e);
+                }
+            }
+            Path pathToCommitFile = collection_dir.toPath().resolve(COMMIT_MESSAGE_FILE);
+            try (BufferedWriter bw = new BufferedWriter(new FileWriter(pathToCommitFile.toFile()))){
+                bw.write(commit.getFullMessage());
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to write " + pathToCommitFile, e);
+            }
             if (prepareFail.exists()) {
                 LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions may not be correct!");
                 EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
