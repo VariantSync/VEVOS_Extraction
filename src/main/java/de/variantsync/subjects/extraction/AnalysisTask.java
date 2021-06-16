@@ -182,6 +182,11 @@ public class AnalysisTask implements Runnable {
             }
         } else {
             LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            for (File f : resultFiles) {
+                LOGGER.logError(f.getAbsolutePath());
+            }
+            LOGGER.logWarning("Cleaning output directory...");
+            EXECUTOR.execute("rm -f ./*", outputDir);
             hasError = true;
         }
 
