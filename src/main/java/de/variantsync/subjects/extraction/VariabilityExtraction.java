@@ -28,7 +28,7 @@ public class VariabilityExtraction {
             = new Setting<>("working_dir_name", Setting.Type.STRING, false, "extraction-results", "" +
             "Name of the directory in which the analysis results and temporary files are stored.");
     public static final @NonNull Setting<@Nullable String> URL_OF_SOURCE_REPO
-            = new Setting<>("source_repo_url", Setting.Type.STRING, true, null,
+            = new Setting<>("source_repo_url", Setting.Type.STRING, false, null,
             "URL of the git repository that manages the sources of the investigated SPL.");
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +

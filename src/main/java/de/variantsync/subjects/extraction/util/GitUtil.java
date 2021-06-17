@@ -45,6 +45,12 @@ public class GitUtil {
                 LOGGER.logStatus("Second commit id " + lastCommitId + ".");
             }
 
+            if (firstCommitObjId == null || lastCommitObjId == null) {
+                LOGGER.logError("Repository does not contain the specified ids " + firstCommitId + " " + lastCommitId);
+                gitRepo.close();
+                throw new RuntimeException();
+            }
+
             // Filter all commits not in the specified range of commits and add them to the list of commits
             gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call().forEach(commits::add);
             commits.add(revWalk.parseCommit(firstCommitObjId));
@@ -54,6 +60,7 @@ public class GitUtil {
             // Add all commits, if not commit range was specified
             commitIterable.forEach(commits::add);
         }
+        gitRepo.close();
         LOGGER.logInfo("" + commits.size() + " selected for analysis.");
         Collections.reverse(commits);
         return commits;
