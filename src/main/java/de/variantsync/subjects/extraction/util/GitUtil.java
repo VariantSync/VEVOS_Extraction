@@ -25,10 +25,8 @@ public class GitUtil {
         Git gitRepo = initGitForRepo(repoDir);
         LOGGER.logInfo("Retrieving commits in repo...");
         List<RevCommit> commits = new LinkedList<>();
-        if (firstCommitId != null && lastCommitId != null) {
-            LOGGER.logInfo("Commit range specified...filtering commits.");
+        if (firstCommitId != null) {
             ObjectId firstCommitObjId = gitRepo.getRepository().resolve(firstCommitId);
-            ObjectId lastCommitObjId = gitRepo.getRepository().resolve(lastCommitId);
             RevWalk revWalk = new RevWalk(gitRepo.getRepository());
 
             // Check whether the given ids were revision tags and retrieve the associated commit if so
@@ -38,21 +36,28 @@ public class GitUtil {
             } catch (MissingObjectException | IncorrectObjectTypeException e) {
                 LOGGER.logStatus("First commit id: " + firstCommitId + ".");
             }
-            try {
-                lastCommitObjId = revWalk.parseTag(lastCommitObjId).getObject().getId();
-                LOGGER.logStatus("The second commit id " + lastCommitId + " is a revision tag. Retrieved commit id: " + lastCommitObjId.name() + ".");
-            } catch (MissingObjectException | IncorrectObjectTypeException e) {
-                LOGGER.logStatus("Second commit id " + lastCommitId + ".");
+
+            if (lastCommitId != null) {
+                ObjectId lastCommitObjId = gitRepo.getRepository().resolve(lastCommitId);
+                try {
+                    lastCommitObjId = revWalk.parseTag(lastCommitObjId).getObject().getId();
+                    LOGGER.logStatus("The second commit id " + lastCommitId + " is a revision tag. Retrieved commit id: " + lastCommitObjId.name() + ".");
+                } catch (MissingObjectException | IncorrectObjectTypeException e) {
+                    LOGGER.logStatus("Second commit id " + lastCommitId + ".");
+                }
+                if (firstCommitObjId == null || lastCommitObjId == null) {
+                    LOGGER.logError("Repository does not contain the specified ids " + firstCommitId + " " + lastCommitId);
+                    gitRepo.close();
+                    throw new RuntimeException();
+                }
+
+                // Filter all commits not in the specified range of commits and add them to the list of commits
+                LOGGER.logInfo("Commit range specified...filtering commits.");
+                gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call().forEach(commits::add);
+            } else {
+                LOGGER.logStatus("Only one commit id specified, only processing one commit.");
             }
 
-            if (firstCommitObjId == null || lastCommitObjId == null) {
-                LOGGER.logError("Repository does not contain the specified ids " + firstCommitId + " " + lastCommitId);
-                gitRepo.close();
-                throw new RuntimeException();
-            }
-
-            // Filter all commits not in the specified range of commits and add them to the list of commits
-            gitRepo.log().addRange(firstCommitObjId, lastCommitObjId).call().forEach(commits::add);
             commits.add(revWalk.parseCommit(firstCommitObjId));
         } else {
             LOGGER.logInfo("Considering all commits...");

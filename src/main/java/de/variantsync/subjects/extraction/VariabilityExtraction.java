@@ -66,10 +66,6 @@ public class VariabilityExtraction {
             firstCommit = args[1];
             if (args.length > 2) {
                 lastCommit = args[2];
-            } else {
-                LOGGER.logError("A first commit id " + firstCommit + " was provided, but a last commit id is " +
-                        "required as well if only a specific range of commits is to be investigated...");
-                quitOnError();
             }
         }
 
