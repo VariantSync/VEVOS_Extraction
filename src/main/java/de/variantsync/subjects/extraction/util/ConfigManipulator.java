@@ -39,7 +39,7 @@ public class ConfigManipulator {
                 lineBuilder.append(" = ");
                 lineBuilder.append(value);
                 changedLines.add(lineBuilder.toString());
-                LOGGER.logInfo("Changed line '" + line + "' to '" + lineBuilder.toString() + "'.");
+                LOGGER.logInfo("Changed line '" + line + "' to '" + lineBuilder + "'.");
                 somethingChanged = true;
             } else {
                 changedLines.add(line);

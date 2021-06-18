@@ -14,9 +14,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,8 +25,9 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 public class AnalysisTask implements Runnable {
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
-    private final static String INCOMPLETE_PC_COMMIT_FILE = "INCOMPLETE_PC_COMMITS.txt";
+    private final static String INCOMPLETE_PC_COMMIT_FILE = "PARTIAL_SUCCESS_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
+    private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
     private static int existingTasksCount = 0;
@@ -75,6 +74,7 @@ public class AnalysisTask implements Runnable {
         }
 
         int count = 1;
+        // Process commits assigned to this task
         for (RevCommit commit : commits) {
             LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
             LOGGER.logStatus("Commit number " + count + " of " + commits.size());
@@ -105,13 +105,13 @@ public class AnalysisTask implements Runnable {
             if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit.getName(), prepareFail);
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit, prepareFail);
                 }
             } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                 Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
                 // This part need to be synchronized or it might break if multiple tasks are used
                 synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit.getName(), prepareFail);
+                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit, prepareFail);
                     commitResults(pathToTargetDir.toFile(), commit);
                     if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
                         LOGGER.logStatus("Pushing result to remote repository.");
@@ -157,51 +157,64 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, String commitId, File prepareFail) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, RevCommit commit, File prepareFail) {
+        String commitId = commit.getName();
         LOGGER.logStatus("Moving result to common output directory.");
         File collection_dir = pathToTargetDir.toFile();
         if (collection_dir.mkdir()) {
             LOGGER.logDebug("Created sub-dir for collecting the results for commit " + collection_dir.getName());
         }
 
-        // Move the results of the analysis to the collected output directory according to the current commit
         File outputDir = new File(workDir, "output");
-        File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
-        boolean hasError = false;
-
-        if (resultFiles == null || resultFiles.length == 0) {
-            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
-            hasError = true;
-        } else if (resultFiles.length == 1) {
-            try {
-                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
-                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
-            } catch (IOException e) {
-                LOGGER.logException("Was not able to move the result file of the analysis: ", e);
-            }
-        } else {
-            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
-            hasError = true;
-        }
+        // Move the results of the analysis to the collected output directory according to the current commit
+        boolean hasError = movePresenceConditions(pathToTargetDir, outputDir);
 
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
-        File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
-        if (vmCache.exists()) {
-            try {
-                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + pathToTargetDir);
-                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
-            } catch (IOException e) {
-                LOGGER.logException("Was not able to move the cached variability model: ", e);
-                hasError = true;
-            }
-        } else {
-            LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
-            hasError = true;
-        }
+        hasError = hasError | moveFeatureModel(workDir, pathToTargetDir);
 
         // Move the log to the common output directory
         LOGGER.logStatus("Moving KernelHaven log to common output directory");
+        moveKernelHavenLog(workDir, pathToTargetDir, commitId, outputDir);
+
+        if (hasError) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> " + ERROR_COMMIT_FILE, pathToMetaDir.toFile());
+            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
+                try {
+                    Files.delete(collection_dir.toPath());
+                } catch (IOException e) {
+                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
+                }
+            }
+        } else {
+            writeParents(commit, collection_dir);
+            writeToFile(collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
+            if (prepareFail.exists()) {
+                LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
+                EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
+            } else {
+                EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToMetaDir.toFile());
+            }
+        }
+
+        LOGGER.logInfo("...done.");
+    }
+
+    private static void writeToFile(File collection_dir, String fileName, String fullMessage) {
+        Path pathToCommitFile = collection_dir.toPath().resolve(fileName);
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(pathToCommitFile.toFile()))) {
+            bw.write(fullMessage);
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to write " + pathToCommitFile, e);
+        }
+    }
+
+    private static void writeParents(RevCommit commit, File collection_dir) {
+        Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName).reduce((s, s2) -> s + " " + s2);
+        parentIds.ifPresent(s -> writeToFile(collection_dir, COMMIT_PARENTS_FILE, s));
+    }
+
+    private static void moveKernelHavenLog(File workDir, Path pathToTargetDir, String commitId, File outputDir) {
         File logDir = new File(workDir, "log");
         File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
         File targetLogDir = new File(pathToTargetDir.toFile().getParentFile().getParentFile(), "log");
@@ -221,27 +234,49 @@ public class AnalysisTask implements Runnable {
                 LOGGER.logException("Was not able to move the log file of the analysis: ", e);
             }
         }
+    }
 
-        if (hasError) {
-            EXECUTOR.execute("echo \"" + commitId + " \" >> " + ERROR_COMMIT_FILE, pathToMetaDir.toFile());
-            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
-                try {
-                    Files.delete(collection_dir.toPath());
-                } catch (IOException e) {
-                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
-                }
+    private static boolean moveFeatureModel(File workDir, Path pathToTargetDir) {
+        boolean hasError = false;
+        File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
+        if (vmCache.exists()) {
+            try {
+                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + pathToTargetDir);
+                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to move the cached variability model: ", e);
+                hasError = true;
             }
         } else {
-            EXECUTOR.execute("git log --pretty=%P -n 1 " + commitId + " >> " + COMMIT_PARENTS_FILE, collection_dir);
-            if (prepareFail.exists()) {
-                LOGGER.logWarning("The 'make allyesconfig prepare' call failed, the extracted presence conditions may not be correct!");
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
-            } else {
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToMetaDir.toFile());
-            }
+            LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
+            hasError = true;
         }
+        return hasError;
+    }
 
-        LOGGER.logInfo("...done.");
+    private static boolean movePresenceConditions(Path pathToTargetDir, File outputDir) {
+        boolean hasError = false;
+        File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+        if (resultFiles == null || resultFiles.length == 0) {
+            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            hasError = true;
+        } else if (resultFiles.length == 1) {
+            try {
+                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
+                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
+            } catch (IOException e) {
+                LOGGER.logException("Was not able to move the result file of the analysis: ", e);
+            }
+        } else {
+            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            for (File f : resultFiles) {
+                LOGGER.logError(f.getAbsolutePath());
+            }
+            LOGGER.logWarning("Cleaning output directory...");
+            EXECUTOR.execute("rm -f ./*", outputDir);
+            hasError = true;
+        }
+        return hasError;
     }
 
     private static void commitResults(File workingDirectory, RevCommit originalCommit) {
