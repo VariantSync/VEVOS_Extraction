@@ -33,9 +33,6 @@ public class VariabilityExtraction {
     public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
             = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
             "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
-    public static final @NonNull EnumSetting<EResultCollection> RESULT_COLLECTION_TYPE
-            = new EnumSetting<>("result.collection_type", EResultCollection.class, false, EResultCollection.NONE,
-            "The way in which the results of several analysis tasks are collected, e.g., in a common output directory");
     public static final @NonNull Setting<@Nullable String> RESULT_REPO_URL
             = new Setting<>("result.repo.url", Setting.Type.STRING, false, null,
             "The url to the repository to which the results are pushed to if result.collection_type is set to 'Repository'");
@@ -50,7 +47,6 @@ public class VariabilityExtraction {
             "The timeout for the KernelHaven execution in seconds.");
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
-    private static EResultCollection resultCollectionType;
 
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
@@ -72,10 +68,6 @@ public class VariabilityExtraction {
         // Load the configuration
         Configuration config = getConfiguration(propertiesFile);
         LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
-        resultCollectionType = config.getValue(RESULT_COLLECTION_TYPE);
-        if (resultCollectionType != EResultCollection.NONE) {
-            LOGGER.logDebug("Analysis configured to collect the output of the started tasks.");
-        }
 
         // Clone the SPL if necessary and return the File that points to the directory
         File splDir = setUpSPLDirectory(config);
@@ -95,7 +87,7 @@ public class VariabilityExtraction {
         LOGGER.logStatus("Scheduling tasks...");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config, config.getValue(EXTRACTION_TIMEOUT)));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config.getValue(EXTRACTION_TIMEOUT)));
         }
         LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
@@ -142,7 +134,6 @@ public class VariabilityExtraction {
             config.registerSetting(WORKING_DIR_NAME);
             config.registerSetting(URL_OF_SOURCE_REPO);
             config.registerSetting(NUMBER_OF_THREADS);
-            config.registerSetting(RESULT_COLLECTION_TYPE);
             config.registerSetting(RESULT_REPO_URL);
             config.registerSetting(RESULT_REPO_COMMITTER_NAME);
             config.registerSetting(RESULT_REPO_COMMITTER_EMAIL);
@@ -178,27 +169,13 @@ public class VariabilityExtraction {
         LOGGER.logStatus("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
-        if (resultCollectionType != EResultCollection.NONE) {
-            File overallOutputDirectory = new File(workingDirectory, "output");
-            if (!overallOutputDirectory.exists()) {
-                if (overallOutputDirectory.mkdirs()) {
-                    LOGGER.logInfo("Created common output directory.");
-                    if (resultCollectionType == EResultCollection.LOCAL_REPOSITORY || resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
-                        // Initialize a git repository
-                        EXECUTOR.execute("git init", overallOutputDirectory);
-                        EXECUTOR.execute("git config user.name \"" + config.getValue(RESULT_REPO_COMMITTER_NAME) + "\"", overallOutputDirectory);
-                        EXECUTOR.execute("git config user.email \"" + config.getValue(RESULT_REPO_COMMITTER_EMAIL) + "\"", overallOutputDirectory);
-                        EXECUTOR.execute("touch init", overallOutputDirectory);
-                        EXECUTOR.execute("git add .", overallOutputDirectory);
-                        EXECUTOR.execute("git commit -m \"Initial commit\"", overallOutputDirectory);
-                        if (resultCollectionType == EResultCollection.REMOTE_REPOSITORY) {
-                            EXECUTOR.execute("git remote add origin " + config.getValue(RESULT_REPO_URL), overallOutputDirectory);
-                            EXECUTOR.execute("git push -uf origin main", overallOutputDirectory);
-                        }
-                    }
-                }
+        File overallOutputDirectory = new File(workingDirectory, "output");
+        if (!overallOutputDirectory.exists()) {
+            if (overallOutputDirectory.mkdirs()) {
+                LOGGER.logInfo("Created common output directory.");
             }
         }
+
 
         for (int i = 0; i < numberOfThreads; i++) {
             File subDir = new File(workingDirectory, "run-" + i);
