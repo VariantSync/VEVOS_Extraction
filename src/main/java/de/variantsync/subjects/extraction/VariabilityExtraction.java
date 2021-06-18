@@ -154,7 +154,9 @@ public class VariabilityExtraction {
             LOGGER.logStatus("Cloning SPL...");
             LOGGER.logWarning("Depending on the download speed this might take several minutes.");
             LOGGER.logWarning("Consider cloning the repository manually for a better estimate of the download time.");
-            if (!EXECUTOR.execute("git clone " + config.getValue(URL_OF_SOURCE_REPO), splDir.getParentFile())) {
+            File executionDir = splDir.getParentFile() == null ? new File(System.getProperty("user.dir")) : splDir.getParentFile();
+
+            if (!EXECUTOR.execute("git clone " + config.getValue(URL_OF_SOURCE_REPO), executionDir)) {
                 quitOnError();
             }
         }
