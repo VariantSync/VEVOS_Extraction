@@ -1,12 +1,14 @@
 package de.variantsync.subjects.extraction;
 
-import de.variantsync.subjects.extraction.kh.CommitUsabilityAnalysis;
 import de.variantsync.subjects.extraction.util.ConfigManipulator;
 import de.variantsync.subjects.extraction.util.ShellExecutor;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
+import net.ssehub.kernel_haven.config.Setting;
 import net.ssehub.kernel_haven.util.Logger;
+import net.ssehub.kernel_haven.util.null_checks.NonNull;
+import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.*;
@@ -23,6 +25,9 @@ import static de.variantsync.subjects.extraction.VariabilityExtraction.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
+    public static final @NonNull Setting<@Nullable String> WORK_DIR
+            = new Setting<>("working_directory", Setting.Type.STRING, false, null, "" +
+            "Path to the working directory.");
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
     private final static String INCOMPLETE_PC_COMMIT_FILE = "PARTIAL_SUCCESS_COMMITS.txt";
@@ -36,16 +41,14 @@ public class AnalysisTask implements Runnable {
     private final List<RevCommit> commits;
     private final File parentPropertiesFile;
     private final String splName;
-    private final EResultCollection collectOutput;
     private final long timeout;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, Configuration config, long timeout) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, long timeout) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
-        this.collectOutput = config.getValue(RESULT_COLLECTION_TYPE);
         this.timeout = timeout;
     }
 
@@ -102,23 +105,9 @@ public class AnalysisTask implements Runnable {
             Thread.currentThread().setName(threadName);
             LOGGER.logStatus("KernelHaven execution finished.");
 
-            if (collectOutput == EResultCollection.COLLECTED_DIRECTORIES) {
-                Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
-                synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit, prepareFail);
-                }
-            } else if (collectOutput == EResultCollection.LOCAL_REPOSITORY || collectOutput == EResultCollection.REMOTE_REPOSITORY) {
-                Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
-                // This part need to be synchronized or it might break if multiple tasks are used
-                synchronized (AnalysisTask.class) {
-                    moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir, commit, prepareFail);
-                    commitResults(pathToTargetDir.toFile(), commit);
-                    if (collectOutput == EResultCollection.REMOTE_REPOSITORY) {
-                        LOGGER.logStatus("Pushing result to remote repository.");
-                        // Push the changes
-                        EXECUTOR.execute("git push origin main", pathToTargetDir.toFile());
-                    }
-                }
+            Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
+            synchronized (AnalysisTask.class) {
+                moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit, prepareFail);
             }
 
             // Delete the blocker
@@ -145,7 +134,7 @@ public class AnalysisTask implements Runnable {
     private void prepareConfig(File workDir, File propertiesFile) throws SetUpException {
         ConfigManipulator manipulator = new ConfigManipulator(propertiesFile);
         // Change the paths to the required directories
-        manipulator.put(CommitUsabilityAnalysis.WORK_DIR.getKey(), workDir.getAbsolutePath());
+        manipulator.put(WORK_DIR.getKey(), workDir.getAbsolutePath());
         manipulator.put(DefaultSettings.SOURCE_TREE.getKey(), new File(workDir, splName).getAbsolutePath());
         manipulator.put(DefaultSettings.RESOURCE_DIR.getKey(), new File(workDir, "res").getAbsolutePath());
         manipulator.put(DefaultSettings.OUTPUT_DIR.getKey(), new File(workDir, "output").getAbsolutePath());
@@ -218,7 +207,7 @@ public class AnalysisTask implements Runnable {
         File logDir = new File(workDir, "log");
         File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
         File targetLogDir = new File(pathToTargetDir.toFile().getParentFile().getParentFile(), "log");
-        if(targetLogDir.mkdir()) {
+        if (targetLogDir.mkdir()) {
             LOGGER.logInfo("Log dir created under " + targetLogDir);
         }
         if (logFiles == null || logFiles.length == 0) {
@@ -279,18 +268,6 @@ public class AnalysisTask implements Runnable {
         return hasError;
     }
 
-    private static void commitResults(File workingDirectory, RevCommit originalCommit) {
-        LOGGER.logStatus("Committing results to repository.");
-        // Save the commit which was just processed
-        EXECUTOR.execute("echo \"" + originalCommit.getName() + "\" > CURRENT_COMMIT.txt", workingDirectory);
-        // Save the message of the commit which was just processed
-        EXECUTOR.execute("echo \"" + originalCommit.getFullMessage() + "\" > COMMIT_MESSAGE.txt", workingDirectory);
-        // Add the changes to the results
-        EXECUTOR.execute("git add .", workingDirectory);
-        // Commit the changes
-        EXECUTOR.execute("git commit -m \"" + originalCommit.getName() + "\"", workingDirectory);
-    }
-
     private void createBlocker(File dir) {
         LOGGER.logInfo("Blocking directory " + dir);
         File blocker = new File(dir, "BLOCKER.txt");
@@ -324,7 +301,7 @@ public class AnalysisTask implements Runnable {
         LOGGER.logDebug("Adjusting Makefile: " + pathToFile);
         List<String> lines = null;
         // Read the file's content
-        try(BufferedReader reader = new BufferedReader(new FileReader(pathToFile.toFile()))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(pathToFile.toFile()))) {
             lines = reader.lines().collect(Collectors.toList());
         } catch (IOException e) {
             LOGGER.logException("Was not able to read Makefile: " + pathToFile, e);
@@ -341,20 +318,12 @@ public class AnalysisTask implements Runnable {
             // Replace "-Wall" with "-Wno-error"
             line = line.replaceAll("-Wall", "-w");
 
-            // Note: It seems that setting '-w' is the only fix we need. Additionally, the other 'fixes' can break the
-            // Makefile in some cases
-            // Replace "-Werror=SOMETHING" with "-Wno-error=SOMETHING"
-            // line = line.replaceAll("-Werror=", "-Wno-error=");
-            // Replace all remaining error flags, that follow the pattern "-WSOMETHING", with "-Wno-error=SOMETHING"
-            // line = line.replaceAll("(?!(-Wno-error|-Wp))-W", "-Wno-error=");
-            // Replace all cases with the construct "-Wno-error=SOMETHING=VALUE" with ""
-            // line = line.replaceAll("-Wno-error=[\\S]+=\\$\\{[\\S]+}", "");
-            // line = line.replaceAll("-Wno-error=[\\S]+=[\\S]+", "");
+            // Note: It seems that setting '-w' is the only fix we need. Other 'fixes' might break a Makefile
             fixedLines.add(line);
         }
 
         // Write the content
-        try(BufferedWriter writer = new BufferedWriter(new FileWriter(pathToFile.toFile()))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(pathToFile.toFile()))) {
             for (String line : fixedLines) {
                 writer.write(line);
                 writer.newLine();
