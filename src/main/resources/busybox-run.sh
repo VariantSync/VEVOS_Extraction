@@ -1,4 +1,10 @@
 #!/bin/bash
+# This script can be used to quickly run the variability extraction for BusyBox. It is meant to be copied to the working directory. The working 
+# directory should contain the VariabilityExtraction repo and the SPL repo, i.e.,
+# WORKDIR
+# | -- VariabilityExtraction
+# | -- busybox
+# | -- busybox-run.sh
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing variability extraction of BusyBox."

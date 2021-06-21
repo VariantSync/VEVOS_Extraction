@@ -1,4 +1,10 @@
 #! /bin/bash
+# This script can be used to quickly run the variability extraction for Linux. It is meant to be copied to the working directory. The working 
+# directory should contain the VariabilityExtraction repo and the SPL repo, i.e.,
+# WORKDIR
+# | -- VariabilityExtraction
+# | -- linux
+# | -- linux-run.sh
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing variability extraction of Linux."

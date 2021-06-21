@@ -18,10 +18,9 @@ RUN ls .
 RUN echo "Building JAR"
 RUN mvn package
 RUN echo "Copying resources required to run the extraction."
-RUN cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_BusyBox.properties src/main/resources/busybox-run.sh ..
+RUN cp target/VariabilityExtraction-*-jar-with* src/main/resources/* ..
 WORKDIR /variability-extraction
-RUN echo "Cloning BusyBox"
-RUN git clone https://git.busybox.net/busybox/
+RUN chmod +x start-extraction.sh
 RUN echo "Done."
 RUN ls .
 
@@ -39,5 +38,4 @@ RUN rm -rf VariabilityExtraction
 RUN gcc --version
 RUN java -version
 
-
-CMD ["./busybox-run.sh"]
+ENTRYPOINT ["./start-extraction.sh"]
