@@ -21,7 +21,8 @@ RUN echo "Copying resources required to run the extraction."
 RUN cp target/VariabilityExtraction-*-jar-with* src/main/resources/* ..
 WORKDIR /variability-extraction
 RUN chmod +x start-extraction.sh
-RUN echo "Done."
+RUN echo "Creating volume"
+VOLUME /variability-extraction/extraction-results
 RUN ls .
 
 # Install jdk-8 and gcc-4.4

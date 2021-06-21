@@ -20,3 +20,4 @@ __pycache__
 */latex/*.synctex.gz
 /out/
 /src/main/resources/META-INF/
+extraction-results/

@@ -1,3 +1,2 @@
 #! /bin/bash
-docker build -t busybox-extraction - < Dockerfile.busybox
-docker run busybox-extraction
+docker run -v "$(pwd)/extraction-results/busybox:/variability-extraction/extraction-results" variability-extraction busybox
