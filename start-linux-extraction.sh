@@ -1,0 +1,17 @@
+#! /bin/bash
+docker run \
+--name variability-extraction-linux \
+--mount source=linux-extraction,target=/variability-extraction/extraction-results/output \
+variability-extraction linux
+
+echo "Stopping linux-extraction"
+docker container stop variability-extraction-linux
+
+echo "Copying data from the Docker container to ./extraction-results/linux"
+docker run --rm --volumes-from variability-extraction-linux -v "$(pwd)/extraction-results/linux":/data ubuntu cp -rf /variability-extraction /data/
+
+echo "Removing Docker container and volume"
+docker container rm variability-extraction-linux
+docker volume rm linux-extraction
+
+echo "Done."
