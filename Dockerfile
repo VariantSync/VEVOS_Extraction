@@ -22,7 +22,7 @@ RUN cp target/VariabilityExtraction-*-jar-with* src/main/resources/* ..
 WORKDIR /variability-extraction
 RUN chmod +x start-extraction.sh
 RUN echo "Creating volume"
-VOLUME /variability-extraction/extraction-results
+VOLUME /variability-extraction/extraction-results/output
 RUN ls .
 
 # Install jdk-8 and gcc-4.4
