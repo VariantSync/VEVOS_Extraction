@@ -18,7 +18,7 @@ RUN ls .
 RUN echo "Building JAR"
 RUN mvn package
 RUN echo "Copying resources required to run the extraction."
-RUN cp target/VariabilityExtraction-*-jar-with* src/main/resources/* ..
+RUN cp target/VariabilityExtraction-*-jar-with* docker-resources/* ..
 WORKDIR /variability-extraction
 RUN chmod +x start-extraction.sh
 RUN echo "Creating volume"
