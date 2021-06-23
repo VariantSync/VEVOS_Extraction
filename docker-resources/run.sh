@@ -17,9 +17,6 @@ cp target/VariabilityExtraction-*-jar-with* docker-resources/* ..
 cd ..
 echo ""
 
-echo "Files in extraction-results"
-ls -l extraction-results
-
 if [ "$1" = 'busybox' ]
 then
     git clone --progress https://git.busybox.net/busybox/
