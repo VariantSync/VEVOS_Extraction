@@ -4,7 +4,7 @@
 # WORKDIR
 # | -- VariabilityExtraction
 # | -- busybox
-# | -- busybox-run.sh
+# | -- busybox-extract.sh
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing variability extraction of BusyBox."
