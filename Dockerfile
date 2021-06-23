@@ -4,8 +4,8 @@ FROM ubuntu:20.04
 # Create a user
 ARG USER_ID
 ARG GROUP_ID
-#RUN addgroup --gid $GROUP_ID user
-RUN adduser --disabled-password  --home /home/user --gecos '' --uid $USER_ID --ingroup root user
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password  --home /home/user --gecos '' --uid $USER_ID --ingroup user user
 
 # Prepare the environment
 RUN apt-get update \
@@ -33,9 +33,10 @@ RUN gcc --version
 RUN java -version
 RUN apt-get install -y --no-install-recommends maven
 
-COPY ./docker-resources/start-extraction.sh /home/user/
-RUN chown user /home/user -R
+COPY docker-resources/run.sh /home/user/
+RUN mkdir -p /home/user/extraction-results/output
+RUN chown user:user /home/user -R
 WORKDIR /home/user
-RUN chmod +x start-extraction.sh
+RUN chmod +x run.sh
 
-ENTRYPOINT ["./start-extraction.sh"]
+ENTRYPOINT ["./run.sh"]

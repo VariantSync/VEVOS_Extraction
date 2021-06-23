@@ -11,6 +11,12 @@ The extracted dataset comprises the source code of the different variants, their
 form of git branches, matchings of the cloned artifacts, and feature mappings for the artefacts.
 </p>
 
+## Docker
+```
+./start-extraction.sh linux|busybox [commitIdFrom] [commitIdTo]
+./stop-extraction.sh linux|busybox
+```
+
 ## Limitations
 ### SPL Versions
 Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract 
