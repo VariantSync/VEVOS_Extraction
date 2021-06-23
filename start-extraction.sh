@@ -38,6 +38,6 @@ then
     docker container rm variability-extraction-linux
     docker volume rm linux-extraction
 else
-    echo "Select a SPL to extract [ ./start-extraction-with-docker linux | ./start-extraction-with-docker busybox ]"
+    echo "Select a SPL to extract [ ./start-extraction.sh linux | ./start-extraction.sh busybox ]"
 fi
 echo "Done."
