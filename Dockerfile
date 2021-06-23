@@ -4,8 +4,8 @@ FROM ubuntu:20.04
 # Create a user
 ARG USER_ID
 ARG GROUP_ID
-#RUN addgroup --gid $GROUP_ID user
-RUN adduser --disabled-password  --home /home/user --gecos '' --uid $USER_ID --ingroup root user
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password  --home /home/user --gecos '' --uid $USER_ID --ingroup user user
 
 # Prepare the environment
 RUN apt-get update \

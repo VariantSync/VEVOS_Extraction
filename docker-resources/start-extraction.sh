@@ -7,6 +7,7 @@ cd /home/user || exit
 ls -l
 git clone --progress https://oauth2:XRzSBbQQyRfgEjJhFxr2@gitlab.informatik.hu-berlin.de/mse/VariantSync/VariabilityExtraction.git
 cd VariabilityExtraction || exit
+git checkout 44-docker-setup
 echo "Listing files in VariabilityExtraction"
 ls
 echo ""
@@ -18,8 +19,14 @@ echo ""
 echo "Copying resources"
 cp target/VariabilityExtraction-*-jar-with* docker-resources/* ..
 cd ..
+echo ""
+
+echo "Files in WORKDIR"
 ls .
 echo ""
+
+echo "Files in extraction-results"
+ls -l extraction-results
 
 if [ "$1" = 'busybox' ]
 then

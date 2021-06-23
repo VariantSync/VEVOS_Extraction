@@ -1,5 +1,6 @@
 #! /bin/bash
 docker run \
+--user "$(id -u)" \
 --name variability-extraction-linux \
 --mount source=linux-extraction,target=/variability-extraction/extraction-results/output \
 variability-extraction linux
