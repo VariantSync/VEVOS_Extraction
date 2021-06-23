@@ -7,9 +7,6 @@ cd /home/user || exit
 ls -l
 git clone --progress https://oauth2:XRzSBbQQyRfgEjJhFxr2@gitlab.informatik.hu-berlin.de/mse/VariantSync/VariabilityExtraction.git
 cd VariabilityExtraction || exit
-echo "Listing files in VariabilityExtraction"
-ls .
-echo ""
 
 echo "Building with Maven"
 mvn package || exit
@@ -18,10 +15,6 @@ echo ""
 echo "Copying resources"
 cp target/VariabilityExtraction-*-jar-with* docker-resources/* ..
 cd ..
-echo ""
-
-echo "Files in WORKDIR"
-ls .
 echo ""
 
 echo "Files in extraction-results"
