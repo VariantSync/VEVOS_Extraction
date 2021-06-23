@@ -28,17 +28,35 @@ echo ""
 echo "Files in extraction-results"
 ls -l extraction-results
 
-if [ "$1" = 'busybox' ]
+if [ "$1" == 'busybox' ]
 then
     git clone --progress https://git.busybox.net/busybox/
     echo "Executing variability extraction of BusyBox."
-    java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_BusyBox.properties 0ec52d438a41be92d2d8e8651242b4d9faf23a6c
-elif [ "$1" = 'linux' ]
+    if [ $# == 1 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_BusyBox.properties
+    elif [ $# == 2 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_BusyBox.properties "$2"
+    elif [ $# == 3 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_BusyBox.properties "$2" "$3"
+    fi
+elif [ "$1" == 'linux' ]
 then
     echo "Cloning Linux, this will take quite some time."
     git clone --progress https://github.com/torvalds/linux.git
     echo "Executing variability extraction of Linux."
-    java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties v4.1
+    if [ $# == 1 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties
+    elif [ $# == 2 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties "$2"
+    elif [ $# == 3 ]
+    then
+        java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties "$2" "$3"
+    fi
 else
     echo "Select a SPL to extract [ linux | busybox ]"
 fi
