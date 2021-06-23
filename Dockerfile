@@ -33,10 +33,10 @@ RUN gcc --version
 RUN java -version
 RUN apt-get install -y --no-install-recommends maven
 
-COPY ./docker-resources/start-extraction.sh /home/user/
+COPY docker-resources/run.sh /home/user/
 RUN mkdir -p /home/user/extraction-results/output
 RUN chown user:user /home/user -R
 WORKDIR /home/user
-RUN chmod +x start-extraction.sh
+RUN chmod +x run.sh
 
-ENTRYPOINT ["./start-extraction.sh"]
+ENTRYPOINT ["./run.sh"]

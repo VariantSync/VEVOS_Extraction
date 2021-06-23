@@ -58,5 +58,5 @@ then
         java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties "$2" "$3"
     fi
 else
-    echo "Select a SPL to extract [ linux | busybox ]"
+    echo "Select a SPL to extract from [ linux | busybox ]"
 fi
