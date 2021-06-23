@@ -3,7 +3,8 @@ echo "Stopping linux-extraction"
 docker container stop variability-extraction-linux
 
 echo "Copying data from the Docker container to ./extraction-results/linux"
-docker run --rm --volumes-from variability-extraction-linux -v "$(pwd)/extraction-results/linux":/data ubuntu cp -rf /variability-extraction /data/
+mkdir -p extraction-results/linux
+docker run --rm --volumes-from variability-extraction-linux --user "$(id -u)" -v "$(pwd)/extraction-results/linux":/home/$(id -u)/data ubuntu cp -rf /home/user/extraction-results ~/data || exit
 
 echo "Removing Docker container and volume"
 docker container rm variability-extraction-linux

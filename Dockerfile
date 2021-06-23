@@ -34,7 +34,8 @@ RUN java -version
 RUN apt-get install -y --no-install-recommends maven
 
 COPY ./docker-resources/start-extraction.sh /home/user/
-RUN chown user /home/user -R
+RUN mkdir -p /home/user/extraction-results/output
+RUN chown user:user /home/user -R
 WORKDIR /home/user
 RUN chmod +x start-extraction.sh
 
