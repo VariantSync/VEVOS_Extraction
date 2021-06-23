@@ -1,4 +1,10 @@
 #! /bin/bash
+#! /bin/bash
+# This script was written for development purposes. Its purpose is to set up the working directory for the variability extraction. 
+# WORKDIR
+# | -- VariabilityExtraction
+# | -- linux
+# | -- linux-debug.sh
 echo "Creating directory 'linux-analysis'"
 mkdir linux-analysis
 echo "Changing into directory linux-analysis"

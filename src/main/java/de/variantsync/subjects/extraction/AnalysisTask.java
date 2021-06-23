@@ -105,9 +105,9 @@ public class AnalysisTask implements Runnable {
             Thread.currentThread().setName(threadName);
             LOGGER.logStatus("KernelHaven execution finished.");
 
-            Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output", commit.getName());
+            Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
             synchronized (AnalysisTask.class) {
-                moveResultsToDirectory(workDir, pathToTargetDir, pathToTargetDir.getParent().getParent(), commit, prepareFail);
+                moveResultsToDirectory(workDir, pathToTargetDir, commit, prepareFail);
             }
 
             // Delete the blocker
@@ -122,7 +122,6 @@ public class AnalysisTask implements Runnable {
             EXECUTOR.execute("git clean -fdx", splDir);
 
             // Remove the temporary directory created by busyboot
-            // TODO: Move this to a customized variant of busyboot
             File tempBusyBootDirectory = new File(splDir.getParentFile(), "" + splDir.getName() + "UnchangedCopy");
             if (tempBusyBootDirectory.exists()) {
                 EXECUTOR.execute("rm -rf ../" + splDir.getName() + "UnchangedCopy", splDir);
@@ -146,43 +145,49 @@ public class AnalysisTask implements Runnable {
         manipulator.writeToFile();
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, Path pathToMetaDir, RevCommit commit, File prepareFail) {
+    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, RevCommit commit, File prepareFail) {
         String commitId = commit.getName();
         LOGGER.logStatus("Moving result to common output directory.");
-        File collection_dir = pathToTargetDir.toFile();
-        if (collection_dir.mkdir()) {
-            LOGGER.logDebug("Created sub-dir for collecting the results for commit " + collection_dir.getName());
+        File data_collection_dir = pathToTargetDir.resolve("data").resolve(commit.getName()).toFile();
+        File log_collection_dir = pathToTargetDir.resolve("log").toFile();
+
+        if (data_collection_dir.mkdirs()) {
+            LOGGER.logDebug("Created sub-dir for collecting the results for commit " + data_collection_dir.getName());
+        }
+
+        if (log_collection_dir.mkdirs()) {
+            LOGGER.logDebug("Created sub-dir for collecting the log for commit " + data_collection_dir.getName());
         }
 
         File outputDir = new File(workDir, "output");
         // Move the results of the analysis to the collected output directory according to the current commit
-        boolean hasError = movePresenceConditions(pathToTargetDir, outputDir);
+        boolean hasError = movePresenceConditions(outputDir, data_collection_dir);
 
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
-        hasError = hasError | moveFeatureModel(workDir, pathToTargetDir);
+        hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
 
         // Move the log to the common output directory
         LOGGER.logStatus("Moving KernelHaven log to common output directory");
-        moveKernelHavenLog(workDir, pathToTargetDir, commitId, outputDir);
+        moveKernelHavenLog(workDir, log_collection_dir, commitId);
 
         if (hasError) {
-            EXECUTOR.execute("echo \"" + commitId + " \" >> " + ERROR_COMMIT_FILE, pathToMetaDir.toFile());
-            if (Objects.requireNonNull(collection_dir.listFiles()).length == 0) {
+            EXECUTOR.execute("echo \"" + commitId + " \" >> " + ERROR_COMMIT_FILE, pathToTargetDir.toFile());
+            if (Objects.requireNonNull(data_collection_dir.listFiles()).length == 0) {
                 try {
-                    Files.delete(collection_dir.toPath());
+                    Files.delete(data_collection_dir.toPath());
                 } catch (IOException e) {
-                    LOGGER.logError("Was not able to delete the result collection directory " + collection_dir);
+                    LOGGER.logError("Was not able to delete the result collection directory " + data_collection_dir);
                 }
             }
         } else {
-            writeParents(commit, collection_dir);
-            writeToFile(collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
+            writeParents(commit, data_collection_dir);
+            writeToFile(data_collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
             if (prepareFail.exists()) {
                 LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToMetaDir.toFile());
+                EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToTargetDir.toFile());
             } else {
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToMetaDir.toFile());
+                EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToTargetDir.toFile());
             }
         }
 
@@ -203,35 +208,31 @@ public class AnalysisTask implements Runnable {
         parentIds.ifPresent(s -> writeToFile(collection_dir, COMMIT_PARENTS_FILE, s));
     }
 
-    private static void moveKernelHavenLog(File workDir, Path pathToTargetDir, String commitId, File outputDir) {
+    private static void moveKernelHavenLog(File workDir, File targetDir, String commitId) {
         File logDir = new File(workDir, "log");
         File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
-        File targetLogDir = new File(pathToTargetDir.toFile().getParentFile().getParentFile(), "log");
-        if (targetLogDir.mkdir()) {
-            LOGGER.logInfo("Log dir created under " + targetLogDir);
-        }
         if (logFiles == null || logFiles.length == 0) {
             LOGGER.logWarning("NO LOG FILE IN " + logDir.getAbsolutePath());
         } else {
             if (logFiles.length > 1) {
-                LOGGER.logWarning("FOUND MORE THAN ONE LOG FILE IN " + outputDir.getAbsolutePath());
+                LOGGER.logWarning("FOUND MORE THAN ONE LOG FILE IN " + logDir.getAbsolutePath());
             }
             try {
-                LOGGER.logInfo("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetLogDir);
-                Files.move(logFiles[0].toPath(), Paths.get(targetLogDir.getAbsolutePath(), commitId + ".log"));
+                LOGGER.logInfo("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetDir);
+                Files.move(logFiles[0].toPath(), Paths.get(targetDir.getAbsolutePath(), commitId + ".log"));
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the log file of the analysis: ", e);
             }
         }
     }
 
-    private static boolean moveFeatureModel(File workDir, Path pathToTargetDir) {
+    private static boolean moveFeatureModel(File workDir, File targetDir) {
         boolean hasError = false;
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
-                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + pathToTargetDir);
-                Files.move(vmCache.toPath(), Paths.get(pathToTargetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
+                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + targetDir);
+                Files.move(vmCache.toPath(), Paths.get(targetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the cached variability model: ", e);
                 hasError = true;
@@ -243,7 +244,7 @@ public class AnalysisTask implements Runnable {
         return hasError;
     }
 
-    private static boolean movePresenceConditions(Path pathToTargetDir, File outputDir) {
+    private static boolean movePresenceConditions(File outputDir, File targetDir) {
         boolean hasError = false;
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
         if (resultFiles == null || resultFiles.length == 0) {
@@ -251,8 +252,8 @@ public class AnalysisTask implements Runnable {
             hasError = true;
         } else if (resultFiles.length == 1) {
             try {
-                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + pathToTargetDir);
-                Files.move(resultFiles[0].toPath(), Paths.get(pathToTargetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
+                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + targetDir);
+                Files.move(resultFiles[0].toPath(), Paths.get(targetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }

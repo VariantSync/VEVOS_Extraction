@@ -1,4 +1,10 @@
 #!/bin/bash
+# This script can be used to quickly debug the VariabilityExtraction code. It is meant to be copied to the working directory. The working 
+# directory should contain the VariabilityExtraction repo and the SPL repo, i.e.,
+# WORKDIR
+# | -- VariabilityExtraction
+# | -- busybox
+# | -- busybox-debug.sh
 rm VariabilityExtraction-1.0.0-jar-with-dependencies.jar
 rm -rf extraction-results
 cd VariabilityExtraction || exit

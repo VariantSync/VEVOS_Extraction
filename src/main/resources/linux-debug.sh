@@ -1,4 +1,10 @@
 #! /bin/bash
+# This script can be used to quickly debug the VariabilityExtraction code. It is meant to be copied to the working directory. The working 
+# directory should contain the VariabilityExtraction repo and the SPL repo, i.e.,
+# WORKDIR
+# | -- VariabilityExtraction
+# | -- linux
+# | -- linux-debug.sh
 clear
 echo "Removing old folders"
 rm -rf extraction-results

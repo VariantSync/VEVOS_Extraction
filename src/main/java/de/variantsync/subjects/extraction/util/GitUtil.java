@@ -67,7 +67,8 @@ public class GitUtil {
         }
         gitRepo.close();
         LOGGER.logInfo("" + commits.size() + " selected for analysis.");
-        Collections.reverse(commits);
+        // TODO: Reconsider the order in which commits are to be processed. Without reversal, the commits are processed from newest to oldest.
+        // Collections.reverse(commits);
         return commits;
     }
 
