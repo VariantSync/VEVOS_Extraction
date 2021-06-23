@@ -1,7 +1,8 @@
 #! /bin/bash
 docker run \
+--user "$(id -u)" \
 --name variability-extraction-busybox \
---mount source=busybox-extraction,target=/variability-extraction/extraction-results/output \
+--mount source=busybox-extraction,target=/home/user/extraction-results/output \
 variability-extraction busybox
 
 echo "Stopping busybox-extraction"
