@@ -7,7 +7,7 @@ cd /home/user || exit
 ls -l
 git clone --progress https://oauth2:XRzSBbQQyRfgEjJhFxr2@gitlab.informatik.hu-berlin.de/mse/VariantSync/VariabilityExtraction.git
 cd VariabilityExtraction || exit
-git checkout 44-docker-setup
+git status
 echo "Listing files in VariabilityExtraction"
 ls -l
 echo ""
