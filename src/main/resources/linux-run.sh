@@ -4,7 +4,7 @@
 # WORKDIR
 # | -- VariabilityExtraction
 # | -- linux
-# | -- linux-run.sh
+# | -- linux-extract.sh
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing variability extraction of Linux."
