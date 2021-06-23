@@ -9,7 +9,7 @@ git clone --progress https://oauth2:XRzSBbQQyRfgEjJhFxr2@gitlab.informatik.hu-be
 cd VariabilityExtraction || exit
 git checkout 44-docker-setup
 echo "Listing files in VariabilityExtraction"
-ls
+ls -l
 echo ""
 
 echo "Building with Maven"
