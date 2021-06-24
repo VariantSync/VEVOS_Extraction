@@ -17,7 +17,7 @@ There are some limitations to the variability extraction that should be mentione
 ### SPL Versions
 Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract
 the variability of SPL revisions without prior setup of the operating system on which the extraction is run.
-More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above.
+More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. Older versions of Linux (below v4), can also cause problems.
 This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader. Similar problems probably also exist for Busybox, Coreboot, etc.
 
 ### Operating System
@@ -80,6 +80,15 @@ all commits that are ancestors of the second commit, but __not__ ancestors of th
 - Linux terminal: 
   - `./start-extraction.sh busybox [id/tag] [id/tag]`
   - `./start-extraction.sh linux [id/tag] [id/tag]`
+
+#### Runtime
+The entire history of BusyBox can be extracted in about one day.
+
+For Linux, even considering only the commits between two minor revisions, e.g. v4.1 and v4.2, can take several days.
+
+#### Errors in Log
+If the entire history of BusyBox or Linux is considered, large numbers of non-extractable commits are to be expected. 
+Therefore, errors that appear in the log do not indicate a problem with the setup, but only indicate that a commit could not be processed. 
 
 #### Examples:
 ```
