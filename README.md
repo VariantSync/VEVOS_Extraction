@@ -37,17 +37,20 @@ follow the instructions for Linux.
 ### Preparation
 #### Docker
 Docker must be installed on your system, and the Docker daemon must be running.
-For installation, follow the instruction given in the installation guide for your OS which you can find 
+For installation, follow the instructions given in the installation guide for your OS which you can find 
 [here](https://docs.docker.com/get-docker/).
 Under Linux, you might additionally want to follow the optional 
 [post-installation instructions](https://docs.docker.com/engine/install/linux-postinstall/).
 
 #### Repository
-Clone the repository to a location of your choice `git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git` and navigate to the repository's root directory in a terminal of your choice. 
+Clone the repository to a location of your choice 
+```
+git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git
+``` 
+Then, navigate to the repository's root directory in a terminal of your choice. 
 
 ### Build the Docker Image
-Before the extraction can be executed, we have to build the Docker image. This can be done by executing the build script, 
-that we provide, in a terminal.
+Before the extraction can be executed, we have to build the Docker image. This can be done by executing the correspsonding build script in a terminal.
 
 - Linux terminal: `./build-docker-image.sh`
 - Windows CMD: `build-docker-image.bat`
