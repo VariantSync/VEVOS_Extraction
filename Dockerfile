@@ -31,7 +31,7 @@ RUN rm -rf VariabilityExtraction
 RUN ls -al
 RUN gcc --version
 RUN java -version
-RUN apt-get install -y --no-install-recommends maven
+RUN apt-get install -y --no-install-recommends maven bc
 
 COPY docker-resources/extract.sh /home/user/
 RUN mkdir -p /home/user/extraction-results/output
