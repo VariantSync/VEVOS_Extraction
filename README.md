@@ -123,7 +123,7 @@ collected data will be copied to _VariabilityExtraction/extraction-results/_ as 
 ### Custom Configuration
 You can find the properties files used by Docker under VariabilityExtraction/docker-resources. By changing the properties 
 for BusyBox or Linux respectively, you can adjust the variability extraction (e.g., change the log level, 
-number of threads, etc.). For your convenience, we set all properties to default values.
+number of threads, etc.). For your convenience, we set all properties to default values. __Note that you have to rebuild the Docker image in order for the changes to take effect__.
 
 This can also be used in case you want to extract the variability for any other SPL besides Linux and BusyBox. However,
 please note that this requires the correct configuration of KernelHaven and possibly other preprocessing steps, that
