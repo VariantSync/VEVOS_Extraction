@@ -50,7 +50,7 @@ Before the extraction can be executed, we have to build the Docker image. This c
 that we provide, in a terminal.
 
 - Linux terminal: `./build-docker-image.sh`
-- Windows terminal: `./build-docker-image.bat`
+- Windows CMD: `build-docker-image.bat`
 
 ### Start the Variability Extraction in a Docker Container
 We provide bash and batch scripts that start the variability extraction and copy all data to 
@@ -58,7 +58,7 @@ _VariabilityExtraction/extraction-results_ once the extraction is complete, or h
 Start the extraction by executing the `start-extraction` script (see examples further below). 
 The basic syntax is the following:
 
-- `./start-extraction.(sh|bat) (linux|busybox) [commit-id/tag] [commit-id/tag]`
+- `start-extraction.(sh|bat) (linux|busybox) [commit-id/tag] [commit-id/tag]`
 - `(option-1|option-2)` -> You *must* provide one of the two.
 - `[option]` -> You *may* provide a value
 
@@ -74,9 +74,9 @@ If you specify __two__ ids or tags, the extraction will consider the range of co
 commit. The commit retrieval follows the same logic as [git log](https://git-scm.com/docs/git-log), i.e., it will retrieve
 all commits that are ancestors of the second commit, but __not__ ancestors of the first commit.
 
-- Windows terminal: 
-  - `./start-extraction.bat busybox [id/tag] [id/tag]` 
-  - `./start-extraction.bat linux [id/tag] [id/tag]`
+- Windows CMD: 
+  - `start-extraction.bat busybox [id/tag] [id/tag]` 
+  - `start-extraction.bat linux [id/tag] [id/tag]`
 - Linux terminal: 
   - `./start-extraction.sh busybox [id/tag] [id/tag]`
   - `./start-extraction.sh linux [id/tag] [id/tag]`
@@ -84,19 +84,19 @@ all commits that are ancestors of the second commit, but __not__ ancestors of th
 #### Examples:
 ```
 Extract the variability for all commits of BusyBox
-./start-extraction.bat busybox
+start-extraction.bat busybox
 ./start-extraction.sh busybox
 
 Extract the variability between two specific commits of Busybox
-./start-extraction.bat busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
+start-extraction.bat busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 ./start-extraction.sh busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 
 Extract the variability for the commit under revision tag v4.1 of Linux
-./start-extraction.bat linux v4.1
+start-extraction.bat linux v4.1
 ./start-extraction.sh linux v4.1
 
 Extract the variability for all commits between two minor revisions of Linux
-./start-extraction.bat linux v4.3 v4.4
+start-extraction.bat linux v4.3 v4.4
 ./start-extraction.sh linux v4.3 v4.4
 ```
 
@@ -104,9 +104,9 @@ Extract the variability for all commits between two minor revisions of Linux
 You can stop the Docker container in which the variability extraction is running at any time. In this case, all 
 collected data will be copied to _VariabilityExtraction/extraction-results/_ as if the extraction finished successfully. 
 
-- Windows terminal: 
-  - `./stop-extraction.bat busybox`
-  - `./stop-extraction.bat linux`
+- Windows CMD: 
+  - `stop-extraction.bat busybox`
+  - `stop-extraction.bat linux`
 - Linux terminal: 
   - `./stop-extraction.sh busybox`
   - `./stop-extraction.sh linux`
