@@ -34,12 +34,16 @@ The only requirement is Docker. We provide batch and bash scripts that execute t
 We tested the Docker setup under Windows and Linux. We have not tested the setup on Mac, but you should be able to use 
 follow the instructions for Linux.
 
-### Docker Installation
+### Preparation
+#### Docker
 Docker must be installed on your system, and the Docker daemon must be running.
 For installation, follow the instruction given in the installation guide for your OS which you can find 
 [here](https://docs.docker.com/get-docker/).
 Under Linux, you might additionally want to follow the optional 
 [post-installation instructions](https://docs.docker.com/engine/install/linux-postinstall/).
+
+#### Repository
+Clone the repository to a location of your choice `git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git` and navigate to the repository's root directory in a terminal of your choice. 
 
 ### Build the Docker Image
 Before the extraction can be executed, we have to build the Docker image. This can be done by executing the build script, 
@@ -117,6 +121,16 @@ please note that this requires the correct configuration of KernelHaven and poss
 are not included in this project. In addition, the extractors that are used internally, i.e., KbuildMiner and KconfigReader
 might not be applicable to the chosen SPL. In this case, custom extractors have to be implemented and added to the dependencies 
 in the _pom.xml_ file.
+
+### Clean-Up 
+You clean up all created images, container, and volumes via `docker system prune -a`. __DISCLAIMER: This will remove ALL docker objects, even the ones not related to variability extraction__. If you have other images, containers, or volumes that you do not want to loose, you can run the docker commands that refer to the objects related to the variability extraction.
+- Image: `docker rmi variability-extraction`
+- Container: 
+  - `docker container rm variability-extraction-busybox`
+  - `docker container rm variability-extraction-linux`
+- Volume:
+  - `docker volume rm extraction-busybox`
+  - `docker volume rm extraction-linux`
 
 ## Custom System Setup
 If you want to run the variability extraction without Docker, you will have to first set up the environment in which
