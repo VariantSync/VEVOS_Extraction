@@ -87,18 +87,6 @@
             <version>${junit.jupiter.version}</version>
             <scope>test</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>de.ovgu.featureide.lib</groupId>-->
-<!--            <artifactId>fm</artifactId>-->
-<!--            <version>3.7.0</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>de.ovgu.featureide.lib.fm</groupId>-->
-<!--            <artifactId>attributes</artifactId>-->
-<!--            <version>3.7.0</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
@@ -138,6 +126,11 @@
             <groupId>net.ssehub.kernel_haven</groupId>
             <artifactId>busyboot</artifactId>
             <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>de.ovgu</groupId>
+            <artifactId>featureide.lib.fm</artifactId>
+            <version>3.7.0</version>
         </dependency>
     </dependencies>
 </project>
