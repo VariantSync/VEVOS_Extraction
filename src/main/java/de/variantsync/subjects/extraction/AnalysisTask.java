@@ -161,7 +161,10 @@ public class AnalysisTask implements Runnable {
 
         File outputDir = new File(workDir, "output");
         // Move the results of the analysis to the collected output directory according to the current commit
+        LOGGER.logStatus("Moving presence conditions to common output directory.");
         boolean hasError = movePresenceConditions(outputDir, data_collection_dir);
+        LOGGER.logStatus("Moving DIMACS feature model to common output directory.");
+        hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
 
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
@@ -244,16 +247,16 @@ public class AnalysisTask implements Runnable {
         return hasError;
     }
 
-    private static boolean movePresenceConditions(File outputDir, File targetDir) {
+    private static boolean moveOutputFile(File outputDir, File targetDir, String sourceName, String targetName) {
         boolean hasError = false;
-        File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains("Blocks.csv"));
+        File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains(sourceName));
         if (resultFiles == null || resultFiles.length == 0) {
             LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
             hasError = true;
         } else if (resultFiles.length == 1) {
             try {
                 LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + targetDir);
-                Files.move(resultFiles[0].toPath(), Paths.get(targetDir.toString(), "code-variability.csv"), REPLACE_EXISTING);
+                Files.move(resultFiles[0].toPath(), Paths.get(targetDir.toString(), targetName), REPLACE_EXISTING);
             } catch (IOException e) {
                 LOGGER.logException("Was not able to move the result file of the analysis: ", e);
             }
@@ -267,6 +270,14 @@ public class AnalysisTask implements Runnable {
             hasError = true;
         }
         return hasError;
+    }
+
+    private static boolean movePresenceConditions(File outputDir, File targetDir) {
+        return moveOutputFile(outputDir, targetDir, "Blocks.csv", "code-variability.csv");
+    }
+
+    private static boolean moveDimacsModel(File outputDir, File targetDir) {
+        return moveOutputFile(outputDir, targetDir, "feature-model.dimacs", "feature-model.dimacs");
     }
 
     private void createBlocker(File dir) {
