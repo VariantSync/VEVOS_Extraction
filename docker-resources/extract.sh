@@ -17,7 +17,7 @@ mvn package || exit
 echo ""
 
 echo "Copying resources"
-cp target/VariabilityExtraction-*-jar-with* docker-resources/* ..
+cp target/VariabilityExtraction-*-jar-with* docker-resources/KernelHaven.jar ..
 cd ..
 echo ""
 

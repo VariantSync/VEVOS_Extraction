@@ -34,6 +34,8 @@ RUN java -version
 RUN apt-get install -y --no-install-recommends maven bc
 
 COPY docker-resources/extract.sh /home/user/
+COPY docker-resources/variability_analysis_BusyBox.properties /home/user/
+COPY docker-resources/variability_analysis_Linux.properties /home/user/
 RUN mkdir -p /home/user/extraction-results/output
 RUN chown user:user /home/user -R
 WORKDIR /home/user
