@@ -167,8 +167,15 @@ public class AnalysisTask implements Runnable {
         hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
 
         LOGGER.logStatus("Moving FILTERED file to common output directory.");
-        moveFilterCount(outputDir, data_collection_dir);
-
+        if(!moveFilterCount(outputDir, data_collection_dir)) {
+            LOGGER.logWarning("Moving FILTERED failed.");
+        }
+        
+        LOGGER.logStatus("Moving VARIABLES file to common output directory.");
+        if(!moveVariablesFile(outputDir, data_collection_dir)) {
+            LOGGER.logWarning("Moving VARIABLES failed.");
+        }
+        
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
         hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
@@ -285,6 +292,10 @@ public class AnalysisTask implements Runnable {
     
     private static boolean moveFilterCount(File outputDir, File targetDir) {
         return moveOutputFile(outputDir, targetDir, "FILTERED.txt", "FILTERED.txt");
+    }
+
+    private static boolean moveVariablesFile(File outputDir, File targetDir) {
+        return moveOutputFile(outputDir, targetDir, "VARIABLES.txt", "VARIABLES.txt");
     }
 
     private void createBlocker(File dir) {
