@@ -167,12 +167,12 @@ public class AnalysisTask implements Runnable {
         hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
 
         LOGGER.logStatus("Moving FILTERED file to common output directory.");
-        if(!moveFilterCount(outputDir, data_collection_dir)) {
+        if(moveFilterCount(outputDir, data_collection_dir)) {
             LOGGER.logWarning("Moving FILTERED failed.");
         }
         
         LOGGER.logStatus("Moving VARIABLES file to common output directory.");
-        if(!moveVariablesFile(outputDir, data_collection_dir)) {
+        if(moveVariablesFile(outputDir, data_collection_dir)) {
             LOGGER.logWarning("Moving VARIABLES failed.");
         }
         
