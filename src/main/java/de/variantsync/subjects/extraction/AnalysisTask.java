@@ -166,6 +166,9 @@ public class AnalysisTask implements Runnable {
         LOGGER.logStatus("Moving DIMACS feature model to common output directory.");
         hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
 
+        LOGGER.logStatus("Moving FILTERED file to common output directory.");
+        moveFilterCount(outputDir, data_collection_dir);
+
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
         hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
@@ -278,6 +281,10 @@ public class AnalysisTask implements Runnable {
 
     private static boolean moveDimacsModel(File outputDir, File targetDir) {
         return moveOutputFile(outputDir, targetDir, "feature-model.dimacs", "feature-model.dimacs");
+    }
+    
+    private static boolean moveFilterCount(File outputDir, File targetDir) {
+        return moveOutputFile(outputDir, targetDir, "FILTERED.txt", "FILTERED.txt");
     }
 
     private void createBlocker(File dir) {
