@@ -283,7 +283,7 @@ public class AnalysisTask implements Runnable {
     }
 
     private static boolean movePresenceConditions(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "Blocks.csv", "code-variability.csv");
+        return moveOutputFile(outputDir, targetDir, "Blocks.csv", "code-variability.spl.csv");
     }
 
     private static boolean moveDimacsModel(File outputDir, File targetDir) {
