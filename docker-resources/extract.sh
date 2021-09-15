@@ -4,7 +4,6 @@ gcc --version
 java -version
 
 cd /home/user || exit
-ls -l
 
 echo "Files in extraction-results"
 ls -l extraction-results
