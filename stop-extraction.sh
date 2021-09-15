@@ -1,12 +1,4 @@
-#!/bin/bash
-if [ "$1" = 'busybox' ]
-then
-    echo "Stopping busybox extraction"
-    docker container stop variability-extraction-busybox
-elif [ "$1" = 'linux' ]
-then
-    echo "Stopping linux extraction"
-    docker container stop variability-extraction-linux
-else
-    echo "Select a SPL to extract [ ./stop-extraction.sh linux | ./stop-extraction.sh busybox ]"
-fi
+#! /bin/bash
+echo "Stopping all running extractions. This will take a moment..."
+docker stop $(docker ps -a -q --filter "ancestor=variability-extraction")
+echo "...done."

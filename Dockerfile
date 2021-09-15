@@ -16,8 +16,6 @@ RUN apt-get install -y --no-install-recommends build-essential libelf-dev libssl
 # Setup working directory
 WORKDIR /resources
 COPY ./docker-resources/ubuntu-repos.txt .
-# COPY ./docker-resources/maven-setup.sh /etc/profile.d/maven.sh
-# RUN chmod +x /etc/profile.d/maven.sh
 
 # Install jdk-8 and gcc-4.4
 RUN apt-get remove -y openjdk-*
