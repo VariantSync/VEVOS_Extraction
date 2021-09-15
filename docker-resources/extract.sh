@@ -5,32 +5,12 @@ java -version
 
 cd /home/user || exit
 ls -l
-git clone --progress https://oauth2:XRzSBbQQyRfgEjJhFxr2@gitlab.informatik.hu-berlin.de/mse/VariantSync/VariabilityExtraction.git
-cd VariabilityExtraction || exit
-git status
-echo "Listing files in VariabilityExtraction"
-ls -l
-echo ""
-
-echo "Building with Maven"
-mvn package || exit
-echo ""
-
-echo "Copying resources"
-cp target/VariabilityExtraction-*-jar-with* docker-resources/KernelHaven.jar ..
-cd ..
-echo ""
-
-echo "Files in WORKDIR"
-ls .
-echo ""
 
 echo "Files in extraction-results"
 ls -l extraction-results
 
 if [ "$1" == 'busybox' ]
 then
-    git clone --progress https://git.busybox.net/busybox/
     echo "Executing variability extraction of BusyBox."
     if [ $# == 1 ]
     then
@@ -44,8 +24,6 @@ then
     fi
 elif [ "$1" == 'linux' ]
 then
-    echo "Cloning Linux, this will take quite some time."
-    git clone --progress https://github.com/torvalds/linux.git
     echo "Executing variability extraction of Linux."
     if [ $# == 1 ]
     then

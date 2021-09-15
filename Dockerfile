@@ -1,17 +1,28 @@
 # syntax=docker/dockerfile:1
+FROM alpine:3.14
+
+# Prepare the environment
+RUN apk add maven git
+
+# Build the jar files
+WORKDIR /home/user
+COPY local-maven-repo ./local-maven-repo
+COPY src ./src
+COPY pom.xml .
+RUN mvn package || exit
+
+RUN git clone --progress https://git.busybox.net/busybox/
+RUN git clone --progress https://github.com/torvalds/linux.git
+
 FROM ubuntu:20.04
 
 # Create a user
-ARG USER_ID
-ARG GROUP_ID
-RUN addgroup --gid $GROUP_ID user
-RUN adduser --disabled-password  --home /home/user --gecos '' --uid $USER_ID --ingroup user user
+RUN adduser --disabled-password  --home /home/user --gecos '' user
 
 # Prepare the environment
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tzdata
 RUN apt-get install -y --no-install-recommends build-essential libelf-dev libssl-dev flex bison libselinux1-dev git
-
 
 # Setup working directory
 WORKDIR /resources
@@ -26,17 +37,33 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc-4.4
 RUN ln -s /bin/gcc-4.4 /bin/gcc
 RUN rm -rf VariabilityExtraction
-RUN ls -al
 RUN gcc --version
 RUN java -version
-RUN apt-get install -y --no-install-recommends maven bc
+RUN apt-get install -y --no-install-recommends bc
 
+
+WORKDIR /home/user
+# Copy JAR from previous stage
+COPY --from=0 /home/user/target /home/user/target
+RUN cp target/VariabilityExtraction-*-jar-with* .
+
+# Copy required scripts and properties
 COPY docker-resources/extract.sh /home/user/
+COPY docker-resources/entrypoint.sh /home/user/
+COPY docker-resources/fix-perms.sh /home/user/
+COPY docker-resources/KernelHaven.jar /home/user/
 COPY docker-resources/variability_analysis_BusyBox.properties /home/user/
 COPY docker-resources/variability_analysis_Linux.properties /home/user/
+
 RUN mkdir -p /home/user/extraction-results/output
 RUN chown user:user /home/user -R
-WORKDIR /home/user
+RUN chmod +x entrypoint.sh
+RUN chmod +x fix-perms.sh
 RUN chmod +x extract.sh
 
-ENTRYPOINT ["./extract.sh"]
+# Copy repositories from previous stage
+COPY --from=0 /home/user/linux /home/user/linux
+COPY --from=0 /home/user/busybox /home/user/busybox
+
+ENTRYPOINT ["./entrypoint.sh", "./extract.sh"]
+USER user
