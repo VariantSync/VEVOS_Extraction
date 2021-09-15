@@ -2,6 +2,8 @@ package de.variantsync.subjects.extraction;
 
 import de.variantsync.subjects.extraction.util.ConfigManipulator;
 import de.variantsync.subjects.extraction.util.ShellExecutor;
+import net.lingala.zip4j.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.DefaultSettings;
@@ -76,9 +78,16 @@ public class AnalysisTask implements Runnable {
             return;
         }
 
+        Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
+        Set<String> processedCommits = determineProcessedCommits(pathToTargetDir);
+
         int count = 1;
         // Process commits assigned to this task
         for (RevCommit commit : commits) {
+            if (processedCommits.contains(commit.getName())) {
+                LOGGER.logStatus("Skipping " + commit.getName() + " as it was already processed.");
+                continue;
+            }
             LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
             LOGGER.logStatus("Commit number " + count + " of " + commits.size());
             // Make sure the directory is not blocked
@@ -105,7 +114,6 @@ public class AnalysisTask implements Runnable {
             Thread.currentThread().setName(threadName);
             LOGGER.logStatus("KernelHaven execution finished.");
 
-            Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
             synchronized (AnalysisTask.class) {
                 moveResultsToDirectory(workDir, pathToTargetDir, commit, prepareFail);
             }
@@ -144,11 +152,26 @@ public class AnalysisTask implements Runnable {
         LOGGER.logInfo("Saving configuration " + propertiesFile);
         manipulator.writeToFile();
     }
+    
+    private Set<String> determineProcessedCommits(Path pathToTargetDir) {
+        Set<String> processedCommits = new HashSet<>();
+        try {
+            Path successFile = Paths.get(pathToTargetDir.toString(), SUCCESS_COMMIT_FILE);
+            Path errorFile = Paths.get(pathToTargetDir.toString(), ERROR_COMMIT_FILE);
+            Path incompletePCFile = Paths.get(pathToTargetDir.toString(), INCOMPLETE_PC_COMMIT_FILE);
+            if (Files.exists(successFile)) processedCommits.addAll(Files.readAllLines(successFile));
+            if (Files.exists(errorFile)) processedCommits.addAll(Files.readAllLines(errorFile));
+            if (Files.exists(incompletePCFile)) processedCommits.addAll(Files.readAllLines(incompletePCFile));
+        } catch (IOException e) {
+            LOGGER.logException("Was not able to determine processed commits.", e);
+        }
+        return processedCommits;
+    }
 
     private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, RevCommit commit, File prepareFail) {
         String commitId = commit.getName();
         LOGGER.logStatus("Moving result to common output directory.");
-        File data_collection_dir = pathToTargetDir.resolve("data").resolve(commit.getName()).toFile();
+        File data_collection_dir = pathToTargetDir.resolve("data").resolve(commitId).toFile();
         File log_collection_dir = pathToTargetDir.resolve("log").toFile();
 
         if (data_collection_dir.mkdirs()) {
@@ -185,7 +208,7 @@ public class AnalysisTask implements Runnable {
         moveKernelHavenLog(workDir, log_collection_dir, commitId);
 
         if (hasError) {
-            EXECUTOR.execute("echo \"" + commitId + " \" >> " + ERROR_COMMIT_FILE, pathToTargetDir.toFile());
+            EXECUTOR.execute("echo \"" + commitId + "\" >> " + ERROR_COMMIT_FILE, pathToTargetDir.toFile());
             if (Objects.requireNonNull(data_collection_dir.listFiles()).length == 0) {
                 try {
                     Files.delete(data_collection_dir.toPath());
@@ -198,10 +221,17 @@ public class AnalysisTask implements Runnable {
             writeToFile(data_collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
             if (prepareFail.exists()) {
                 LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToTargetDir.toFile());
+                EXECUTOR.execute("echo \"" + commitId + "\" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToTargetDir.toFile());
             } else {
-                EXECUTOR.execute("echo \"" + commitId + " \" >> " + SUCCESS_COMMIT_FILE, pathToTargetDir.toFile());
+                EXECUTOR.execute("echo \"" + commitId + "\" >> " + SUCCESS_COMMIT_FILE, pathToTargetDir.toFile());
             }
+        }
+
+        try {
+            new ZipFile(new File(data_collection_dir.getParentFile(), commitId + ".zip")).addFolder(data_collection_dir);
+            EXECUTOR.execute("rm -rf " + commitId, data_collection_dir.getParentFile());
+        } catch (ZipException e) {
+            LOGGER.logError("Was not able to zip variability data of commit " + commit.getName());
         }
 
         LOGGER.logInfo("...done.");

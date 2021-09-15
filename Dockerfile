@@ -4,15 +4,17 @@ FROM alpine:3.14
 # Prepare the environment
 RUN apk add maven git
 
-# Build the jar files
 WORKDIR /home/user
+
+RUN git clone --progress https://git.busybox.net/busybox/
+RUN git clone --progress https://github.com/torvalds/linux.git
+
 COPY local-maven-repo ./local-maven-repo
 COPY src ./src
 COPY pom.xml .
 RUN mvn package || exit
 
-RUN git clone --progress https://git.busybox.net/busybox/
-RUN git clone --progress https://github.com/torvalds/linux.git
+
 
 FROM ubuntu:20.04
 
