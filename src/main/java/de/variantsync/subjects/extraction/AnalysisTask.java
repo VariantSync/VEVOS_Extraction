@@ -86,6 +86,7 @@ public class AnalysisTask implements Runnable {
         for (RevCommit commit : commits) {
             if (processedCommits.contains(commit.getName())) {
                 LOGGER.logStatus("Skipping " + commit.getName() + " as it was already processed.");
+                count++;
                 continue;
             }
             LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
