@@ -1,14 +1,8 @@
 # SPL Variability Extraction
 
 <p>
-This tool offers functionality for extracting the source code variants of a KBuild-based SPL, e.g.,
-Linux, Busybox, or Coreboot. The extracted variants are used to simulate a clone-and-own dataset 
-accroding to the history of the extracted variants. 
-</p>
-
-<p>
-The extracted dataset comprises the source code of the different variants, their evolution history in 
-form of git branches, matchings of the cloned artifacts, and feature mappings for the artefacts.
+This tool offers functionality for extracting the feature model, presence conditions, and other metadata for a C-preprocessor-based SPL. The setup was configured and tested 
+for BusyBox and Linux.
 </p>
 
 
@@ -17,8 +11,9 @@ There are some limitations to the variability extraction that should be mentione
 ### SPL Versions
 Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract
 the variability of SPL revisions without prior setup of the operating system on which the extraction is run.
-More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. Older versions of Linux (below v4), can also cause problems.
+More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. Older versions of linux (below v4), can also cause problems.
 This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader. Similar problems probably also exist for Busybox, Coreboot, etc.
+`For this reason we offer scripts that setup a Docker container for extracting the data for BusyBox or Linux.`
 
 ### Operating System
 Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability
@@ -45,7 +40,7 @@ Under Linux, you might additionally want to follow the optional
 #### Repository
 Clone the repository to a location of your choice 
 ```
-git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git
+git clone https://github.com/VariantSync/VariabilityExtraction.git
 ``` 
 Then, navigate to the repository's root directory in a terminal of your choice. 
 
