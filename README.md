@@ -1,8 +1,9 @@
 # VEVOS: Ground Truth Extraction
 
-<p>
-This project offers functionality for extracting feature models, presence conditions, and other metadata for a kbuild-based software product line. The setup was configured and tested for BusyBox and Linux.
-</p>
+VEVOS is a tool suite for the simulation of the evolution of clone-and-own projects and consists of two main components: The ground truth extraction, called VEVOS/Extraction and the variant simulation called VEVOS/Simulation.
+
+This repository contains VEVOS/Extraction and thus the first part of the replication package for the paper _Simulating the Evolution of Clone-and-Own Projects with VEVOS_ submitted to the International Conference on Evaluation and Assessment in Software Engineering (EASE) 2022.
+VEVOS/Extraction is a java for extracting feature mappings, presence conditions, and feature models for each revision (withing a specified range of the commit-history) from an input software product line.
 
 ## Quick Start using Docker
 In the following, we provide instructions on how to quickly extract the ground truth of Linux or Busybox with the provided 
