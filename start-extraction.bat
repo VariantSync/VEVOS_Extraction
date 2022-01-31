@@ -9,13 +9,13 @@ if not exist "extraction-results" mkdir extraction-results
 
 :BUSYBOX
 @echo "Starting the extraction"
-@docker run --rm -v "%cd%/extraction-results/busybox":"/home/user/extraction-results/output" variability-extraction %*
+@docker run --rm -v "%cd%/extraction-results/busybox":"/home/user/extraction-results/output" extraction %*
 
 @GOTO AFTER
 
 :LINUX
 @echo "Starting the extraction"
-@docker run --rm -v "%cd%/extraction-results/linux":"/home/user/extraction-results/output" variability-extraction %*
+@docker run --rm -v "%cd%/extraction-results/linux":"/home/user/extraction-results/output" extraction %*
 
 :AFTER
 @pause

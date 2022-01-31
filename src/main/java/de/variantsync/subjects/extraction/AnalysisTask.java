@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static de.variantsync.subjects.extraction.VariabilityExtraction.*;
+import static de.variantsync.subjects.extraction.Extraction.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {

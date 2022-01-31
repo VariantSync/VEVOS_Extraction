@@ -5,16 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
 	<!-- Adjust group id for anonymous projects -->
-    <groupId>de.variantsync.subjects.extraction</groupId>
+    <groupId>de.variantsync.vevos</groupId>
 	<!-- Adjust the project name -->
-    <artifactId>VariabilityExtraction</artifactId>
+    <artifactId>Extraction</artifactId>
     <version>1.0.0</version>
 
     <properties>
         <!-- Adjust your java version here -->
         <java.version>8</java.version>
 		<!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
-		<path.to.main>${project.groupId}.VariabilityExtraction</path.to.main>
+		<path.to.main>${project.groupId}.Extraction</path.to.main>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>

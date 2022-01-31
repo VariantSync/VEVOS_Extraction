@@ -1,2 +1,2 @@
 #! /bin/bash
-docker build -t variability-extraction .
+docker build -t extraction .

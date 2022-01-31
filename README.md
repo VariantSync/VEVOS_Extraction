@@ -1,46 +1,30 @@
-# SPL Variability Extraction
+# VEVOS: Ground Truth Extraction
 
 <p>
-This tool offers functionality for extracting the feature model, presence conditions, and other metadata for a C-preprocessor-based SPL. The setup was configured and tested 
-for BusyBox and Linux.
+This project offers functionality for extracting feature models, presence conditions, and other metadata for a kbuild-based software product line. The setup was configured and tested for BusyBox and Linux.
 </p>
 
-
-## Limitations
-There are some limitations to the variability extraction that should be mentioned.
-### SPL Versions
-Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract
-the variability of SPL revisions without prior setup of the operating system on which the extraction is run.
-More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. Older versions of linux (below v4), can also cause problems.
-This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader. Similar problems probably also exist for Busybox, Coreboot, etc.
-`For this reason we offer scripts that setup a Docker container for extracting the data for BusyBox or Linux.`
-
-### Operating System
-Due to the implementation of the VariabilityExtraction and KernelHaven, it is only possible to run the variability
-extraction on Linux (and possibly Mac). However, you can use the provided Docker setup, or your own virtual machine or 
-Windows Subsystem for Linux, in order to run the extraction on any OS.
-
 ## Quick Start using Docker
-In the following, we provide instructions on how to quickly extract the variability of Linux or Busybox with the provided 
+In the following, we provide instructions on how to quickly extract the ground truth of Linux or Busybox with the provided 
 Docker setup.
 
 ### Requirements
 The only requirement is Docker. We provide batch and bash scripts that execute the necessary Docker setup and execution.
-We tested the Docker setup under Windows and Linux. We have not tested the setup on Mac, but you should be able to use 
-follow the instructions for Linux.
+We tested the Docker setup under Windows and Linux. 
+We have not tested the setup on Mac, but you should be able to use follow the instructions for Linux.
 
 ### Preparation
 #### Docker
 Docker must be installed on your system, and the Docker daemon must be running.
 For installation, follow the instructions given in the installation guide for your OS which you can find 
 [here](https://docs.docker.com/get-docker/).
-Under Linux, you might additionally want to follow the optional 
+Under Linux, you should follow the optional 
 [post-installation instructions](https://docs.docker.com/engine/install/linux-postinstall/).
 
 #### Repository
 Clone the repository to a location of your choice 
 ```
-git clone https://github.com/VariantSync/VariabilityExtraction.git
+git clone https://github.com/VariantSync/Extraction.git
 ``` 
 Then, navigate to the repository's root directory in a terminal of your choice. 
 
@@ -50,9 +34,9 @@ Before the extraction can be executed, we have to build the Docker image. This c
 - Linux terminal: `./build-docker-image.sh`
 - Windows CMD: `build-docker-image.bat`
 
-### Start the Variability Extraction in a Docker Container
-We provide bash and batch scripts that start the variability extraction and copy all data to 
-_VariabilityExtraction/extraction-results_ once the extraction is complete, or has been stopped.
+### Start the Ground Truth Extraction in a Docker Container
+We provide bash and batch scripts that start the ground truth extraction and copy all data to 
+_Extraction/extraction-results_ once the extraction is complete, or has been stopped.
 Start the extraction by executing the `start-extraction` script (see examples further below). 
 The basic syntax is the following:
 
@@ -90,26 +74,26 @@ Therefore, errors that appear in the log do not indicate a problem with the setu
 
 #### Examples:
 ```
-Extract the variability for all commits of BusyBox
+Extract the ground truth for all commits of BusyBox
 start-extraction.bat busybox
 ./start-extraction.sh busybox
 
-Extract the variability between two specific commits of Busybox
+Extract the ground truth between two specific commits of Busybox
 start-extraction.bat busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 ./start-extraction.sh busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 
-Extract the variability for the commit under revision tag v4.1 of Linux
+Extract the ground truth for the commit under revision tag v4.1 of Linux
 start-extraction.bat linux v4.1
 ./start-extraction.sh linux v4.1
 
-Extract the variability for all commits between two minor revisions of Linux
+Extract the ground truth for all commits between two minor revisions of Linux
 start-extraction.bat linux v4.3 v4.4
 ./start-extraction.sh linux v4.3 v4.4
 ```
 
-### Stopping the Variability Extraction
-You can stop the Docker container in which the variability extraction is running at any time. In this case, all 
-collected data will be copied to _VariabilityExtraction/extraction-results/_ as if the extraction finished successfully. 
+### Stopping the Ground Truth Extraction
+You can stop the Docker container in which the ground truth extraction is running at any time. In this case, all 
+collected data will be copied to _Extraction/extraction-results/_ as if the extraction finished successfully. 
 
 - Windows CMD: 
   - `stop-extraction.bat busybox`
@@ -119,29 +103,43 @@ collected data will be copied to _VariabilityExtraction/extraction-results/_ as 
   - `./stop-extraction.sh linux`
 
 ### Custom Configuration
-You can find the properties files used by Docker under VariabilityExtraction/docker-resources. By changing the properties 
-for BusyBox or Linux respectively, you can adjust the variability extraction (e.g., change the log level, 
+You can find the properties files used by Docker under Extraction/docker-resources. By changing the properties 
+for BusyBox or Linux respectively, you can adjust the ground truth extraction (e.g., change the log level, 
 number of threads, etc.). For your convenience, we set all properties to default values. __Note that you have to rebuild the Docker image in order for the changes to take effect__.
 
-This can also be used in case you want to extract the variability for any other SPL besides Linux and BusyBox. However,
+This can also be used in case you want to extract the ground truth for any other SPL besides Linux and BusyBox. However,
 please note that this requires the correct configuration of KernelHaven and possibly other preprocessing steps, that
 are not included in this project. In addition, the extractors that are used internally, i.e., KbuildMiner and KconfigReader
 might not be applicable to the chosen SPL. In this case, custom extractors have to be implemented and added to the dependencies 
 in the _pom.xml_ file.
 
 ### Clean-Up 
-You clean up all created images, container, and volumes via `docker system prune -a`. __DISCLAIMER: This will remove ALL docker objects, even the ones not related to variability extraction__. If you have other images, containers, or volumes that you do not want to loose, you can run the docker commands that refer to the objects related to the variability extraction.
-- Image: `docker rmi variability-extraction`
+You clean up all created images, container, and volumes via `docker system prune -a`. __DISCLAIMER: This will remove ALL docker objects, even the ones not related to ground truth extraction__. If you have other images, containers, or volumes that you do not want to loose, you can run the docker commands that refer to the objects related to the ground truth extraction.
+- Image: `docker rmi extraction`
 - Container: 
-  - `docker container rm variability-extraction-busybox`
-  - `docker container rm variability-extraction-linux`
+  - `docker container rm extraction-busybox`
+  - `docker container rm extraction-linux`
 - Volume:
   - `docker volume rm extraction-busybox`
   - `docker volume rm extraction-linux`
 
 ## Custom System Setup
-If you want to run the variability extraction without Docker, you will have to first set up the environment in which
+If you want to run the ground truth extraction without Docker, you will have to first set up the environment in which
 the extraction is executed. 
+
+### Limitations
+There are some limitations to the ground truth extraction that should be mentioned.
+#### SPL Versions
+Due to the plugins that are used by KernelHaven (i.e., KbuildMiner and KconfigReader), it is not possible to extract
+the ground truth of SPL revisions without prior setup of the operating system on which the extraction is run.
+More specifically, we were not able to get KernelHaven to run for linux versions of v5.0 or above. Older versions of linux (below v4), can also cause problems.
+This is due to changes in the build structure that require changes to KbuildMiner and KconfigReader. Similar problems probably also exist for Busybox, Coreboot, etc.
+`For this reason we offer scripts that setup a Docker container for extracting the data for BusyBox or Linux.`
+
+#### Operating System
+Due to the implementation of the Ground Truth Extraction and KernelHaven, it is only possible to run the ground truth
+extraction on Linux (and possibly Mac). However, you can use the provided Docker setup, or your own virtual machine or
+Windows Subsystem for Linux, in order to run the extraction on any OS.
 
 ### Requirements
 - build-essential packages or similar (depending on OS)
@@ -264,33 +262,33 @@ Clone the repository of the SPL that you want to analyze (e.g., Linux):
 git clone https://github.com/torvalds/linux.git
 ```
 
-Clone the VariabilityExtraction repository:
+Clone the Extraction repository:
 ```
-git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/VariabilityExtraction.git
+git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/Extraction.git
 ```
 
 Navigate into the repo:
-```cd VariabilityExtraction```
+```cd Extraction```
 
 Build the jar:
 ```mvn package```
 
 Copy the required files to the work dir:
 ```
-IF the VariabilityExtractionRepo is part of your work dir run:
+IF the ExtractionRepo is part of your work dir run:
 
-cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_Linux.properties ..
+cp target/Extraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/extraction_linux.properties ..
 
 ELSE
 
-cp target/VariabilityExtraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/variability_analysis_Linux.properties WORKDIR/
+cp target/Extraction-*-jar-with* src/main/resources/KernelHaven.jar src/main/resources/extraction_linux.properties WORKDIR/
 ```
 
 Navigate back to the WORKDIR:
 ```cd WORKDIR```
 
 ### Configuration
-Open the properties file `variability_analysis_Linux.properties` in an editor of your choice. 
+Open the properties file `extraction_linux.properties` in an editor of your choice. 
 
 Adjust the path to the linux sources (absolute path): ```source_tree = WORKDIR/linux```
 
@@ -299,7 +297,7 @@ Example: ```source_tree = /home/alice/linux-analysis/linux```
 Save the file.
 
 ### Validation
-The easiest way to check whether (almost) everything is set up correctly and whether it is possible to extract the variability for a specific Linux commit, is to run `make allyesconfig prepare` in the linux sources directory.
+The easiest way to check whether (almost) everything is set up correctly and whether it is possible to extract the ground truth for a specific Linux commit, is to run `make allyesconfig prepare` in the linux sources directory.
 
 Navigate to the linux sources
 ```cd linux```
@@ -310,25 +308,25 @@ Checkout the desired commit or revision, e.g.,
 Run make:
 ```make allyesconfig prepare```
 
-If no errors are thrown, the VariabilityExtraction *should* be successful for this commit. If you are able to complete the preparation for at least one commit, your system should be set up correctly.
+If no errors are thrown, the extraction *should* be successful for this commit. If you are able to complete the preparation for at least one commit, your system should be set up correctly.
 
 Navigate back to working directory
 ```cd ..```
 
-### Variability Extraction
-You can run the variability extraction for a range of commits by specifying commit ids:
+### Ground Truth Extraction
+You can run the ground truth extraction for a range of commits by specifying commit ids:
 ```
-java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
+java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
 ```
 or by specifying revision tags:
 ```
-java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
+java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
 ```
-For example, to extract the variability for all commits between Linux v4.5 and Linux v4.6, the following is possible:
+For example, to extract the ground truth for all commits between Linux v4.5 and Linux v4.6, the following is possible:
 ```
-java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
+java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
 
-java -jar VariabilityExtraction-1.0.0-jar-with-dependencies.jar variability_analysis_Linux.properties v4.5 v5.6
+java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties v4.5 v5.6
 ```
 
-By default, the files with the extracted variability are stored under `WORKDIR/evolution-analysis/output/`
+By default, the files with the extracted ground truth are stored under `WORKDIR/evolution-analysis/output/`
