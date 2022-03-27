@@ -10,7 +10,7 @@ mkdir linux-analysis
 echo "Changing into directory linux-analysis"
 cd linux-analysis
 echo "Cloning Extraction repo"
-git clone git@gitlab.informatik.hu-berlin.de:mse/VariantSync/Extraction.git
+git clone https://github.com/VariantSync/VEVOS_Extraction.git
 echo "Building Extraction"
 cd Extraction
 mvn package

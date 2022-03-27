@@ -38,7 +38,7 @@ RUN cat ubuntu-repos.txt >> /etc/apt/sources.list
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc-4.4
 RUN ln -s /bin/gcc-4.4 /bin/gcc
-RUN rm -rf VariabilityExtraction
+RUN rm -rf Extraction
 RUN gcc --version
 RUN java -version
 RUN apt-get install -y --no-install-recommends bc
@@ -47,15 +47,15 @@ RUN apt-get install -y --no-install-recommends bc
 WORKDIR /home/user
 # Copy JAR from previous stage
 COPY --from=0 /home/user/target /home/user/target
-RUN cp target/VariabilityExtraction-*-jar-with* .
+RUN cp target/Extraction-*-jar-with* .
 
 # Copy required scripts and properties
 COPY docker-resources/extract.sh /home/user/
 COPY docker-resources/entrypoint.sh /home/user/
 COPY docker-resources/fix-perms.sh /home/user/
 COPY docker-resources/KernelHaven.jar /home/user/
-COPY docker-resources/variability_analysis_BusyBox.properties /home/user/
-COPY docker-resources/variability_analysis_Linux.properties /home/user/
+COPY docker-resources/extraction_busybox.properties /home/user/
+COPY docker-resources/extraction_linux.properties /home/user/
 
 RUN mkdir -p /home/user/extraction-results/output
 RUN chown user:user /home/user -R

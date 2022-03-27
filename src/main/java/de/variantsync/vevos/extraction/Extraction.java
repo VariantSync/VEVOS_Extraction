@@ -1,7 +1,7 @@
-package de.variantsync.subjects.extraction;
+package de.variantsync.vevos.extraction;
 
-import de.variantsync.subjects.extraction.util.GitUtil;
-import de.variantsync.subjects.extraction.util.ShellExecutor;
+import de.variantsync.vevos.extraction.util.ShellExecutor;
+import de.variantsync.vevos.extraction.util.GitUtil;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.EnumSetting;
@@ -201,8 +201,8 @@ public class Extraction {
             LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
             // Copy the KernelHaven plugins to the sub-dir
-            LOGGER.logDebug("Copying the VariabilityExtraction as KernelHaven plugin to the sub directory for task #" + i + ".");
-            EXECUTOR.execute("cp -f ../VariabilityExtraction-* " + subDir + "/plugins/", workingDirectory);
+            LOGGER.logDebug("Copying the KernelHaven plugin to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f ../Extraction-* " + subDir + "/plugins/", workingDirectory);
             //EXECUTOR.execute("cp -f ../plugins/* " + subDir + "/plugins/", workingDirectory);
             // Copy KernelHaven to the sub-dir
             LOGGER.logDebug("Copying KernelHaven to the sub directory for task #" + i + ".");

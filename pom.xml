@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
 	<!-- Adjust group id for anonymous projects -->
-    <groupId>de.variantsync.vevos</groupId>
+    <groupId>vevos.extraction</groupId>
 	<!-- Adjust the project name -->
     <artifactId>Extraction</artifactId>
     <version>1.0.0</version>
