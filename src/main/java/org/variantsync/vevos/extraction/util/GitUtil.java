@@ -1,4 +1,4 @@
-package de.variantsync.vevos.extraction.util;
+package org.variantsync.vevos.extraction.util;
 
 import net.ssehub.kernel_haven.util.Logger;
 import org.eclipse.jgit.api.Git;

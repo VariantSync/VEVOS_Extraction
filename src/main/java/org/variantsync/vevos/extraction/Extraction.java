@@ -1,7 +1,7 @@
-package de.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction;
 
-import de.variantsync.vevos.extraction.util.ShellExecutor;
-import de.variantsync.vevos.extraction.util.GitUtil;
+import org.variantsync.vevos.extraction.util.ShellExecutor;
+import org.variantsync.vevos.extraction.util.GitUtil;
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.config.Configuration;
 import net.ssehub.kernel_haven.config.EnumSetting;

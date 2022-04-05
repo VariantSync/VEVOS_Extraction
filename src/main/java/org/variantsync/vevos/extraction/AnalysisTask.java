@@ -1,7 +1,7 @@
-package de.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction;
 
-import de.variantsync.vevos.extraction.util.ConfigManipulator;
-import de.variantsync.vevos.extraction.util.ShellExecutor;
+import org.variantsync.vevos.extraction.util.ConfigManipulator;
+import org.variantsync.vevos.extraction.util.ShellExecutor;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
 import net.ssehub.kernel_haven.SetUpException;
@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static de.variantsync.vevos.extraction.Extraction.*;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
@@ -69,9 +68,9 @@ public class AnalysisTask implements Runnable {
         try {
             Configuration config;
             config = new Configuration(propertiesFile);
-            config.registerSetting(LOG_LEVEL_MAIN);
-            config.registerSetting(EXTRACTION_TIMEOUT);
-            LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
+            config.registerSetting(Extraction.LOG_LEVEL_MAIN);
+            config.registerSetting(Extraction.EXTRACTION_TIMEOUT);
+            LOGGER.setLevel(config.getValue(Extraction.LOG_LEVEL_MAIN));
             prepareConfig(workDir, propertiesFile);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
@@ -335,7 +334,7 @@ public class AnalysisTask implements Runnable {
         try {
             if (!blocker.createNewFile()) {
                 LOGGER.logError("Was not able to create blocker file!");
-                quitOnError();
+                Extraction.quitOnError();
             } else {
                 LOGGER.logInfo("BLOCKED - OK");
             }
@@ -354,7 +353,7 @@ public class AnalysisTask implements Runnable {
             makefiles.forEach(this::removeErrorFlags);
         } catch (IOException e) {
             LOGGER.logException("Was not able to search for Makefiles: ", e);
-            quitOnError();
+            Extraction.quitOnError();
         }
     }
 
@@ -366,11 +365,11 @@ public class AnalysisTask implements Runnable {
             lines = reader.lines().collect(Collectors.toList());
         } catch (IOException e) {
             LOGGER.logException("Was not able to read Makefile: " + pathToFile, e);
-            quitOnError();
+            Extraction.quitOnError();
         }
         if (lines == null) {
             LOGGER.logError("The file's content is null: " + pathToFile);
-            quitOnError();
+            Extraction.quitOnError();
         }
 
         // Remove all error flags
@@ -391,7 +390,7 @@ public class AnalysisTask implements Runnable {
             }
         } catch (IOException e) {
             LOGGER.logException("Was not able to write adjusted Makefile " + pathToFile, e);
-            quitOnError();
+            Extraction.quitOnError();
         }
     }
 
@@ -401,7 +400,7 @@ public class AnalysisTask implements Runnable {
         if (blocker.exists()) {
             LOGGER.logError("The SPL directory is blocked by another task! This indicates a bug in the " +
                     "implementation of multi-threading.");
-            quitOnError();
+            Extraction.quitOnError();
         } else {
             LOGGER.logInfo("NO BLOCK FOUND - OK");
         }
@@ -412,7 +411,7 @@ public class AnalysisTask implements Runnable {
         File blocker = new File(dir, "BLOCKER.txt");
         if (!blocker.delete()) {
             LOGGER.logError("Was not able to delete blocker file!");
-            quitOnError();
+            Extraction.quitOnError();
         } else {
             LOGGER.logInfo("BLOCK REMOVED - OK");
         }

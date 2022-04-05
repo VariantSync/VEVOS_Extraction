@@ -1,4 +1,4 @@
-package de.variantsync.vevos.extraction.kh;
+package org.variantsync.vevos.extraction.kh;
 
 import net.ssehub.kernel_haven.SetUpException;
 import net.ssehub.kernel_haven.analysis.AnalysisComponent;
