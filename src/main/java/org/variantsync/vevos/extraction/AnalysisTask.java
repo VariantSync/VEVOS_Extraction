@@ -201,7 +201,9 @@ public class AnalysisTask implements Runnable {
         
         LOGGER.logStatus("Moving VARIABLES file to common output directory.");
         if(moveVariablesFile(outputDir, data_collection_dir)) {
-            LOGGER.logWarning("Moving VARIABLES failed.");
+            if (fullExtraction) {
+                LOGGER.logWarning("Moving VARIABLES failed. It is likely that no information about the features in the feature model was extracted.");
+            }
         }
         
         // Move the cache of the extractors to the collected output directory
