@@ -201,9 +201,7 @@ public class AnalysisTask implements Runnable {
         
         LOGGER.logStatus("Moving VARIABLES file to common output directory.");
         if(moveVariablesFile(outputDir, data_collection_dir)) {
-            if (fullExtraction) {
-                LOGGER.logWarning("Moving VARIABLES failed. It is likely that no information about the features in the feature model was extracted.");
-            }
+            LOGGER.logError("Moving VARIABLES failed. It is likely that no information about the existing features was extracted.");
         }
         
         // Move the cache of the extractors to the collected output directory
@@ -336,7 +334,7 @@ public class AnalysisTask implements Runnable {
     }
 
     private static boolean moveVariablesFile(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "VARIABLES.txt", "VARIABLES.txt", true);
+        return moveOutputFile(outputDir, targetDir, "VARIABLES.txt", "VARIABLES.txt", false);
     }
 
     private void createBlocker(File dir) {
