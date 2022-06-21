@@ -45,6 +45,8 @@ public class Extraction {
     public static final @NonNull Setting<@Nullable Integer> EXTRACTION_TIMEOUT
             = new Setting<>("extraction.timeout", Setting.Type.INTEGER, false, "0", "" +
             "The timeout for the KernelHaven execution in seconds.");
+    public static final @NonNull Setting<@Nullable String> ANALYSIS_CLASS
+            = new Setting<>("analysis.class", Setting.Type.STRING, true, null, "Class of the pipeline that is used for the analysis");
     private static final Logger LOGGER = Logger.get();
     private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
 
@@ -104,9 +106,10 @@ public class Extraction {
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
         LOGGER.logStatus("Scheduling tasks...");
+        boolean fullExtraction = config.getValue(ANALYSIS_CLASS).endsWith("FullAnalysis");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config.getValue(EXTRACTION_TIMEOUT)));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config.getValue(EXTRACTION_TIMEOUT), fullExtraction));
         }
         LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
@@ -157,6 +160,7 @@ public class Extraction {
             config.registerSetting(RESULT_REPO_COMMITTER_NAME);
             config.registerSetting(RESULT_REPO_COMMITTER_EMAIL);
             config.registerSetting(EXTRACTION_TIMEOUT);
+            config.registerSetting(ANALYSIS_CLASS);
         } catch (SetUpException e) {
             LOGGER.logError("Invalid configuration detected:", e.getMessage());
             quitOnError();

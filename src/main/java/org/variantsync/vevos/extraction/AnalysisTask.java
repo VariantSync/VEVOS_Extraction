@@ -43,14 +43,16 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final long timeout;
+    private final boolean fullExtraction;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, long timeout) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, long timeout, boolean fullExtraction) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.timeout = timeout;
+        this.fullExtraction = fullExtraction;
     }
 
     @Override
@@ -168,7 +170,7 @@ public class AnalysisTask implements Runnable {
         return processedCommits;
     }
 
-    private static void moveResultsToDirectory(File workDir, Path pathToTargetDir, RevCommit commit, File prepareFail) {
+    private void moveResultsToDirectory(File workDir, Path pathToTargetDir, RevCommit commit, File prepareFail) {
         String commitId = commit.getName();
         LOGGER.logStatus("Moving result to common output directory.");
         File data_collection_dir = pathToTargetDir.resolve("data").resolve(commitId).toFile();
@@ -186,8 +188,11 @@ public class AnalysisTask implements Runnable {
         // Move the results of the analysis to the collected output directory according to the current commit
         LOGGER.logStatus("Moving presence conditions to common output directory.");
         boolean hasError = movePresenceConditions(outputDir, data_collection_dir);
+
         LOGGER.logStatus("Moving DIMACS feature model to common output directory.");
-        hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
+        if (fullExtraction) {
+            hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
+        }
 
         LOGGER.logStatus("Moving FILTERED file to common output directory.");
         if(moveFilterCount(outputDir, data_collection_dir)) {
@@ -201,7 +206,9 @@ public class AnalysisTask implements Runnable {
         
         // Move the cache of the extractors to the collected output directory
         LOGGER.logStatus("Moving extractor cache to common output directory.");
-        hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
+        if (fullExtraction) {
+            hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
+        }
 
         // Move the log to the common output directory
         LOGGER.logStatus("Moving KernelHaven log to common output directory");
@@ -219,7 +226,7 @@ public class AnalysisTask implements Runnable {
         } else {
             writeParents(commit, data_collection_dir);
             writeToFile(data_collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
-            if (prepareFail.exists()) {
+            if (prepareFail.exists() && this.fullExtraction) {
                 LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
                 EXECUTOR.execute("echo \"" + commitId + "\" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToTargetDir.toFile());
             } else {
@@ -287,11 +294,13 @@ public class AnalysisTask implements Runnable {
         return hasError;
     }
 
-    private static boolean moveOutputFile(File outputDir, File targetDir, String sourceName, String targetName) {
+    private static boolean moveOutputFile(File outputDir, File targetDir, String sourceName, String targetName, boolean errorExpected) {
         boolean hasError = false;
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains(sourceName));
         if (resultFiles == null || resultFiles.length == 0) {
-            LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            if (!errorExpected) {
+                LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+            }
             hasError = true;
         } else if (resultFiles.length == 1) {
             try {
@@ -313,19 +322,19 @@ public class AnalysisTask implements Runnable {
     }
 
     private static boolean movePresenceConditions(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "Blocks.csv", "code-variability.spl.csv");
+        return moveOutputFile(outputDir, targetDir, "Blocks.csv", "code-variability.spl.csv", false);
     }
 
     private static boolean moveDimacsModel(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "feature-model.dimacs", "feature-model.dimacs");
+        return moveOutputFile(outputDir, targetDir, "feature-model.dimacs", "feature-model.dimacs", false);
     }
     
     private static boolean moveFilterCount(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "FILTERED.txt", "FILTERED.txt");
+        return moveOutputFile(outputDir, targetDir, "FILTERED.txt", "FILTERED.txt", true);
     }
 
     private static boolean moveVariablesFile(File outputDir, File targetDir) {
-        return moveOutputFile(outputDir, targetDir, "VARIABLES.txt", "VARIABLES.txt");
+        return moveOutputFile(outputDir, targetDir, "VARIABLES.txt", "VARIABLES.txt", true);
     }
 
     private void createBlocker(File dir) {

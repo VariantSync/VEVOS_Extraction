@@ -43,28 +43,32 @@ _Extraction/extraction-results_ once the extraction is complete, or has been sto
 Start the extraction by executing the `start-extraction` script (see examples further below).
 The basic syntax is the following:
 
-- `start-extraction.(sh|bat) (linux|busybox) [commit-id/tag] [commit-id/tag]`
+- `start-extraction.(sh|bat) (linux|busybox|GIT_HTTPS_LINK) [commit-id/tag] [commit-id/tag]`
 - `(option-1|option-2)` -> You *must* provide either a value for `option-1` or `option-2`.
 - `[option]` -> You *may* provide a value
 
-The script must be provided with `busybox` or `linux` as first argument, in order to specify which SPL should be considered.
+The script must be provided with `busybox`, `linux`, or the https clone link of a public git repository as first argument, in order to specify which SPL should be considered.
 In addition, you can optionally provide either one or two more arguments specifying a commit-id or git-tag.
 
-If you specify __no__ id or tag, the entire history is considered.
+> If you specify `linux` or `busybox`, a full extraction, including the analysis of the build system, will be performed for either Linux or BusyBox. If you specify the clone link to a git repository, a partial extraction, without considering the build system, will be performed. This is due to technicalities of the build system analysis, which require a project specific setup, which we only performed for Linux and BusyBox. 
 
-If you specify __exactly one__ id or tag, the extraction will only consider the one commit that is found under the id/tag.
+> If you specify __no__ id or tag, the entire history is considered.
+
+> If you specify __exactly one__ id or tag, the extraction will only consider the one commit that is found under the id/tag.
 This can be used to quickly test whether everything is working as intended or to run the extraction for one commit only (e.g., when no evolution information is necessary).
 
-If you specify __two__ ids or tags, the extraction will consider the range of commits that lies between the first and the second
+> If you specify __two__ ids or tags, the extraction will consider the range of commits that lies between the first and the second
 commit. The commit retrieval follows the same logic as [git log](https://git-scm.com/docs/git-log), i.e., it will retrieve
 all commits that are ancestors of the second commit, but __not__ ancestors of the first commit.
 
 - Windows CMD:
   - `start-extraction.bat busybox [id/tag] [id/tag]` 
   - `start-extraction.bat linux [id/tag] [id/tag]`
+  - `start-extraction.bat https://github.com/MarlinFirmware/Marlin.git [id/tag] [id/tag]`
 - Linux terminal:
   - `./start-extraction.sh busybox [id/tag] [id/tag]`
   - `./start-extraction.sh linux [id/tag] [id/tag]`
+  - `./start-extraction.sh https://github.com/MarlinFirmware/Marlin.git [id/tag] [id/tag]`
 
 #### Runtime
 The entire history of BusyBox can be extracted in about one day.
@@ -77,21 +81,24 @@ Therefore, errors that appear in the log do not necessarily indicate a problem w
 
 #### Examples:
 ```
-Extract the ground truth for all commits of BusyBox
+# Extract the ground truth for all commits of BusyBox
 start-extraction.bat busybox
 ./start-extraction.sh busybox
 
-Extract the ground truth between two specific commits of Busybox
+# Extract the ground truth between two specific commits of Busybox
 start-extraction.bat busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 ./start-extraction.sh busybox b35eef5383a4e7a6fb60fcf3833654a0bb2245e0 7de0ab21d939a5a304157f75918d0318a95261a3
 
-Extract the ground truth for the commit under revision tag v4.1 of Linux
+# Extract the ground truth for the commit under revision tag v4.1 of Linux
 start-extraction.bat linux v4.1
 ./start-extraction.sh linux v4.1
 
-Extract the ground truth for all commits between two minor revisions of Linux
+# Extract the ground truth for all commits between two minor revisions of Linux
 start-extraction.bat linux v4.3 v4.4
 ./start-extraction.sh linux v4.3 v4.4
+
+# Extract a partial ground truth (no feature mode, no file conditions) for the entire history of Marlin
+./start-extraction.sh https://github.com/MarlinFirmware/Marlin.git
 ```
 
 ### Stopping the Ground Truth Extraction
