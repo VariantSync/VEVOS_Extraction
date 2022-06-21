@@ -56,12 +56,13 @@ public class Extraction {
 
         // Parse the arguments
         File propertiesFile = getPropertiesFile(args);
+        String repo = args[1];
         String firstCommit = null;
         String lastCommit = null;
-        if (args.length > 1) {
-            firstCommit = args[1];
-            if (args.length > 2) {
-                lastCommit = args[2];
+        if (args.length > 2) {
+            firstCommit = args[2];
+            if (args.length > 3) {
+                lastCommit = args[3];
             }
         }
 
@@ -69,14 +70,32 @@ public class Extraction {
         Configuration config = getConfiguration(propertiesFile);
         LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
 
+        // Update the repo information if necessary
+        if (config.getValue(PATH_TO_SOURCE_REPO).equals("TBD")) {
+            LOGGER.logStatus("Expecting repo link as first argument...");
+            LOGGER.logStatus("Provided repo link: " + repo);
+
+            String[] parts = repo.split("/");
+            String repoName = parts[parts.length-1];
+            repoName = repoName.split("\\.")[0];
+            LOGGER.logStatus("Identified repo name: " + repoName);
+
+            config.setValue(PATH_TO_SOURCE_REPO, "./" + repoName);
+            config.setValue(URL_OF_SOURCE_REPO, repo);
+        }
+
         // Clone the SPL if necessary and return the File that points to the directory
         File splDir = setUpSPLDirectory(config);
-        // Create the directories for each task running the analysis
-        File workingDirectory = setUpWorkingDirectory(config, splDir);
         // Load git history
         List<RevCommit> commits = GitUtil.getCommits(splDir, firstCommit, lastCommit);
+        LOGGER.logStatus("Identified " + commits.size() + " commit(s) for processing.");
 
-        int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
+        // Number of threats is the Minimum of the specified number and the number of commits to process
+        int numberOfThreads = Math.min(config.getValue(NUMBER_OF_THREADS),commits.size());
+
+        // Create the directories for each task running the analysis
+        File workingDirectory = setUpWorkingDirectory(config, splDir, numberOfThreads);
+
         LOGGER.logStatus("Starting thread pool with " + numberOfThreads + " threads.");
         ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
         LOGGER.logStatus("Splitting commits into " + numberOfThreads + " subset(s).");
@@ -163,8 +182,7 @@ public class Extraction {
         return splDir;
     }
 
-    private static File setUpWorkingDirectory(Configuration config, File splDir) {
-        int numberOfThreads = config.getValue(NUMBER_OF_THREADS);
+    private static File setUpWorkingDirectory(Configuration config, File splDir, int numberOfThreads) {
         File workingDirectory = new File(System.getProperty("user.dir"));
         workingDirectory = new File(workingDirectory, config.getValue(WORKING_DIR_NAME));
         LOGGER.logInfo("Working Directory: " + workingDirectory);

@@ -6,14 +6,10 @@ RUN apk add maven git
 
 WORKDIR /home/user
 
-RUN git clone --progress https://git.busybox.net/busybox/
-RUN git clone --progress https://github.com/torvalds/linux.git
-
 COPY local-maven-repo ./local-maven-repo
 COPY src ./src
 COPY pom.xml .
 RUN mvn package || exit
-
 
 
 FROM ubuntu:20.04
@@ -56,16 +52,13 @@ COPY docker-resources/fix-perms.sh /home/user/
 COPY docker-resources/KernelHaven.jar /home/user/
 COPY docker-resources/extraction_busybox.properties /home/user/
 COPY docker-resources/extraction_linux.properties /home/user/
+COPY docker-resources/extraction_generic.properties /home/user/
 
 RUN mkdir -p /home/user/extraction-results/output
 RUN chown user:user /home/user -R
 RUN chmod +x entrypoint.sh
 RUN chmod +x fix-perms.sh
 RUN chmod +x extract.sh
-
-# Copy repositories from previous stage
-COPY --from=0 /home/user/linux /home/user/linux
-COPY --from=0 /home/user/busybox /home/user/busybox
 
 ENTRYPOINT ["./entrypoint.sh", "./extract.sh"]
 USER user
