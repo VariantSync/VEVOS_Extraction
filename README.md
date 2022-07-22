@@ -326,17 +326,17 @@ Navigate back to working directory
 ### Ground Truth Extraction
 You can run the ground truth extraction for a range of commits by specifying commit ids:
 ```
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties *START_COMMIT_ID* *END_COMMIT_ID*   
 ```
 or by specifying revision tags:
 ```
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties *START_REVISION_TAG* *END_REVISION_TAG*   
 ```
 For example, to extract the ground truth for all commits between Linux v4.5 and Linux v4.6, the following is possible:
 ```
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties b562e44f507e863c6792946e4e1b1449fbbac85d 2dcd0af568b0cf583645c8a317dd12e344b1c72a
 
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties v4.5 v5.6
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties v4.5 v5.6
 ```
 
 By default, the files with the extracted ground truth are stored under `WORKDIR/evolution-analysis/output/`
