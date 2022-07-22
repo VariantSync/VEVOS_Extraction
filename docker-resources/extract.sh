@@ -13,26 +13,26 @@ then
     echo "Executing variability extraction of BusyBox."
     if [ $# == 1 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_busybox.properties "$1"
+        java -jar Extraction-jar-with-dependencies.jar extraction_busybox.properties "$1"
     elif [ $# == 2 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_busybox.properties "$1" "$2"
+        java -jar Extraction-jar-with-dependencies.jar extraction_busybox.properties "$1" "$2"
     elif [ $# == 3 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_busybox.properties "$1" "$2" "$3"
+        java -jar Extraction-jar-with-dependencies.jar extraction_busybox.properties "$1" "$2" "$3"
     fi
 elif [ "$1" == 'linux' ]
 then
     echo "Executing variability extraction of Linux."
     if [ $# == 1 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties "$1"
+        java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties "$1"
     elif [ $# == 2 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties "$1" "$2"
+        java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties "$1" "$2"
     elif [ $# == 3 ]
     then
-        java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties "$1" "$2" "$3"
+        java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties "$1" "$2" "$3"
     fi
 elif [ "$1" == '--help' ]
 then
@@ -54,12 +54,12 @@ else
     echo "Executing variability extraction of $1."
     if [ $# == 1 ]
     then
-      java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_generic.properties "$1"
+      java -jar Extraction-jar-with-dependencies.jar extraction_generic.properties "$1"
     elif [ $# == 2 ]
     then
-      java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_generic.properties "$1" "$2"
+      java -jar Extraction-jar-with-dependencies.jar extraction_generic.properties "$1" "$2"
     elif [ $# == 3 ]
     then
-      java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_generic.properties "$1" "$2" "$3"
+      java -jar Extraction-jar-with-dependencies.jar extraction_generic.properties "$1" "$2" "$3"
     fi
 fi
