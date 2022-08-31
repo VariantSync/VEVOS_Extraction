@@ -8,4 +8,4 @@
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing ground truth extraction for Linux."
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties v4.1 v4.2
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties v4.1 v4.2

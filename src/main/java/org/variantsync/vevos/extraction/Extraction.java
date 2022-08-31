@@ -1,5 +1,6 @@
 package org.variantsync.vevos.extraction;
 
+import org.variantsync.vevos.extraction.kh.FullExtraction;
 import org.variantsync.vevos.extraction.util.ShellExecutor;
 import org.variantsync.vevos.extraction.util.GitUtil;
 import net.ssehub.kernel_haven.SetUpException;
@@ -106,7 +107,7 @@ public class Extraction {
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
         LOGGER.logStatus("Scheduling tasks...");
-        boolean fullExtraction = config.getValue(ANALYSIS_CLASS).endsWith("FullAnalysis");
+        boolean fullExtraction = config.getValue(ANALYSIS_CLASS).endsWith(FullExtraction.class.getName());
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
             threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config.getValue(EXTRACTION_TIMEOUT), fullExtraction));

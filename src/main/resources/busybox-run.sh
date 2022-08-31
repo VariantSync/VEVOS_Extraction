@@ -8,4 +8,4 @@
 echo "Removing previous results"
 rm -rf extraction-results
 echo "Executing ground truth extraction for BusyBox."
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_busybox.properties
+java -jar Extraction-jar-with-dependencies.jar extraction_busybox.properties

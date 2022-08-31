@@ -10,12 +10,12 @@ echo "Removing old folders"
 rm -rf extraction-results
 
 echo "Packaging jar"
-rm -rf Extraction-1.0.0-jar-with-dependencies.jar
+rm -rf Extraction-jar-with-dependencies.jar
 cd Extraction || exit
 mvn package
-cp target/Extraction-1.0.0-jar-with-dependencies.jar ..
+cp target/Extraction-jar-with-dependencies.jar ..
 cd ..
 clear
 
 echo "Executing ground truth extraction."
-java -jar Extraction-1.0.0-jar-with-dependencies.jar extraction_linux.properties db196935d9562abec4510f48d887bc1f1e054fcf
+java -jar Extraction-jar-with-dependencies.jar extraction_linux.properties db196935d9562abec4510f48d887bc1f1e054fcf
