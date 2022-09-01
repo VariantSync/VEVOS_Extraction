@@ -8,7 +8,7 @@
     <groupId>org.variantsync.vevos.extraction</groupId>
 	<!-- Adjust the project name -->
     <artifactId>Extraction</artifactId>
-    <version>1.0.1</version>
+    <version>1.1.0</version>
 
     <properties>
         <!-- Adjust your java version here -->
