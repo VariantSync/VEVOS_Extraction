@@ -1,7 +1,7 @@
 # VEVOS: Ground Truth Extraction
 VEVOS is a tool suite for the simulation of the evolution of clone-and-own projects and consists of two main components: The ground truth extraction, called VEVOS/Extraction and the variant simulation called VEVOS/Simulation.
 
-This repository contains VEVOS/Extraction and thus the first part of the replication package for the paper _Simulating the Evolution of Clone-and-Own Projects with VEVOS_ submitted to the International Conference on Evaluation and Assessment in Software Engineering (EASE) 2022.
+This repository contains VEVOS/Extraction and thus the first part of the replication package for the paper _Simulating the Evolution of Clone-and-Own Projects with VEVOS_ published at the International Conference on Evaluation and Assessment in Software Engineering (EASE) 2022 ([doi](https://doi.org/10.1145/3530019.3534084). 
 VEVOS/Extraction is a java project for extracting feature mappings, presence conditions, and feature models for each revision (within a specified range of the commit-history) from an input software product line.
 
 ![](docs/extraction.png)
