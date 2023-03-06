@@ -1,16 +1,9 @@
 package org.variantsync.vevos.extraction;
 
-import org.variantsync.vevos.extraction.util.ConfigManipulator;
+import org.tinylog.Logger;
 import org.variantsync.vevos.extraction.util.ShellExecutor;
 import net.lingala.zip4j.ZipFile;
 import net.lingala.zip4j.exception.ZipException;
-import net.ssehub.kernel_haven.SetUpException;
-import net.ssehub.kernel_haven.config.Configuration;
-import net.ssehub.kernel_haven.config.DefaultSettings;
-import net.ssehub.kernel_haven.config.Setting;
-import net.ssehub.kernel_haven.util.Logger;
-import net.ssehub.kernel_haven.util.null_checks.NonNull;
-import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.*;
@@ -26,16 +19,12 @@ import java.util.stream.Stream;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 public class AnalysisTask implements Runnable {
-    public static final @NonNull Setting<@Nullable String> WORK_DIR
-            = new Setting<>("working_directory", Setting.Type.STRING, false, null, "" +
-            "Path to the working directory.");
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
     private final static String INCOMPLETE_PC_COMMIT_FILE = "PARTIAL_SUCCESS_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
-    private static final Logger LOGGER = Logger.get();
-    private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
+    private static final ShellExecutor EXECUTOR = new ShellExecutor();
     private static int existingTasksCount = 0;
     private final int taskNumber;
     private final File parentDir;
@@ -43,41 +32,27 @@ public class AnalysisTask implements Runnable {
     private final File parentPropertiesFile;
     private final String splName;
     private final long timeout;
-    private final boolean fullExtraction;
 
-    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, long timeout, boolean fullExtraction) {
+    public AnalysisTask(List<RevCommit> commits, File parentDir, File propertiesFile, String splName, long timeout) {
         this.commits = commits;
         this.parentDir = parentDir;
         this.parentPropertiesFile = propertiesFile;
         this.splName = splName;
         this.taskNumber = existingTasksCount++;
         this.timeout = timeout;
-        this.fullExtraction = fullExtraction;
     }
 
     @Override
     public void run() {
         String taskName = String.valueOf(taskNumber);
         String threadName = Thread.currentThread().getName();
-        LOGGER.logStatus("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
+        Logger.info("Started analysis task #" + taskName + " that is responsible for " + commits.size() + " commits.");
         File workDir = new File(parentDir, "run-" + taskName);
         File propertiesFile = new File(workDir, parentPropertiesFile.getName());
         File splDir = new File(workDir, splName);
-        LOGGER.logInfo("Work Dir: " + workDir);
-        LOGGER.logInfo("Properties File: " + propertiesFile);
-        LOGGER.logInfo("SPL Dir: " + splDir);
-        // Load the config
-        try {
-            Configuration config;
-            config = new Configuration(propertiesFile);
-            config.registerSetting(Extraction.LOG_LEVEL_MAIN);
-            config.registerSetting(Extraction.EXTRACTION_TIMEOUT);
-            LOGGER.setLevel(config.getValue(Extraction.LOG_LEVEL_MAIN));
-            prepareConfig(workDir, propertiesFile);
-        } catch (SetUpException e) {
-            LOGGER.logError("Invalid configuration detected:", e.getMessage());
-            return;
-        }
+        Logger.info("Work Dir: " + workDir);
+        Logger.info("Properties File: " + propertiesFile);
+        Logger.info("SPL Dir: " + splDir);
 
         Path pathToTargetDir = Paths.get(parentDir.getAbsolutePath(), "output");
         Set<String> processedCommits = determineProcessedCommits(pathToTargetDir);
@@ -86,12 +61,12 @@ public class AnalysisTask implements Runnable {
         // Process commits assigned to this task
         for (RevCommit commit : commits) {
             if (processedCommits.contains(commit.getName())) {
-                LOGGER.logStatus("Skipping " + commit.getName() + " as it was already processed.");
+                Logger.info("Skipping " + commit.getName() + " as it was already processed.");
                 count++;
                 continue;
             }
-            LOGGER.logStatus("Started analysis of commit " + commit.getName() + " in task #" + taskName);
-            LOGGER.logStatus("Commit number " + count + " of " + commits.size());
+            Logger.info("Started analysis of commit " + commit.getName() + " in task #" + taskName);
+            Logger.info("Commit number " + count + " of " + commits.size());
             // Make sure the directory is not blocked
             checkBlocker(splDir);
 
@@ -103,7 +78,7 @@ public class AnalysisTask implements Runnable {
 
             File prepareFail = new File(splDir, "PREPARE_FAILED");
             if (prepareFail.exists()) {
-                LOGGER.logError("The prepare fail flag must not exist yet!");
+                Logger.error("The prepare fail flag must not exist yet!");
             }
 
             // Adjust the Makefiles in the project to remove all error flags that can cause exceptions
@@ -111,10 +86,10 @@ public class AnalysisTask implements Runnable {
             adjustMakefiles(splDir);
 
             // Start the analysis pipeline
-            LOGGER.logStatus("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
+            Logger.info("Start executing KernelHaven with configuration file " + propertiesFile.getPath());
             EXECUTOR.execute("java -jar KernelHaven.jar " + propertiesFile.getAbsolutePath(), workDir, timeout, TimeUnit.SECONDS);
             Thread.currentThread().setName(threadName);
-            LOGGER.logStatus("KernelHaven execution finished.");
+            Logger.info("KernelHaven execution finished.");
 
             synchronized (AnalysisTask.class) {
                 moveResultsToDirectory(workDir, pathToTargetDir, commit, prepareFail);
@@ -123,7 +98,7 @@ public class AnalysisTask implements Runnable {
             // Delete the blocker
             deleteBlocker(splDir);
 
-            LOGGER.logStatus("Starting clean up...");
+            Logger.info("Starting clean up...");
 
             // Restore the makefiles
             EXECUTOR.execute("git restore .", splDir);
@@ -140,21 +115,6 @@ public class AnalysisTask implements Runnable {
         }
     }
 
-    private void prepareConfig(File workDir, File propertiesFile) throws SetUpException {
-        ConfigManipulator manipulator = new ConfigManipulator(propertiesFile);
-        // Change the paths to the required directories
-        manipulator.put(WORK_DIR.getKey(), workDir.getAbsolutePath());
-        manipulator.put(DefaultSettings.SOURCE_TREE.getKey(), new File(workDir, splName).getAbsolutePath());
-        manipulator.put(DefaultSettings.RESOURCE_DIR.getKey(), new File(workDir, "res").getAbsolutePath());
-        manipulator.put(DefaultSettings.OUTPUT_DIR.getKey(), new File(workDir, "output").getAbsolutePath());
-        manipulator.put(DefaultSettings.PLUGINS_DIR.getKey(), new File(workDir, "plugins").getAbsolutePath());
-        manipulator.put(DefaultSettings.CACHE_DIR.getKey(), new File(workDir, "cache").getAbsolutePath());
-        manipulator.put(DefaultSettings.LOG_DIR.getKey(), new File(workDir, "log").getAbsolutePath());
-        LOGGER.logInfo("Set up configuration for " + propertiesFile);
-        LOGGER.logInfo("Saving configuration " + propertiesFile);
-        manipulator.writeToFile();
-    }
-    
     private Set<String> determineProcessedCommits(Path pathToTargetDir) {
         Set<String> processedCommits = new HashSet<>();
         try {
@@ -165,53 +125,42 @@ public class AnalysisTask implements Runnable {
             if (Files.exists(errorFile)) processedCommits.addAll(Files.readAllLines(errorFile));
             if (Files.exists(incompletePCFile)) processedCommits.addAll(Files.readAllLines(incompletePCFile));
         } catch (IOException e) {
-            LOGGER.logException("Was not able to determine processed commits.", e);
+            Logger.error("Was not able to determine processed commits.", e);
         }
         return processedCommits;
     }
 
     private void moveResultsToDirectory(File workDir, Path pathToTargetDir, RevCommit commit, File prepareFail) {
         String commitId = commit.getName();
-        LOGGER.logStatus("Moving result to common output directory.");
+        Logger.info("Moving result to common output directory.");
         File data_collection_dir = pathToTargetDir.resolve("data").resolve(commitId).toFile();
         File log_collection_dir = pathToTargetDir.resolve("log").toFile();
 
         if (data_collection_dir.mkdirs()) {
-            LOGGER.logDebug("Created sub-dir for collecting the results for commit " + data_collection_dir.getName());
+            Logger.debug("Created sub-dir for collecting the results for commit " + data_collection_dir.getName());
         }
 
         if (log_collection_dir.mkdirs()) {
-            LOGGER.logDebug("Created sub-dir for collecting the log for commit " + data_collection_dir.getName());
+            Logger.debug("Created sub-dir for collecting the log for commit " + data_collection_dir.getName());
         }
 
         File outputDir = new File(workDir, "output");
         // Move the results of the analysis to the collected output directory according to the current commit
-        LOGGER.logStatus("Moving presence conditions to common output directory.");
+        Logger.info("Moving presence conditions to common output directory.");
         boolean hasError = movePresenceConditions(outputDir, data_collection_dir);
 
-        LOGGER.logStatus("Moving DIMACS feature model to common output directory.");
-        if (fullExtraction) {
-            hasError = hasError | moveDimacsModel(outputDir, data_collection_dir);
-        }
-
-        LOGGER.logStatus("Moving FILTERED file to common output directory.");
+        Logger.info("Moving FILTERED file to common output directory.");
         if(moveFilterCount(outputDir, data_collection_dir)) {
-            LOGGER.logWarning("Moving FILTERED failed.");
+            Logger.warn("Moving FILTERED failed.");
         }
         
-        LOGGER.logStatus("Moving VARIABLES file to common output directory.");
+        Logger.info("Moving VARIABLES file to common output directory.");
         if(moveVariablesFile(outputDir, data_collection_dir)) {
-            LOGGER.logError("Moving VARIABLES failed. It is likely that no information about the existing features was extracted.");
+            Logger.error("Moving VARIABLES failed. It is likely that no information about the existing features was extracted.");
         }
         
-        // Move the cache of the extractors to the collected output directory
-        LOGGER.logStatus("Moving extractor cache to common output directory.");
-        if (fullExtraction) {
-            hasError = hasError | moveFeatureModel(workDir, data_collection_dir);
-        }
-
         // Move the log to the common output directory
-        LOGGER.logStatus("Moving KernelHaven log to common output directory");
+        Logger.info("Moving KernelHaven log to common output directory");
         moveKernelHavenLog(workDir, log_collection_dir, commitId);
 
         if (hasError) {
@@ -220,28 +169,23 @@ public class AnalysisTask implements Runnable {
                 try {
                     Files.delete(data_collection_dir.toPath());
                 } catch (IOException e) {
-                    LOGGER.logError("Was not able to delete the result collection directory " + data_collection_dir);
+                    Logger.error("Was not able to delete the result collection directory " + data_collection_dir);
                 }
             }
         } else {
             writeParents(commit, data_collection_dir);
             writeToFile(data_collection_dir, COMMIT_MESSAGE_FILE, commit.getFullMessage());
-            if (prepareFail.exists() && this.fullExtraction) {
-                LOGGER.logWarning("KernelHaven was not able to correctly load the build model, the extracted file presence conditions are incomplete!");
-                EXECUTOR.execute("echo \"" + commitId + "\" >> " + INCOMPLETE_PC_COMMIT_FILE, pathToTargetDir.toFile());
-            } else {
                 EXECUTOR.execute("echo \"" + commitId + "\" >> " + SUCCESS_COMMIT_FILE, pathToTargetDir.toFile());
-            }
         }
 
         try {
             new ZipFile(new File(data_collection_dir.getParentFile(), commitId + ".zip")).addFolder(data_collection_dir);
             EXECUTOR.execute("rm -rf " + commitId, data_collection_dir.getParentFile());
         } catch (ZipException e) {
-            LOGGER.logError("Was not able to zip variability data of commit " + commit.getName());
+            Logger.error("Was not able to zip variability data of commit " + commit.getName());
         }
 
-        LOGGER.logInfo("...done.");
+        Logger.info("...done.");
     }
 
     private static void writeToFile(File collection_dir, String fileName, String fullMessage) {
@@ -249,7 +193,7 @@ public class AnalysisTask implements Runnable {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(pathToCommitFile.toFile()))) {
             bw.write(fullMessage);
         } catch (IOException e) {
-            LOGGER.logException("Was not able to write " + pathToCommitFile, e);
+            Logger.error("Was not able to write " + pathToCommitFile, e);
         }
     }
 
@@ -262,16 +206,16 @@ public class AnalysisTask implements Runnable {
         File logDir = new File(workDir, "log");
         File[] logFiles = logDir.listFiles((dir, name) -> name.contains(".log"));
         if (logFiles == null || logFiles.length == 0) {
-            LOGGER.logWarning("NO LOG FILE IN " + logDir.getAbsolutePath());
+            Logger.warn("NO LOG FILE IN " + logDir.getAbsolutePath());
         } else {
             if (logFiles.length > 1) {
-                LOGGER.logWarning("FOUND MORE THAN ONE LOG FILE IN " + logDir.getAbsolutePath());
+                Logger.warn("FOUND MORE THAN ONE LOG FILE IN " + logDir.getAbsolutePath());
             }
             try {
-                LOGGER.logInfo("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetDir);
+                Logger.info("Moving log from " + logFiles[0].getAbsolutePath() + " to " + targetDir);
                 Files.move(logFiles[0].toPath(), Paths.get(targetDir.getAbsolutePath(), commitId + ".log"));
             } catch (IOException e) {
-                LOGGER.logException("Was not able to move the log file of the analysis: ", e);
+                Logger.error("Was not able to move the log file of the analysis: ", e);
             }
         }
     }
@@ -281,14 +225,14 @@ public class AnalysisTask implements Runnable {
         File vmCache = new File(new File(workDir, "cache"), "vmCache.json");
         if (vmCache.exists()) {
             try {
-                LOGGER.logInfo("Moving cache from " + vmCache.getAbsolutePath() + " to " + targetDir);
+                Logger.info("Moving cache from " + vmCache.getAbsolutePath() + " to " + targetDir);
                 Files.move(vmCache.toPath(), Paths.get(targetDir.toString(), "variability-model.json"), REPLACE_EXISTING);
             } catch (IOException e) {
-                LOGGER.logException("Was not able to move the cached variability model: ", e);
+                Logger.error("Was not able to move the cached variability model: ", e);
                 hasError = true;
             }
         } else {
-            LOGGER.logError("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
+            Logger.error("NO VARIABILITY MODEL EXTRACTED TO " + vmCache);
             hasError = true;
         }
         return hasError;
@@ -299,22 +243,22 @@ public class AnalysisTask implements Runnable {
         File[] resultFiles = outputDir.listFiles((dir, name) -> name.contains(sourceName));
         if (resultFiles == null || resultFiles.length == 0) {
             if (!errorExpected) {
-                LOGGER.logError("NO RESULT FILE IN " + outputDir.getAbsolutePath());
+                Logger.error("NO RESULT FILE IN " + outputDir.getAbsolutePath());
             }
             hasError = true;
         } else if (resultFiles.length == 1) {
             try {
-                LOGGER.logInfo("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + targetDir);
+                Logger.info("Moving results from " + resultFiles[0].getAbsolutePath() + " to " + targetDir);
                 Files.move(resultFiles[0].toPath(), Paths.get(targetDir.toString(), targetName), REPLACE_EXISTING);
             } catch (IOException e) {
-                LOGGER.logException("Was not able to move the result file of the analysis: ", e);
+                Logger.error("Was not able to move the result file of the analysis: ", e);
             }
         } else {
-            LOGGER.logError("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
+            Logger.error("FOUND MORE THAN ONE RESULT FILE IN " + outputDir.getAbsolutePath());
             for (File f : resultFiles) {
-                LOGGER.logError(f.getAbsolutePath());
+                Logger.error(f.getAbsolutePath());
             }
-            LOGGER.logWarning("Cleaning output directory...");
+            Logger.warn("Cleaning output directory...");
             EXECUTOR.execute("rm -f ./*", outputDir);
             hasError = true;
         }
@@ -338,22 +282,22 @@ public class AnalysisTask implements Runnable {
     }
 
     private void createBlocker(File dir) {
-        LOGGER.logInfo("Blocking directory " + dir);
+        Logger.info("Blocking directory " + dir);
         File blocker = new File(dir, "BLOCKER.txt");
         try {
             if (!blocker.createNewFile()) {
-                LOGGER.logError("Was not able to create blocker file!");
+                Logger.error("Was not able to create blocker file!");
                 Extraction.quitOnError();
             } else {
-                LOGGER.logInfo("BLOCKED - OK");
+                Logger.info("BLOCKED - OK");
             }
         } catch (IOException e) {
-            LOGGER.logException("Exception was thrown upon creating blocker file: ", e);
+            Logger.error("Exception was thrown upon creating blocker file: ", e);
         }
     }
 
     private void adjustMakefiles(File dir) {
-        LOGGER.logInfo("Adjusting Makefiles in " + dir);
+        Logger.info("Adjusting Makefiles in " + dir);
         try {
             final Stream<Path> makefiles = Files.find(dir.toPath(),
                     Integer.MAX_VALUE,
@@ -361,23 +305,23 @@ public class AnalysisTask implements Runnable {
                     FileVisitOption.FOLLOW_LINKS);
             makefiles.forEach(this::removeErrorFlags);
         } catch (IOException e) {
-            LOGGER.logException("Was not able to search for Makefiles: ", e);
+            Logger.error("Was not able to search for Makefiles: ", e);
             Extraction.quitOnError();
         }
     }
 
     private void removeErrorFlags(Path pathToFile) {
-        LOGGER.logDebug("Adjusting Makefile: " + pathToFile);
+        Logger.debug("Adjusting Makefile: " + pathToFile);
         List<String> lines = null;
         // Read the file's content
         try (BufferedReader reader = new BufferedReader(new FileReader(pathToFile.toFile()))) {
             lines = reader.lines().collect(Collectors.toList());
         } catch (IOException e) {
-            LOGGER.logException("Was not able to read Makefile: " + pathToFile, e);
+            Logger.error("Was not able to read Makefile: " + pathToFile, e);
             Extraction.quitOnError();
         }
         if (lines == null) {
-            LOGGER.logError("The file's content is null: " + pathToFile);
+            Logger.error("The file's content is null: " + pathToFile);
             Extraction.quitOnError();
         }
 
@@ -398,31 +342,31 @@ public class AnalysisTask implements Runnable {
                 writer.newLine();
             }
         } catch (IOException e) {
-            LOGGER.logException("Was not able to write adjusted Makefile " + pathToFile, e);
+            Logger.error("Was not able to write adjusted Makefile " + pathToFile, e);
             Extraction.quitOnError();
         }
     }
 
     private void checkBlocker(File dir) {
-        LOGGER.logInfo("Checking block of directory " + dir);
+        Logger.info("Checking block of directory " + dir);
         File blocker = new File(dir, "BLOCKER.txt");
         if (blocker.exists()) {
-            LOGGER.logError("The SPL directory is blocked by another task! This indicates a bug in the " +
+            Logger.error("The SPL directory is blocked by another task! This indicates a bug in the " +
                     "implementation of multi-threading.");
             Extraction.quitOnError();
         } else {
-            LOGGER.logInfo("NO BLOCK FOUND - OK");
+            Logger.info("NO BLOCK FOUND - OK");
         }
     }
 
     private void deleteBlocker(File dir) {
-        LOGGER.logInfo("Removing block of directory " + dir);
+        Logger.info("Removing block of directory " + dir);
         File blocker = new File(dir, "BLOCKER.txt");
         if (!blocker.delete()) {
-            LOGGER.logError("Was not able to delete blocker file!");
+            Logger.error("Was not able to delete blocker file!");
             Extraction.quitOnError();
         } else {
-            LOGGER.logInfo("BLOCK REMOVED - OK");
+            Logger.info("BLOCK REMOVED - OK");
         }
     }
 

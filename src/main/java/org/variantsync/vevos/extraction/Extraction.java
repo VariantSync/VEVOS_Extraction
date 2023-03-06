@@ -1,15 +1,8 @@
 package org.variantsync.vevos.extraction;
 
-import org.variantsync.vevos.extraction.kh.FullExtraction;
+import org.tinylog.Logger;
 import org.variantsync.vevos.extraction.util.ShellExecutor;
 import org.variantsync.vevos.extraction.util.GitUtil;
-import net.ssehub.kernel_haven.SetUpException;
-import net.ssehub.kernel_haven.config.Configuration;
-import net.ssehub.kernel_haven.config.EnumSetting;
-import net.ssehub.kernel_haven.config.Setting;
-import net.ssehub.kernel_haven.util.Logger;
-import net.ssehub.kernel_haven.util.null_checks.NonNull;
-import net.ssehub.kernel_haven.util.null_checks.Nullable;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 
@@ -19,46 +12,37 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Extraction {
-    public static final @NonNull EnumSetting<Logger.Level> LOG_LEVEL_MAIN
-            = new EnumSetting<>("log.level.main", Logger.Level.class, true, null, "" +
-            "Log level of main execution.");
-    public static final @NonNull Setting<@Nullable String> PATH_TO_SOURCE_REPO
-            = new Setting<>("source_tree", Setting.Type.STRING, true, null, "" +
-            "Path to the folder with the repository in which the investigated SPL is managed.");
-    public static final @NonNull Setting<@Nullable String> WORKING_DIR_NAME
-            = new Setting<>("working_dir_name", Setting.Type.STRING, false, "extraction-results", "" +
-            "Name of the directory in which the analysis results and temporary files are stored.");
-    public static final @NonNull Setting<@Nullable String> URL_OF_SOURCE_REPO
-            = new Setting<>("source_repo_url", Setting.Type.STRING, false, null,
-            "URL of the git repository that manages the sources of the investigated SPL.");
-    public static final @NonNull Setting<@Nullable Integer> NUMBER_OF_THREADS
-            = new Setting<>("analysis.number_of_tasks", Setting.Type.INTEGER, false, "1", "" +
-            "The number of tasks that are used to run the analysis. The SPL sources are copied once for each task.");
-    public static final @NonNull Setting<@Nullable String> RESULT_REPO_URL
-            = new Setting<>("result.repo.url", Setting.Type.STRING, false, null,
-            "The url to the repository to which the results are pushed to if result.collection_type is set to 'Repository'");
-    public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_NAME
-            = new Setting<>("result.repo.committer.name", Setting.Type.STRING, false, "Variability Extraction",
-            "The name of the committer if result.collection_type is set to 'Repository'");
-    public static final @NonNull Setting<@Nullable String> RESULT_REPO_COMMITTER_EMAIL
-            = new Setting<>("result.repo.committer.email", Setting.Type.STRING, false, null,
-            "The email of the committer if result.collection_type is set to 'Repository'");
-    public static final @NonNull Setting<@Nullable Integer> EXTRACTION_TIMEOUT
-            = new Setting<>("extraction.timeout", Setting.Type.INTEGER, false, "0", "" +
-            "The timeout for the KernelHaven execution in seconds.");
-    public static final @NonNull Setting<@Nullable String> ANALYSIS_CLASS
-            = new Setting<>("analysis.class", Setting.Type.STRING, true, null, "Class of the pipeline that is used for the analysis");
-    private static final Logger LOGGER = Logger.get();
-    private static final ShellExecutor EXECUTOR = new ShellExecutor(LOGGER);
+    private static File propertiesFile;
+    public static final String LOG_LEVEL_MAIN
+            = "log.level.main";
+    public static final String PATH_TO_SOURCE_REPO
+            = "source_tree";
+    public static final String WORKING_DIR_NAME
+            = "working_dir_name";
+    public static final String URL_OF_SOURCE_REPO
+            = "source_repo_url";
+    public static final String NUMBER_OF_THREADS
+            = "analysis.number_of_tasks";
+    public static final String RESULT_REPO_URL
+            = "result.repo.url";
+    public static final String RESULT_REPO_COMMITTER_NAME
+            = "result.repo.committer.name";
+    public static final String RESULT_REPO_COMMITTER_EMAIL
+            = "result.repo.committer.email";
+    public static final String EXTRACTION_TIMEOUT
+            = "extraction.timeout";
+    public static final String ANALYSIS_CLASS
+            = "analysis.class";
+    private static final ShellExecutor EXECUTOR = new ShellExecutor();
 
     public static void main(String... args) throws IOException, GitAPIException {
         boolean isWindows = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
         checkOS(isWindows);
-        LOGGER.logStatus("Starting SPL history analysis.");
+        Logger.info("Starting SPL history analysis.");
 
         // Parse the arguments
-        File propertiesFile = getPropertiesFile(args);
+        propertiesFile = getPropertiesFile(args);
         String repo = args[1];
         String firstCommit = null;
         String lastCommit = null;
@@ -70,63 +54,61 @@ public class Extraction {
         }
 
         // Load the configuration
-        Configuration config = getConfiguration(propertiesFile);
-        LOGGER.setLevel(config.getValue(LOG_LEVEL_MAIN));
+        Properties properties = getProperties(propertiesFile);
 
         // Update the repo information if necessary
-        if (config.getValue(PATH_TO_SOURCE_REPO).equals("TBD")) {
-            LOGGER.logStatus("Expecting repo link as first argument...");
-            LOGGER.logStatus("Provided repo link: " + repo);
+        if (properties.getProperty(PATH_TO_SOURCE_REPO).equals("TBD")) {
+            Logger.info("Expecting repo link as first argument...");
+            Logger.info("Provided repo link: " + repo);
 
             String[] parts = repo.split("/");
             String repoName = parts[parts.length-1];
             repoName = repoName.split("\\.")[0];
-            LOGGER.logStatus("Identified repo name: " + repoName);
+            Logger.info("Identified repo name: " + repoName);
 
-            config.setValue(PATH_TO_SOURCE_REPO, "./" + repoName);
-            config.setValue(URL_OF_SOURCE_REPO, repo);
+            properties.setProperty(PATH_TO_SOURCE_REPO, "./" + repoName);
+            properties.setProperty(URL_OF_SOURCE_REPO, repo);
         }
 
         // Clone the SPL if necessary and return the File that points to the directory
-        File splDir = setUpSPLDirectory(config);
+        File splDir = setUpSPLDirectory(properties);
         // Load git history
         List<RevCommit> commits = GitUtil.getCommits(splDir, firstCommit, lastCommit);
-        LOGGER.logStatus("Identified " + commits.size() + " commit(s) for processing.");
+        Logger.info("Identified " + commits.size() + " commit(s) for processing.");
 
         // Number of threats is the Minimum of the specified number and the number of commits to process
-        int numberOfThreads = Math.min(config.getValue(NUMBER_OF_THREADS),commits.size());
+        int numberOfThreads = Math.min(Integer.parseInt(properties.getProperty(NUMBER_OF_THREADS)),commits.size());
 
         // Create the directories for each task running the analysis
-        File workingDirectory = setUpWorkingDirectory(config, splDir, numberOfThreads);
+        File workingDirectory = setUpWorkingDirectory(properties, splDir, numberOfThreads);
 
-        LOGGER.logStatus("Starting thread pool with " + numberOfThreads + " threads.");
+        Logger.info("Starting thread pool with " + numberOfThreads + " threads.");
         ExecutorService threadPool = Executors.newFixedThreadPool(numberOfThreads);
-        LOGGER.logStatus("Splitting commits into " + numberOfThreads + " subset(s).");
+        Logger.info("Splitting commits into " + numberOfThreads + " subset(s).");
         List<List<RevCommit>> commitSubsets = GitUtil.splitCommitsIntoSubsets(commits, numberOfThreads);
-        LOGGER.logStatus("...done.");
+        Logger.info("...done.");
         // Create a task for each commit subset and submit it to the thread pool
         int count = 0;
-        LOGGER.logStatus("Scheduling tasks...");
-        boolean fullExtraction = config.getValue(ANALYSIS_CLASS).endsWith(FullExtraction.class.getName());
+        Logger.info("Scheduling tasks...");
         for (List<RevCommit> commitSubset : commitSubsets) {
             count += commitSubset.size();
-            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), config.getValue(EXTRACTION_TIMEOUT), fullExtraction));
+            threadPool.submit(new AnalysisTask(commitSubset, workingDirectory, propertiesFile, splDir.getName(), Long.parseLong(properties.getProperty(EXTRACTION_TIMEOUT))));
         }
-        LOGGER.logStatus("all " + commitSubsets.size() + " tasks scheduled.");
+        Logger.info("all " + commitSubsets.size() + " tasks scheduled.");
         threadPool.shutdown();
         if (count != commits.size()) {
-            LOGGER.logException("Subsets not created correctly: ",
+            Logger.error("Subsets not created correctly: ",
                     new IllegalStateException("Expected the subsets to contain " + commits.size() +
                             " commits but only processed " + count + " commits."));
         }
-        LOGGER.logStatus("All tasks submitted...");
-        LOGGER.logStatus("Submitted a total of " + commits.size() + " commits.");
+        Logger.info("All tasks submitted...");
+        Logger.info("Submitted a total of " + commits.size() + " commits.");
     }
 
     private static void checkOS(boolean isWindows) {
-        LOGGER.logInfo("OS NAME: " + System.getProperty("os.name"));
+        Logger.info("OS NAME: " + System.getProperty("os.name"));
         if (isWindows) {
-            LOGGER.logError("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
+            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
                     "checked out correctly.");
             quitOnError();
         }
@@ -141,63 +123,54 @@ public class Extraction {
         }
 
         if (propertiesFile == null) {
-            LOGGER.logError("You must specify a .properties file as first argument");
+            Logger.error("You must specify a .properties file as first argument");
             quitOnError();
         }
 
         return propertiesFile;
     }
 
-    private static Configuration getConfiguration(File propertiesFile) {
-        Configuration config = null;
-        try {
-            config = new Configuration(Objects.requireNonNull(propertiesFile));
-            config.registerSetting(LOG_LEVEL_MAIN);
-            config.registerSetting(PATH_TO_SOURCE_REPO);
-            config.registerSetting(WORKING_DIR_NAME);
-            config.registerSetting(URL_OF_SOURCE_REPO);
-            config.registerSetting(NUMBER_OF_THREADS);
-            config.registerSetting(RESULT_REPO_URL);
-            config.registerSetting(RESULT_REPO_COMMITTER_NAME);
-            config.registerSetting(RESULT_REPO_COMMITTER_EMAIL);
-            config.registerSetting(EXTRACTION_TIMEOUT);
-            config.registerSetting(ANALYSIS_CLASS);
-        } catch (SetUpException e) {
-            LOGGER.logError("Invalid configuration detected:", e.getMessage());
+    private static Properties getProperties(File propertiesFile) {
+        Properties props = new Properties();
+        try (FileInputStream input = new FileInputStream(propertiesFile)) {
+            props.load(input);
+        } catch (IOException e) {
+            Logger.error("problem while loading properties");
+            Logger.error(e);
             quitOnError();
-        }
-        return config;
+        } 
+        return props;
     }
 
-    private static File setUpSPLDirectory(Configuration config) {
+    private static File setUpSPLDirectory(Properties config) {
         // Clone the SPL repo if required
-        File splDir = new File(config.getValue(PATH_TO_SOURCE_REPO));
+        File splDir = new File(config.getProperty(PATH_TO_SOURCE_REPO));
         if (splDir.exists()) {
-            LOGGER.logInfo("Directory with SPL sources found.");
+            Logger.info("Directory with SPL sources found.");
         } else {
-            LOGGER.logStatus("Cloning SPL...");
-            LOGGER.logWarning("Depending on the download speed this might take several minutes.");
-            LOGGER.logWarning("Consider cloning the repository manually for a better estimate of the download time.");
+            Logger.info("Cloning SPL...");
+            Logger.warn("Depending on the download speed this might take several minutes.");
+            Logger.warn("Consider cloning the repository manually for a better estimate of the download time.");
             File executionDir = splDir.getParentFile() == null ? new File(System.getProperty("user.dir")) : splDir.getParentFile();
 
-            if (!EXECUTOR.execute("git clone " + config.getValue(URL_OF_SOURCE_REPO), executionDir)) {
+            if (!EXECUTOR.execute("git clone " + config.getProperty(URL_OF_SOURCE_REPO), executionDir)) {
                 quitOnError();
             }
         }
         return splDir;
     }
 
-    private static File setUpWorkingDirectory(Configuration config, File splDir, int numberOfThreads) {
+    private static File setUpWorkingDirectory(Properties config, File splDir, int numberOfThreads) {
         File workingDirectory = new File(System.getProperty("user.dir"));
-        workingDirectory = new File(workingDirectory, config.getValue(WORKING_DIR_NAME));
-        LOGGER.logInfo("Working Directory: " + workingDirectory);
-        LOGGER.logStatus("Setting up working directory...");
+        workingDirectory = new File(workingDirectory, config.getProperty(WORKING_DIR_NAME));
+        Logger.info("Working Directory: " + workingDirectory);
+        Logger.info("Setting up working directory...");
 
         // Create the directory where the results of the individual runs are collected
         File overallOutputDirectory = new File(workingDirectory, "output");
         if (!overallOutputDirectory.exists()) {
             if (overallOutputDirectory.mkdirs()) {
-                LOGGER.logInfo("Created common output directory.");
+                Logger.info("Created common output directory.");
             }
         }
 
@@ -207,7 +180,7 @@ public class Extraction {
             // Create the path to the working directory of each task
             if (!subDir.exists()) {
                 if (subDir.mkdirs()) {
-                    LOGGER.logDebug("Created directory for task number #" + i);
+                    Logger.debug("Created directory for task number #" + i);
                 }
             }
             // Create the directories that are expected by KernelHaven
@@ -215,48 +188,48 @@ public class Extraction {
             // Copy the SPL sources to the subDir, so that it can be analyzed locally
             File targetFile = new File(subDir, splDir.getName());
             if (!targetFile.exists()) {
-                LOGGER.logStatus("Copying the SPL directory to the sub directory for task #" + i + ".");
+                Logger.info("Copying the SPL directory to the sub directory for task #" + i + ".");
                 EXECUTOR.execute("cp -rf " + splDir.getAbsolutePath() + " .", subDir);
             } else {
-                LOGGER.logDebug("SPL directory exists in sub dir.");
+                Logger.debug("SPL directory exists in sub dir.");
             }
             // Copy the properties file to the subDir
-            LOGGER.logDebug("Copying the properties file to the sub directory for task #" + i + ".");
-            EXECUTOR.execute("cp -f " + config.getPropertyFile().getAbsolutePath() + " .", subDir);
+            Logger.debug("Copying the properties file to the sub directory for task #" + i + ".");
+            EXECUTOR.execute("cp -f " + propertiesFile.getAbsolutePath() + " .", subDir);
             // Copy the KernelHaven plugins to the sub-dir
-            LOGGER.logDebug("Copying the KernelHaven plugin to the sub directory for task #" + i + ".");
+            Logger.debug("Copying the KernelHaven plugin to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f ../Extraction-* " + subDir + "/plugins/", workingDirectory);
             //EXECUTOR.execute("cp -f ../plugins/* " + subDir + "/plugins/", workingDirectory);
             // Copy KernelHaven to the sub-dir
-            LOGGER.logDebug("Copying KernelHaven to the sub directory for task #" + i + ".");
+            Logger.debug("Copying KernelHaven to the sub directory for task #" + i + ".");
             EXECUTOR.execute("cp -f ../KernelHaven.jar " + subDir + "/", workingDirectory);
         }
-        LOGGER.logStatus("...done with setting up working directory.");
+        Logger.info("...done with setting up working directory.");
         return workingDirectory;
     }
 
     private static void createKernelHavenDirs(File taskDirectory) {
-        LOGGER.logStatus("Creating directories required by KernelHaven...");
+        Logger.info("Creating directories required by KernelHaven...");
         if (new File(taskDirectory, "res").mkdirs()) {
-            LOGGER.logDebug("Resource directory created.");
+            Logger.debug("Resource directory created.");
         }
         if (new File(taskDirectory, "output").mkdirs()) {
-            LOGGER.logDebug("Output directory created.");
+            Logger.debug("Output directory created.");
         }
         if (new File(taskDirectory, "plugins").mkdirs()) {
-            LOGGER.logDebug("Plugins directory created.");
+            Logger.debug("Plugins directory created.");
         }
         if (new File(taskDirectory, "cache").mkdirs()) {
-            LOGGER.logDebug("Cache directory created.");
+            Logger.debug("Cache directory created.");
         }
         if (new File(taskDirectory, "log").mkdirs()) {
-            LOGGER.logDebug("Log directory created.");
+            Logger.debug("Log directory created.");
         }
-        LOGGER.logInfo("...done.");
+        Logger.info("...done.");
     }
 
     public static void quitOnError() {
-        LOGGER.logError("An error occurred and the program has to quit.");
+        Logger.error("An error occurred and the program has to quit.");
         throw new IllegalStateException("Not able to continue analysis due to previous error");
     }
 

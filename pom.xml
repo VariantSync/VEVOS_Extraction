@@ -99,39 +99,19 @@
             <version>1.8</version>
         </dependency>
         <dependency>
-            <groupId>net.ssehub</groupId>
-            <artifactId>kernel_haven</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>fe_analysis</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>block_extractor</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>kbuildminer</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>kconfigreader</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>busyboot</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
             <groupId>net.lingala.zip4j</groupId>
             <artifactId>zip4j</artifactId>
             <version>2.10.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-api</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-impl</artifactId>
+            <version>2.4.1</version>
         </dependency>
     </dependencies>
 </project>
