@@ -12,7 +12,7 @@
 
     <properties>
         <!-- Adjust your java version here -->
-        <java.version>8</java.version>
+        <java.version>19</java.version>
 		<!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
 		<path.to.main>${project.groupId}.Extraction</path.to.main>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -112,6 +112,11 @@
             <groupId>org.tinylog</groupId>
             <artifactId>tinylog-impl</artifactId>
             <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.variantsync</groupId>
+            <artifactId>diffdetective</artifactId>
+            <version>1.0.0</version>
         </dependency>
     </dependencies>
 </project>
