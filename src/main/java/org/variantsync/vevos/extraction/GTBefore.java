@@ -3,12 +3,12 @@ package org.variantsync.vevos.extraction;
 import org.variantsync.diffdetective.util.Assert;
 
 public class GTBefore {
-    public static class Stable extends GroundTruth {
-        public Stable() {
+    public static class Initial extends GroundTruth {
+        public Initial() {
             super(new LineAnnotation[0]);
         }
 
-        public Stable(GTAfter.Stable after) {
+        public Initial(GTAfter.Stable after) {
             super(after.annotations);
             after.consumed = true;
         }
@@ -22,8 +22,8 @@ public class GTBefore {
 
     public static class Unstable extends GroundTruth {
 
-        private Unstable(Stable stable) {
-            super(stable.annotations);
+        private Unstable(Initial initial) {
+            super(initial.annotations);
         }
 
         public Unstable filterLine(int lineNumber) {

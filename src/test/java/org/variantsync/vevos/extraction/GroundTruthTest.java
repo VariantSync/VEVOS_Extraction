@@ -7,7 +7,7 @@ public class GroundTruthTest {
 
     @Test
     public void stagesAreConsumed() {
-        GTBefore.Stable stableBefore = new GTBefore.Stable();
+        GTBefore.Initial stableBefore = new GTBefore.Initial();
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(0);
         var withInserted = unstableAfter.finishInsertion();
         var withBefore = withInserted.combine(stableBefore.startFiltering().finishFiltering());
@@ -19,7 +19,7 @@ public class GroundTruthTest {
         Assertions.assertTrue(withBefore.consumed);
 
         Assertions.assertFalse(stableAfter.consumed);
-        stableBefore = new GTBefore.Stable(stableAfter);
+        stableBefore = new GTBefore.Initial(stableAfter);
         Assertions.assertTrue(stableAfter.consumed);
         Assertions.assertFalse(stableBefore.consumed);
     }
@@ -36,7 +36,7 @@ public class GroundTruthTest {
     }
 
     public static GTAfter.Stable simpleGTAfter() {
-        GTBefore.Stable stableBefore = new GTBefore.Stable();
+        GTBefore.Initial initialBefore = new GTBefore.Initial();
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(3);
 
         unstableAfter.insert(new LineAnnotation(1, null, null));
@@ -45,7 +45,7 @@ public class GroundTruthTest {
 
         return unstableAfter
                 .finishInsertion()
-                .combine(stableBefore
+                .combine(initialBefore
                         .startFiltering()
                         .finishFiltering())
                 .finalizeGT();
@@ -53,7 +53,7 @@ public class GroundTruthTest {
 
     @Test
     public void extendedGroundTruth() {
-        var stableBefore = new GTBefore.Stable(simpleGTAfter());
+        var stableBefore = new GTBefore.Initial(simpleGTAfter());
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(5);
 
         unstableAfter.insert(new LineAnnotation(2, null, null));
@@ -75,7 +75,7 @@ public class GroundTruthTest {
 
     @Test
     public void extendedMultipleGroundTruth() {
-        var stableBefore = new GTBefore.Stable(simpleGTAfter());
+        var stableBefore = new GTBefore.Initial(simpleGTAfter());
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(6);
 
         unstableAfter.insert(new LineAnnotation(2, null, null))
@@ -97,7 +97,7 @@ public class GroundTruthTest {
 
     @Test
     public void filterRemoved() {
-        var stableBefore = new GTBefore.Stable(simpleGTAfter());
+        var stableBefore = new GTBefore.Initial(simpleGTAfter());
 
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(2);
 
@@ -117,7 +117,7 @@ public class GroundTruthTest {
 
     @Test
     public void filterAll() {
-        var stableBefore = new GTBefore.Stable(simpleGTAfter());
+        var stableBefore = new GTBefore.Initial(simpleGTAfter());
 
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(0);
 
@@ -136,7 +136,7 @@ public class GroundTruthTest {
 
     @Test
     public void fullPipeline() {
-        var stableBefore = new GTBefore.Stable(simpleGTAfter());
+        var stableBefore = new GTBefore.Initial(simpleGTAfter());
 
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(5);
 
