@@ -10,13 +10,11 @@ public class GroundTruthTest {
         GTBefore.Initial stableBefore = new GTBefore.Initial();
         GTAfter.UnstableEmpty unstableAfter = new GTAfter.UnstableEmpty(0);
         var withInserted = unstableAfter.finishInsertion();
-        var withBefore = withInserted.combine(stableBefore.startFiltering().finishFiltering());
-        var stableAfter = withBefore.finalizeGT();
+        var stableAfter = withInserted.combine(stableBefore.startFiltering().finishFiltering());
 
         Assertions.assertTrue(stableBefore.consumed);
         Assertions.assertTrue(unstableAfter.consumed);
         Assertions.assertTrue(withInserted.consumed);
-        Assertions.assertTrue(withBefore.consumed);
 
         Assertions.assertFalse(stableAfter.consumed);
         stableBefore = new GTBefore.Initial(stableAfter);
@@ -47,8 +45,7 @@ public class GroundTruthTest {
                 .finishInsertion()
                 .combine(initialBefore
                         .startFiltering()
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
     }
 
     @Test
@@ -63,8 +60,7 @@ public class GroundTruthTest {
                 .finishInsertion()
                 .combine(stableBefore
                         .startFiltering()
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
 
         Assertions.assertEquals(5, finalGT.size());
         for (int i = 0; i < finalGT.size(); i++) {
@@ -86,8 +82,7 @@ public class GroundTruthTest {
                 .finishInsertion()
                 .combine(stableBefore
                         .startFiltering()
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
 
         Assertions.assertEquals(6, finalGT.size());
         for (int i = 0; i < finalGT.size(); i++) {
@@ -106,8 +101,7 @@ public class GroundTruthTest {
                 .combine(stableBefore
                         .startFiltering()
                         .filterLine(2)
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
 
         Assertions.assertEquals(2, finalGT.size());
         for (int i = 0; i < finalGT.size(); i++) {
@@ -128,8 +122,7 @@ public class GroundTruthTest {
                         .filterLine(1)
                         .filterLine(2)
                         .filterLine(3)
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
 
         Assertions.assertEquals(0, finalGT.size());
     }
@@ -144,13 +137,14 @@ public class GroundTruthTest {
                 .insert(new LineAnnotation(4, null, null))
                 .insert(new LineAnnotation(5, null, null));
 
+        unstableAfter.update(new LineAnnotation(1, null, null));
+
         var finalGT = unstableAfter
                 .finishInsertion()
                 .combine(stableBefore
                         .startFiltering()
                         .filterLine(2)
-                        .finishFiltering())
-                .finalizeGT();
+                        .finishFiltering());
 
         Assertions.assertEquals(5, finalGT.size());
         for (int i = 0; i < finalGT.size(); i++) {
