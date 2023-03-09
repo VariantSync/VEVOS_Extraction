@@ -32,8 +32,8 @@ public class PCAnalysis implements Analysis.Hooks {
     public static final TriFunction<Repository, Path, Analysis.Hooks, Analysis> AnalysisFactory = (repo, repoOutputDir, pcAnalysis) -> new Analysis(
             "PCAnalysis",
             List.of(
-                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
-                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
+//                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
+//                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
                     pcAnalysis
             ),
             repo,
@@ -99,8 +99,9 @@ public class PCAnalysis implements Analysis.Hooks {
     @Override
     public boolean analyzeDiffTree(Analysis analysis) throws Exception {
         GroundTruth currentGT = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), k -> new GroundTruth(new Hashtable<>()));
-
-        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
+        // TODO: Do not ignore empty lines
+        // TODO: Handle #endif
+//        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileName = analysis.getCurrentPatch().getFileName();
         Logger.debug("Name of processed file is %s".formatted(fileName));
