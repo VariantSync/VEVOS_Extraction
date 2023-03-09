@@ -4,8 +4,9 @@ import org.variantsync.diffdetective.util.Assert;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 
-public class FileGT {
+public class FileGT implements Iterable<LineAnnotation>{
     private final ArrayList<LineAnnotation> annotations;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;
@@ -39,6 +40,11 @@ public class FileGT {
         return this.annotations.set(index, annotation);
     }
 
+    @Override
+    public Iterator<LineAnnotation> iterator() {
+        return this.annotations.iterator();
+    }
+
     public static class Mutable extends FileGT {
         private final HashSet<Integer> updatedIndices;
         private final HashSet<Integer> removedIndices;
@@ -51,8 +57,7 @@ public class FileGT {
 
         public Mutable insert(LineAnnotation line) {
             Assert.assertTrue(!consumed);
-            var previousEntry = this.insert(line.index(), line);
-            Assert.assertTrue(previousEntry == null);
+            this.insert(line.index(), line);
             return this;
         }
 
