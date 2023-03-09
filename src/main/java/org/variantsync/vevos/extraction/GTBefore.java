@@ -3,13 +3,13 @@ package org.variantsync.vevos.extraction;
 import org.variantsync.diffdetective.util.Assert;
 
 public class GTBefore {
-    public static class Initial extends GroundTruth {
+    public static class Initial extends FileGroundTruth {
         public Initial() {
-            super(new LineAnnotation[0]);
+            super();
         }
 
         public Initial(GTAfter.Stable after) {
-            super(after.annotations);
+            super(after);
             after.consumed = true;
         }
 
@@ -20,18 +20,19 @@ public class GTBefore {
     }
 
 
-    public static class Unstable extends GroundTruth {
+    public static class Unstable extends FileGroundTruth {
 
         private Unstable(Initial initial) {
-            super(initial.annotations);
+            super(initial);
         }
 
         public Unstable filterLine(int lineNumber) {
             var index = lineNumber-1;
             Assert.assertTrue(!consumed);
-            Assert.assertTrue(annotations[index] != null);
 
-            annotations[index] = null;
+            var previousEntry = this.delete(index);
+            Assert.assertTrue(previousEntry != null);
+
             return this;
         }
 
@@ -41,10 +42,10 @@ public class GTBefore {
         }
     }
 
-    public static class Filtered extends GroundTruth {
+    public static class Filtered extends FileGroundTruth {
         // We can only add new lines until this Empty has been consumed
         private Filtered(GTBefore.Unstable unstable) {
-            super(unstable.annotations);
+            super(unstable);
         }
     }
 }

@@ -2,26 +2,28 @@ package org.variantsync.vevos.extraction;
 
 import org.variantsync.diffdetective.util.Assert;
 
+import java.util.HashSet;
+
 public class GTAfter {
 
-    public static class UnstableEmpty extends GroundTruth {
-        private final boolean[] updated;
+    public static class UnstableEmpty extends FileGroundTruth {
+        private final HashSet<Integer> updatedIndices;
 
-        public UnstableEmpty(int size) {
-            super(new LineAnnotation[size]);
-            this.updated = new boolean[size];
+        public UnstableEmpty() {
+            super();
+            this.updatedIndices = new HashSet<>();
         }
 
         public UnstableEmpty insert(LineAnnotation line) {
             Assert.assertTrue(!consumed);
-            Assert.assertTrue(annotations[line.index()] == null);
-            annotations[line.index()] = line;
+            var previousEntry = this.insert(line.index(), line);
+            Assert.assertTrue(previousEntry == null);
             return this;
         }
 
         public UnstableEmpty update(LineAnnotation line) {
             this.insert(line);
-            this.updated[line.index()] = true;
+            this.updatedIndices.add(line.index());
             return this;
         }
 
@@ -31,30 +33,29 @@ public class GTAfter {
         }
     }
 
-    public static class UnstableWithInserted extends GroundTruth {
-        private final boolean[] updated;
+    public static class UnstableWithInserted extends FileGroundTruth {
+        private final HashSet<Integer> updatedIndices;
 
         private UnstableWithInserted(UnstableEmpty unstableEmptyGT) {
-            super(unstableEmptyGT.annotations);
-            this.updated = unstableEmptyGT.updated;
+            super(unstableEmptyGT);
+            this.updatedIndices = unstableEmptyGT.updatedIndices;
         }
 
         public GTAfter.Stable combine(GTBefore.Filtered filteredBeforeGT) {
             this.consumed = true;
 
-            LineAnnotation[] befAnnotations = filteredBeforeGT.annotations;
             // The offset is required to track differences between indices of the before and the after version of the
             // ground truth
             // Lines that have been removed reduce the offset by 1
             // Lines that have been added increase the offset by 1
             int offset = 0;
-            for (int i = 0; i < befAnnotations.length; i++) {
-                if (befAnnotations[i] == null) {
+            for (int i = 0; i < filteredBeforeGT.size(); i++) {
+                if (filteredBeforeGT.get(i) == null) {
                     // The annotated line has been removed, adjust the offset and check the next one
                     offset -= 1;
                     continue;
                 }
-                offset = this.findPositionAndInsert(befAnnotations[i], i, offset);
+                offset = this.findPositionAndInsert(filteredBeforeGT.get(i), i, offset);
             }
 
             return new GTAfter.Stable(this);
@@ -63,9 +64,9 @@ public class GTAfter {
         private int findPositionAndInsert(LineAnnotation annotation, int index, int offset) {
             // We have to increment the offset for each line that has been added in the new version
             // For this, we check positions in the target annotations starting from the index with offset
-            for (int j = index+offset; j < this.annotations.length; j++) {
-                if (this.annotations[j] != null) {
-                    if (!this.updated[j]) {
+            for (int j = index+offset; j < Integer.MAX_VALUE; j++) {
+                if (j < this.size() && this.get(j) != null) {
+                    if (!this.updatedIndices.contains(j)) {
                         // There is an added line, increase the offset and check the next possible location
                         offset += 1;
                     } else {
@@ -75,7 +76,8 @@ public class GTAfter {
                 } else {
                     // Found an empty spot in the GTAfter. This is where the annotation belongs
                     // Apply the offset to the annotations line number;
-                    this.annotations[j] = annotation.withOffset(offset);
+                    var previousEntry = this.insert(j, annotation.withOffset(offset));
+                    Assert.assertTrue(previousEntry == null);
                     break;
                 }
             }
@@ -84,10 +86,10 @@ public class GTAfter {
         }
     }
 
-    public static class Stable extends GroundTruth {
+    public static class Stable extends FileGroundTruth {
 
         private Stable(UnstableWithInserted unstable) {
-            super(unstable.annotations);
+            super(unstable);
         }
 
     }
