@@ -62,6 +62,7 @@ public class FastExtraction {
 
                     GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>());
                     for (RevCommit commit : commits) {
+                        // TODO: Handle a commit having no ground truth (e.g., error or no visible changes)
                         File file = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
                         GroundTruth loadedGT = Serde.deserialize(file);
                         Logger.info("Completing ground truth for {}", commit.getName());
