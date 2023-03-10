@@ -7,6 +7,8 @@ import org.prop4j.Node;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
+import org.variantsync.diffdetective.analysis.FilterAnalysis;
+import org.variantsync.diffdetective.analysis.PreprocessingAnalysis;
 import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
@@ -14,12 +16,17 @@ import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
+import org.variantsync.diffdetective.variation.diff.filter.DiffTreeFilter;
 import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
+import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
 import org.variantsync.vevos.extraction.FileGT;
 import org.variantsync.vevos.extraction.GroundTruth;
 import org.variantsync.vevos.extraction.LineAnnotation;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Hashtable;
 import java.util.List;
@@ -29,17 +36,17 @@ public class PCAnalysis implements Analysis.Hooks {
     public static final TriFunction<Repository, Path, Analysis.Hooks, Analysis> AnalysisFactory = (repo, repoOutputDir, pcAnalysis) -> new Analysis(
             "PCAnalysis",
             List.of(
-//                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
-//                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
+                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
+                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
                     pcAnalysis
             ),
             repo,
             repoOutputDir
     );
-    private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
+    private GroundTruth groundTruth;
 
     public PCAnalysis() {
-        this.groundTruthMap = new Hashtable<>();
+        this.groundTruth = new GroundTruth(new Hashtable<>());
     }
 
     /**
@@ -79,85 +86,9 @@ public class PCAnalysis implements Analysis.Hooks {
                 Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir, analysis))
         );
 
-        for (RevCommit commit : analysis.groundTruthMap.keySet()) {
-            System.out.println("------------------");
-            System.out.println();
-            System.out.printf("next commit: %s%n", commit);
-
-            GroundTruth gt = analysis.groundTruthMap.get(commit);
-            try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("results/" + commit.getName() + ".gt"))) {
-               os.writeObject(gt);
-            } catch (IOException e) {
-                Logger.error(e);
-                throw e;
-            }
-//            System.out.printf("found a ground truth for %d files%n", gt.size());
-//
-//            for (String file : gt.fileGTs().keySet()) {
-//                FileGT fileGT = gt.get(file);
-//                System.out.printf("File: %s%n", file);
-//
-//                for (LineAnnotation line : fileGT) {
-//                    System.out.printf("%s%n", line);
-//                }
-//            }
-        }
-
         System.out.println();
         System.out.println("***************************************");
         System.out.println();
-        // Try deserialization
-        for (RevCommit commit : analysis.groundTruthMap.keySet()) {
-            try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/" + commit.getName() + ".gt"))) {
-                Object loaded = is.readObject();
-                if (loaded instanceof GroundTruth loadedGT) {
-                    System.out.printf("loaded a ground truth for %d files%n", loadedGT.size());
-
-                    for (String file : loadedGT.fileGTs().keySet()) {
-                        FileGT fileGT = loadedGT.get(file);
-                        System.out.printf("File: %s%n", file);
-
-                        for (LineAnnotation line : fileGT) {
-                            System.out.printf("%s%n", line);
-                        }
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                Logger.error(e);
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    @Override
-    public void initializeResults(Analysis analysis) {
-        analysis.append(EditClassCount.KEY, new EditClassCount());
-    }
-
-    @Override
-    public boolean analyzeDiffTree(Analysis analysis) throws Exception {
-        GroundTruth currentGT = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), k -> new GroundTruth(new Hashtable<>()));
-        // TODO: Do not ignore empty lines
-        // TODO: Handle #endif
-//        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
-        // Get the ground truth for this file
-        String fileName = analysis.getCurrentPatch().getFileName();
-        Logger.debug("Name of processed file is %s".formatted(fileName));
-
-        if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
-            // We return early, if the file has been completely deleted
-            return true;
-        }
-
-        // At this point, it must be an instance of FileGT.Mutable
-        final FileGT.Mutable fileGT = (FileGT.Mutable) currentGT.computeIfAbsent(fileName, k -> new FileGT.Mutable());
-
-        analysis.getCurrentDiffTree().forAll(node -> {
-            Logger.debug("Node: {}", node);
-            analyzeNode(fileGT, node);
-        });
-
-        return true;
     }
 
     private static void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
@@ -206,10 +137,6 @@ public class PCAnalysis implements Analysis.Hooks {
         }
     }
 
-    private static void handleEndIf(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
-
-    }
-
     private static int findEndIf(DiffNode node, Time time) {
         for (DiffNode child : node.getAllChildren()) {
             if (child.isAnnotation()) {
@@ -217,6 +144,83 @@ public class PCAnalysis implements Analysis.Hooks {
             }
         }
         return node.getToLine().atTime(time);
+    }
+
+    @Override
+    public void endCommit(Analysis analysis) throws Exception {
+        RevCommit commit = analysis.getCurrentCommit();
+        Path resultFile = Path.of("results/pc/" + commit.getName() + ".gt");
+        Files.createDirectories(resultFile.getParent());
+
+        System.out.printf("Commit: %s%n", commit.name());
+
+        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(resultFile.toFile()))) {
+            os.writeObject(this.groundTruth);
+        } catch (IOException e) {
+            Logger.error(e);
+            throw e;
+        }
+        System.out.printf("found a ground truth for %d files%n", this.groundTruth.size());
+
+        for (String file : this.groundTruth.fileGTs().keySet()) {
+            FileGT fileGT = this.groundTruth.get(file);
+            System.out.printf("File: %s%n", file);
+
+            for (LineAnnotation line : fileGT) {
+                System.out.printf("%s%n", line);
+            }
+        }
+
+        this.groundTruth = new GroundTruth(new Hashtable<>());
+//
+//        try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/" + commit.getName() + ".gt"))) {
+//            Object loaded = is.readObject();
+//            if (loaded instanceof GroundTruth loadedGT) {
+//                System.out.printf("loaded a ground truth for %d files%n", loadedGT.size());
+//
+//                for (String file : loadedGT.fileGTs().keySet()) {
+//                    FileGT fileGT = loadedGT.get(file);
+//                    System.out.printf("File: %s%n", file);
+//
+//                    for (LineAnnotation line : fileGT) {
+//                        System.out.printf("%s%n", line);
+//                    }
+//                }
+//            }
+//        } catch (ClassNotFoundException e) {
+//            Logger.error(e);
+//            throw new RuntimeException(e);
+//        }
+    }
+
+    @Override
+    public void initializeResults(Analysis analysis) {
+        analysis.append(EditClassCount.KEY, new EditClassCount());
+    }
+
+    @Override
+    public boolean analyzeDiffTree(Analysis analysis) throws Exception {
+        // TODO: Do not ignore empty lines
+        // TODO: Handle #endif
+//        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
+        // Get the ground truth for this file
+        String fileName = analysis.getCurrentPatch().getFileName();
+        Logger.debug("Name of processed file is %s".formatted(fileName));
+
+        if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
+            // We return early, if the file has been completely deleted
+            return true;
+        }
+
+        // At this point, it must be an instance of FileGT.Mutable
+        final FileGT.Mutable fileGT = (FileGT.Mutable) this.groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable());
+
+        analysis.getCurrentDiffTree().forAll(node -> {
+            Logger.debug("Node: {}", node);
+            analyzeNode(fileGT, node);
+        });
+
+        return true;
     }
 
 }
