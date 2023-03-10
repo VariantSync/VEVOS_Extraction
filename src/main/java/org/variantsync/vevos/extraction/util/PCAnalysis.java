@@ -1,24 +1,14 @@
 package org.variantsync.vevos.extraction.util;
 
-import org.apache.commons.lang3.function.TriFunction;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.prop4j.Node;
 import org.tinylog.Logger;
-import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
-import org.variantsync.diffdetective.analysis.FilterAnalysis;
-import org.variantsync.diffdetective.analysis.PreprocessingAnalysis;
-import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
-import org.variantsync.diffdetective.datasets.Repository;
-import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.diffdetective.variation.diff.filter.DiffTreeFilter;
-import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
-import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
 import org.variantsync.vevos.extraction.FileGT;
 import org.variantsync.vevos.extraction.GroundTruth;
 import org.variantsync.vevos.extraction.LineAnnotation;
@@ -29,66 +19,13 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
-    public static final TriFunction<Repository, Path, Analysis.Hooks, Analysis> AnalysisFactory = (repo, repoOutputDir, pcAnalysis) -> new Analysis(
-            "PCAnalysis",
-            List.of(
-                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
-                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
-                    pcAnalysis
-            ),
-            repo,
-            repoOutputDir
-    );
     private GroundTruth groundTruth;
 
     public PCAnalysis() {
         this.groundTruth = new GroundTruth(new Hashtable<>());
-    }
-
-    /**
-     * Main method to start the analysis.
-     *
-     * @param args Command-line options.
-     * @throws IOException When copying the log file fails.
-     */
-    public static void main(String[] args) throws IOException {
-        PCAnalysis analysis = new PCAnalysis();
-        AnalysisRunner.Options defaultOptions = AnalysisRunner.Options.DEFAULT(args);
-        var options = new AnalysisRunner.Options(
-                defaultOptions.repositoriesDirectory(),
-                defaultOptions.outputDirectory(),
-                defaultOptions.datasetsFile(),
-                repo -> {
-                    final PatchDiffParseOptions repoDefault = repo.getParseOptions();
-                    return new PatchDiffParseOptions(
-                            PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
-                            new DiffTreeParseOptions(
-                                    repoDefault.diffTreeParseOptions().annotationParser(),
-                                    true,
-                                    false
-                            )
-                    );
-                },
-                repo -> new DiffFilter.Builder()
-                        .allowMerge(false)
-                        .allowAllChangeTypes()
-                        .allowAllFileExtensions()
-                        .build(),
-                true,
-                false
-        );
-
-        AnalysisRunner.run(options, (repo, repoOutputDir) ->
-                Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir, analysis))
-        );
-
-        System.out.println();
-        System.out.println("***************************************");
-        System.out.println();
     }
 
     private static void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
@@ -172,25 +109,6 @@ public class PCAnalysis implements Analysis.Hooks {
         }
 
         this.groundTruth = new GroundTruth(new Hashtable<>());
-//
-//        try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/" + commit.getName() + ".gt"))) {
-//            Object loaded = is.readObject();
-//            if (loaded instanceof GroundTruth loadedGT) {
-//                System.out.printf("loaded a ground truth for %d files%n", loadedGT.size());
-//
-//                for (String file : loadedGT.fileGTs().keySet()) {
-//                    FileGT fileGT = loadedGT.get(file);
-//                    System.out.printf("File: %s%n", file);
-//
-//                    for (LineAnnotation line : fileGT) {
-//                        System.out.printf("%s%n", line);
-//                    }
-//                }
-//            }
-//        } catch (ClassNotFoundException e) {
-//            Logger.error(e);
-//            throw new RuntimeException(e);
-//        }
     }
 
     @Override
@@ -200,8 +118,6 @@ public class PCAnalysis implements Analysis.Hooks {
 
     @Override
     public boolean analyzeDiffTree(Analysis analysis) throws Exception {
-        // TODO: Do not ignore empty lines
-        // TODO: Handle #endif
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileName = analysis.getCurrentPatch().getFileName();
