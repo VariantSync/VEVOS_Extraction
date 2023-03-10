@@ -1,24 +1,24 @@
 package org.variantsync.vevos.extraction;
 
 import java.io.Serializable;
-import java.util.Hashtable;
+import java.util.HashMap;
 import java.util.Set;
 import java.util.function.Function;
 
-public record GroundTruth(Hashtable<String, FileGT> fileGTs) implements Serializable {
-    public synchronized FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
+public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializable {
+    public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
 
-    public synchronized FileGT get(String fileName) {
+    public FileGT get(String fileName) {
         return this.fileGTs.get(fileName);
     }
 
-    public synchronized int size() {
+    public int size() {
         return this.fileGTs.size();
     }
 
-    public synchronized void complete(GroundTruth base) {
+    public void complete(GroundTruth base) {
         Set<String> baseFiles = base.fileGTs.keySet();
         Set<String> updatedFiles = this.fileGTs.keySet();
 
@@ -40,11 +40,12 @@ public record GroundTruth(Hashtable<String, FileGT> fileGTs) implements Serializ
                 this.fileGTs.put(baseFile, baseFileGT);
             } else {
                 // This file has been updated and needs to be completed
-                FileGT.Mutable incompleteGT = (FileGT.Mutable) this.get(baseFile);
-                if (incompleteGT == null) {
+                FileGT updatedFileGT = this.get(baseFile);
+                if (updatedFileGT instanceof FileGT.Removed) {
                     // It is set to null if the entire file has been removed
                     this.fileGTs.remove(baseFile);
                 } else {
+                    FileGT.Mutable incompleteGT = (FileGT.Mutable) updatedFileGT;
                     this.fileGTs.put(baseFile, incompleteGT.finishMutation().combine(baseFileGT));
                 }
             }

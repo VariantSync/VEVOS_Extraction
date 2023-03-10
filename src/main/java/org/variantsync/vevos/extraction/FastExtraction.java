@@ -17,7 +17,6 @@ import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtre
 import org.variantsync.vevos.extraction.util.PCAnalysis;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.nio.file.Path;
@@ -46,6 +45,7 @@ public class FastExtraction {
     public static void main(String[] args) throws IOException {
         var options = options(args);
 
+        boolean print = false;
         AnalysisRunner.run(options, (repo, repoOutputDir) -> {
                     Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 
@@ -58,16 +58,15 @@ public class FastExtraction {
                         throw new RuntimeException(e);
                     }
 
-                    GroundTruth completedGroundTruth = new GroundTruth(new Hashtable<>());
+                    GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>());
                     for (RevCommit commit : commits) {
-                        try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/pc/" + commit.getName() + ".gt"))) {
+                        try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt"))) {
                             Object loaded = is.readObject();
                             if (loaded instanceof GroundTruth loadedGT) {
                                 loadedGT.complete(completedGroundTruth);
-                                System.out.println();
-                                System.out.printf("*****************   %s   ******************", commit.getName());
-                                System.out.println();
-                                print(loadedGT);
+                                if (print) {
+                                    print(loadedGT, commit.getName());
+                                }
                                 // TODO: Save completed ground truth
                                 completedGroundTruth = loadedGT;
                             } else {
@@ -83,7 +82,10 @@ public class FastExtraction {
 
     }
 
-    private static void print(GroundTruth groundTruth) {
+    private static void print(GroundTruth groundTruth, String commitName) {
+        System.out.println();
+        System.out.printf("*****************   %s   ******************", commitName);
+        System.out.println();
         for (String file : groundTruth.fileGTs().keySet()) {
             FileGT fileGT = groundTruth.get(file);
             System.out.printf("File: %s%n", file);

@@ -46,6 +46,22 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         return this.annotations.iterator();
     }
 
+    public boolean isMutable() {
+        return this instanceof Mutable;
+    }
+
+    public boolean isIncomplete() {
+        return this instanceof Incomplete;
+    }
+
+    public boolean isComplete() {
+        return this instanceof Complete;
+    }
+
+    public boolean isRemoved() {
+        return this instanceof Removed;
+    }
+
     public static class Mutable extends FileGT {
         private final HashSet<Integer> updatedIndices;
         private final HashSet<Integer> removedIndices;
@@ -150,6 +166,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         public static Complete empty() {
             return new Complete();
         }
+
+    }
+
+    public static class Removed extends FileGT {
 
     }
 }

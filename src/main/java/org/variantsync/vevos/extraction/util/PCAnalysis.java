@@ -18,14 +18,15 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
-    private GroundTruth groundTruth;
+    private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
 
     public PCAnalysis() {
-        this.groundTruth = new GroundTruth(new Hashtable<>());
+        this.groundTruthMap = new Hashtable<>();
     }
 
     private static void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
@@ -86,19 +87,20 @@ public class PCAnalysis implements Analysis.Hooks {
     @Override
     public void endCommit(Analysis analysis) throws Exception {
         RevCommit commit = analysis.getCurrentCommit();
-        Path resultFile = Path.of("results/pc/" + commit.getName() + ".gt");
+        var repo = analysis.getRepository();
+        Path resultFile = Path.of("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
         Files.createDirectories(resultFile.getParent());
 
-        System.out.printf("Commit: %s%n", commit.name());
+        Logger.info("Finished Commit: {}%n", commit.name());
 
         try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(resultFile.toFile()))) {
-            os.writeObject(this.groundTruth);
+            os.writeObject(this.groundTruthMap.get(commit));
         } catch (IOException e) {
             Logger.error(e);
             throw e;
         }
 
-        this.groundTruth = new GroundTruth(new Hashtable<>());
+        this.groundTruthMap.remove(commit);
     }
 
     @Override
@@ -108,6 +110,7 @@ public class PCAnalysis implements Analysis.Hooks {
 
     @Override
     public boolean analyzeDiffTree(Analysis analysis) throws Exception {
+        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileName = analysis.getCurrentPatch().getFileName();
@@ -115,13 +118,13 @@ public class PCAnalysis implements Analysis.Hooks {
 
         if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
             // We set the entry to null to mark it as removed
-            this.groundTruth.fileGTs().put(fileName, null);
+            groundTruth.fileGTs().put(fileName, new FileGT.Removed());
             // We return early, if the file has been completely deleted
             return true;
         }
 
         // At this point, it must be an instance of FileGT.Mutable
-        final FileGT.Mutable fileGT = (FileGT.Mutable) this.groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable());
+        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable());
 
         analysis.getCurrentDiffTree().forAll(node -> {
             Logger.debug("Node: {}", node);
