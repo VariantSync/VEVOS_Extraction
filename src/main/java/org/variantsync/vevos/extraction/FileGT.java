@@ -1,5 +1,6 @@
 package org.variantsync.vevos.extraction;
 
+import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
@@ -9,17 +10,20 @@ import java.util.Iterator;
 
 public class FileGT implements Iterable<LineAnnotation>, Serializable {
     private final ArrayList<LineAnnotation> annotations;
+    protected final String file;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;
 
-    protected FileGT() {
+    protected FileGT(String file) {
         this.annotations = new ArrayList<>();
         this.consumed = false;
+        this.file = file;
     }
 
     protected FileGT(FileGT other) {
         this.annotations = other.annotations;
         this.consumed = false;
+        this.file = other.file;
     }
 
     protected int size() {
@@ -31,6 +35,11 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     protected LineAnnotation insert(int index, LineAnnotation annotation) {
+        growIfRequired(index);
+        return this.annotations.set(index, annotation);
+    }
+
+    protected void growIfRequired(int index) {
         // Increase the size of the array if necessary
         if (index >= this.annotations.size()) {
             this.annotations.ensureCapacity(index + 1);
@@ -38,7 +47,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         while (index >= this.annotations.size()) {
             this.annotations.add(null);
         }
-        return this.annotations.set(index, annotation);
     }
 
     @Override
@@ -62,12 +70,26 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         return this instanceof Removed;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("File: ").append(this.file).append("\n");
+
+        for (LineAnnotation line : this) {
+            sb.append(line);
+            sb.append("\n");
+        }
+        sb.append("+++");
+        sb.append("\n");
+        return sb.toString();
+    }
+
     public static class Mutable extends FileGT {
         private final HashSet<Integer> updatedIndices;
         private final HashSet<Integer> removedIndices;
 
-        public Mutable() {
-            super();
+        public Mutable(String file) {
+            super(file);
             this.updatedIndices = new HashSet<>();
             this.removedIndices = new HashSet<>();
         }
@@ -125,6 +147,13 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 offset = this.findPositionAndInsert(oldGT.get(i), i, offset);
             }
 
+            for (LineAnnotation annotation : this) {
+                if (annotation == null) {
+                    Logger.error("Found null annotation during completion!");
+                    Logger.error(this);
+                    throw new RuntimeException();
+                }
+            }
             return new Complete(this);
         }
 
@@ -155,21 +184,24 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     public static class Complete extends FileGT {
 
-        private Complete() {
-            super();
+        private Complete(String file) {
+            super(file);
         }
 
-        private Complete(Incomplete unstable) {
-            super(unstable);
+        private Complete(Incomplete incomplete) {
+            super(incomplete);
         }
 
         public static Complete empty() {
-            return new Complete();
+            return new Complete("");
         }
 
     }
 
     public static class Removed extends FileGT {
 
+        public Removed(String file) {
+            super(file);
+        }
     }
 }

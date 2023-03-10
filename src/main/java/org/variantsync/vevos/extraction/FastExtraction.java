@@ -16,11 +16,13 @@ import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
 import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
 import org.variantsync.vevos.extraction.util.PCAnalysis;
 
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.function.BiFunction;
 
 public class FastExtraction {
@@ -28,8 +30,8 @@ public class FastExtraction {
     public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
             "PCAnalysis",
             List.of(
-                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
-                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
+//                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
+//                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
                     new PCAnalysis()
             ),
             repo,
@@ -45,7 +47,7 @@ public class FastExtraction {
     public static void main(String[] args) throws IOException {
         var options = options(args);
 
-        boolean print = false;
+        boolean print = true;
         AnalysisRunner.run(options, (repo, repoOutputDir) -> {
                     Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 
@@ -60,23 +62,16 @@ public class FastExtraction {
 
                     GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>());
                     for (RevCommit commit : commits) {
-                        try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt"))) {
-                            Object loaded = is.readObject();
-                            if (loaded instanceof GroundTruth loadedGT) {
-                                loadedGT.complete(completedGroundTruth);
-                                if (print) {
-                                    print(loadedGT, commit.getName());
-                                }
-                                // TODO: Save completed ground truth
-                                completedGroundTruth = loadedGT;
-                            } else {
-                                Logger.error("Was not able to load ground truth");
-                                throw new RuntimeException();
-                            }
-                        } catch (ClassNotFoundException | IOException e) {
-                            Logger.error(e);
-                            throw new RuntimeException(e);
-                    }}
+                        File file = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+                        GroundTruth loadedGT = Serde.deserialize(file);
+                        Logger.info("Completing ground truth for {}", commit.getName());
+                        loadedGT.complete(completedGroundTruth);
+                        if (print) {
+                            print(loadedGT, commit.getName());
+                        }
+                        // TODO: Save completed ground truth
+                        completedGroundTruth = loadedGT;
+                    }
                 }
         );
 
@@ -87,14 +82,7 @@ public class FastExtraction {
         System.out.printf("*****************   %s   ******************", commitName);
         System.out.println();
         for (String file : groundTruth.fileGTs().keySet()) {
-            FileGT fileGT = groundTruth.get(file);
-            System.out.printf("File: %s%n", file);
-
-            for (LineAnnotation line : fileGT) {
-                System.out.printf("%s%n", line);
-            }
-            System.out.println("+++");
-            System.out.println();
+            System.out.println(groundTruth.get(file));
         }
     }
 
@@ -111,7 +99,7 @@ public class FastExtraction {
                             PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
                             new DiffTreeParseOptions(
                                     repoDefault.diffTreeParseOptions().annotationParser(),
-                                    true,
+                                    false,
                                     false
                             )
                     );

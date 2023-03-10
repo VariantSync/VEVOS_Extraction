@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 public class FileGTTest {
 
     public static FileGT.Complete simpleFileGT() {
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         unstableAfter.insert(new LineAnnotation(1, null, null, ""));
         unstableAfter.insert(new LineAnnotation(3, null, null, ""));
@@ -21,7 +21,7 @@ public class FileGTTest {
     public void stagesAreConsumed() {
         FileGT.Complete completeBefore = simpleFileGT();
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
         var withInserted = unstableAfter.finishMutation();
         var stableAfter = withInserted.combine(completeBefore);
 
@@ -48,7 +48,7 @@ public class FileGTTest {
     public void extendedGroundTruth() {
         FileGT.Complete completeBefore = simpleFileGT();
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         unstableAfter.insert(new LineAnnotation(2, null, null, ""));
         unstableAfter.insert(new LineAnnotation(5, null, null, ""));
@@ -68,7 +68,7 @@ public class FileGTTest {
     public void extendedMultipleGroundTruth() {
         FileGT.Complete completeBefore = simpleFileGT();
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         unstableAfter.insert(new LineAnnotation(2, null, null, ""))
                 .insert(new LineAnnotation(3, null, null, ""))
@@ -88,7 +88,7 @@ public class FileGTTest {
     public void filterRemoved() {
         FileGT.Complete completeBefore = simpleFileGT();
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         var finalGT = unstableAfter
                 .markRemoved(2)
@@ -106,7 +106,7 @@ public class FileGTTest {
         FileGT.Complete completeBefore = simpleFileGT();
 
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         var finalGT = unstableAfter
                 .markRemoved(1)
@@ -123,7 +123,7 @@ public class FileGTTest {
         FileGT.Complete completeBefore = simpleFileGT();
 
 
-        FileGT.Mutable unstableAfter = new FileGT.Mutable();
+        FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
         unstableAfter.insert(new LineAnnotation(2, null, null, ""))
                 .insert(new LineAnnotation(4, null, null, ""))

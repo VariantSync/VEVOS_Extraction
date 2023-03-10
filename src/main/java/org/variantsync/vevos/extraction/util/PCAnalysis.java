@@ -12,14 +12,14 @@ import org.variantsync.diffdetective.variation.diff.Time;
 import org.variantsync.vevos.extraction.FileGT;
 import org.variantsync.vevos.extraction.GroundTruth;
 import org.variantsync.vevos.extraction.LineAnnotation;
+import org.variantsync.vevos.extraction.Serde;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
@@ -66,13 +66,35 @@ public class PCAnalysis implements Analysis.Hooks {
             function.apply(annotation);
         }
 
-        if (node.isIf()) {
-            int endIfLocation = findEndIf(node, Time.AFTER);
-            if (endIfLocation > 0) {
-                LineAnnotation endIfAnnotation = new LineAnnotation(endIfLocation, "", "", "endif");
-                function.apply(endIfAnnotation);
+        if (node.isIf() && !node.isRoot()) {
+            List<Integer> endIfLocations = findAllEndIf(node, Time.AFTER);
+            for (int endIfLocation : endIfLocations) {
+                if (endIfLocation > 0) {
+                    LineAnnotation endIfAnnotation = new LineAnnotation(endIfLocation, "", "", "endif");
+                    function.apply(endIfAnnotation);
+                }
             }
         }
+    }
+
+    private static List<Integer> findAllEndIf(DiffNode node, Time time) {
+        return findAllEndIf(node, time, new ArrayList<>());
+    }
+
+    private static List<Integer> findAllEndIf(DiffNode node, Time time, List<Integer> found) {
+        for (DiffNode child : node.getAllChildren()) {
+            if (child.isAnnotation()) {
+                if(child.isIf()) {
+                    // A new if node means that we have nested blocks with multiple endif nodes
+                    found.addAll(findAllEndIf(child, time));
+                } else {
+                    found.add(findEndIf(child, time));
+                    return found;
+                }
+            }
+        }
+        found.add(node.getToLine().atTime(time));
+        return found;
     }
 
     private static int findEndIf(DiffNode node, Time time) {
@@ -92,14 +114,9 @@ public class PCAnalysis implements Analysis.Hooks {
         Files.createDirectories(resultFile.getParent());
 
         Logger.info("Finished Commit: {}%n", commit.name());
+        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>()));
 
-        try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(resultFile.toFile()))) {
-            os.writeObject(this.groundTruthMap.get(commit));
-        } catch (IOException e) {
-            Logger.error(e);
-            throw e;
-        }
-
+        Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit);
     }
 
@@ -118,13 +135,13 @@ public class PCAnalysis implements Analysis.Hooks {
 
         if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
             // We set the entry to null to mark it as removed
-            groundTruth.fileGTs().put(fileName, new FileGT.Removed());
+            groundTruth.fileGTs().put(fileName, new FileGT.Removed(fileName));
             // We return early, if the file has been completely deleted
             return true;
         }
 
         // At this point, it must be an instance of FileGT.Mutable
-        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable());
+        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable(fileName));
 
         analysis.getCurrentDiffTree().forAll(node -> {
             Logger.debug("Node: {}", node);
