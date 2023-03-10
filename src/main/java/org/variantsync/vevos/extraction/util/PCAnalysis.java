@@ -16,10 +16,8 @@ import org.variantsync.vevos.extraction.Serde;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
@@ -42,12 +40,6 @@ public class PCAnalysis implements Analysis.Hooks {
                 for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
                     fileGT.markRemoved(i);
                 }
-                if (node.isIf()) {
-                    List<Integer> endIfLocations = findAllEndIf(node, Time.AFTER);
-                    for (int endIfLocation : endIfLocations) {
-                        fileGT.markRemoved(endIfLocation);
-                    }
-                }
             }
             case NON -> {
                 // The feature mapping and presence condition might have changed - we have to update the entry
@@ -66,37 +58,11 @@ public class PCAnalysis implements Analysis.Hooks {
         for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
             LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
             function.apply(annotation);
-        }
-
-        if (node.isIf() && !node.isRoot()) {
-            List<Integer> endIfLocations = findAllEndIf(node, Time.AFTER);
-            for (int endIfLocation : endIfLocations) {
-                if (endIfLocation > 0) {
-                    LineAnnotation endIfAnnotation = new LineAnnotation(endIfLocation, "", "", "endif");
-                    function.apply(endIfAnnotation);
-                }
+            if (node.isAnnotation()) {
+                // For annotations, we are only interested in annotating the head, not the body
+                break;
             }
         }
-    }
-
-    private static List<Integer> findAllEndIf(DiffNode node, Time time) {
-        return findAllEndIf(node, time, new ArrayList<>());
-    }
-
-    private static List<Integer> findAllEndIf(DiffNode node, Time time, List<Integer> found) {
-        for (DiffNode child : node.getAllChildren()) {
-            if (child.isAnnotation()) {
-                if(child.isIf()) {
-                    // A new if node means that we have nested blocks with multiple endif nodes
-                    found.addAll(findAllEndIf(child, time));
-                } else {
-                    found.addAll(findAllEndIf(child, time));
-                    return found;
-                }
-            }
-        }
-        found.add(node.getToLine().atTime(time));
-        return found;
     }
 
     @Override

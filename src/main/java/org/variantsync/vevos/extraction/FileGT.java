@@ -147,11 +147,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 offset = this.findPositionAndInsert(oldGT.get(i), i, offset);
             }
 
-            for (LineAnnotation annotation : this) {
-                if (annotation == null) {
-                    Logger.error("Found null annotation during completion!");
-                    Logger.error(this);
-                    throw new RuntimeException();
+            for (int i = 0; i < this.size(); i++) {
+                if (this.get(i) == null) {
+                    // If there are still null values, they must have occurred due to an endif, which is not processed by DiffDetective
+                    this.insert(i, new LineAnnotation(i+1, "", "", "endif"));
                 }
             }
             return new Complete(this);
