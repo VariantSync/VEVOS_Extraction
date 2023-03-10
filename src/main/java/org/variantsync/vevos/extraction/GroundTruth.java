@@ -28,9 +28,21 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializab
             if (baseFiles.contains(updatedFile)) {
                 continue;
             }
+            FileGT temp = this.get(updatedFile);
+            if (temp instanceof FileGT.Removed) {
+                if (temp.file.equals("/dev/null")) {
+                    // TODO: This is only a workaround and should be handled by diff detective
+                    // The case occurs, if certain temporary files have been tracken by accident
+                    // Ideally, diff detective would associate the name of the file before the removal, and not
+                    // the name of the file after removal
+                    continue;
+                }
+            }
             FileGT.Incomplete updatedFileGT = ((FileGT.Mutable) this.get(updatedFile)).finishMutation();
             this.fileGTs.put(updatedFile,updatedFileGT.combine(FileGT.Complete.empty()));
         }
+        // TODO: This is only a workaround and should be handled by diff detective (see above)
+        this.fileGTs.remove("/dev/null");
 
         // Then, handle files that have had a GT before
         for (String baseFile : baseFiles) {
@@ -46,7 +58,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializab
                     this.fileGTs.remove(baseFile);
                 } else {
                     FileGT.Mutable incompleteGT = (FileGT.Mutable) updatedFileGT;
-                    this.fileGTs.put(baseFile, incompleteGT.finishMutation().combine(baseFileGT));
+                    this.fileGTs.put(baseFile, incompleteGT.finishMutation().combine(FileGT.Complete.empty()));
                 }
             }
         }

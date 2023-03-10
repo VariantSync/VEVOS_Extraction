@@ -47,7 +47,7 @@ public class FastExtraction {
     public static void main(String[] args) throws IOException {
         var options = options(args);
 
-        boolean print = true;
+        boolean print = false;
         AnalysisRunner.run(options, (repo, repoOutputDir) -> {
                     Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 

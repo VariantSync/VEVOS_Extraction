@@ -43,8 +43,10 @@ public class PCAnalysis implements Analysis.Hooks {
                     fileGT.markRemoved(i);
                 }
                 if (node.isIf()) {
-                    int endIfLocation = findEndIf(node, Time.AFTER);
-                    fileGT.markRemoved(endIfLocation);
+                    List<Integer> endIfLocations = findAllEndIf(node, Time.AFTER);
+                    for (int endIfLocation : endIfLocations) {
+                        fileGT.markRemoved(endIfLocation);
+                    }
                 }
             }
             case NON -> {
@@ -88,22 +90,13 @@ public class PCAnalysis implements Analysis.Hooks {
                     // A new if node means that we have nested blocks with multiple endif nodes
                     found.addAll(findAllEndIf(child, time));
                 } else {
-                    found.add(findEndIf(child, time));
+                    found.addAll(findAllEndIf(child, time));
                     return found;
                 }
             }
         }
         found.add(node.getToLine().atTime(time));
         return found;
-    }
-
-    private static int findEndIf(DiffNode node, Time time) {
-        for (DiffNode child : node.getAllChildren()) {
-            if (child.isAnnotation()) {
-                return findEndIf(child, time);
-            }
-        }
-        return node.getToLine().atTime(time);
     }
 
     @Override
