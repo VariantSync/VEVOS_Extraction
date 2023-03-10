@@ -1,6 +1,7 @@
 package org.variantsync.vevos.extraction.util;
 
 import org.apache.commons.lang3.function.TriFunction;
+import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.prop4j.Node;
 import org.tinylog.Logger;
@@ -16,6 +17,7 @@ import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.show.Show;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.validation.EditClassValidation;
+import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
 import org.variantsync.diffdetective.variation.diff.filter.DiffTreeFilter;
 import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
@@ -106,47 +108,58 @@ public class PCAnalysis implements Analysis.Hooks {
         String fileName = analysis.getCurrentPatch().getFileName();
         Logger.debug("Name of processed file is %s".formatted(fileName));
 
+        if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
+            // We return early, if the file has been completely deleted
+            return true;
+        }
+
         // At this point, it must be an instance of FileGT.Mutable
         final FileGT.Mutable fileGT = (FileGT.Mutable) currentGT.computeIfAbsent(fileName, k -> new FileGT.Mutable());
 
         analysis.getCurrentDiffTree().forAll(node -> {
-            switch (node.diffType) {
-                case ADD -> {
-                    // Add artifact to the ground truth
-                    Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
-                    Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
-                    // The range of line numbers in which the artifact appears
-                    LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
-                    Logger.info("ADD: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
-                    for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                        LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
-                        fileGT.insert(annotation);
-                    }
-                }
-                case REM -> {
-                    // Mark artifact as removed from the ground truth
-                    LineRange rangeInFile = node.getLinesAtTime(Time.BEFORE);
-                    Logger.info("REM: Line Range: %s".formatted(rangeInFile));
-                    for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                        fileGT.markRemoved(i);
-                    }
-                }
-                case NON -> {
-                    // The feature mapping and presence condition might have changed - we have to update the entry
-                    Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
-                    Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
-
-                    // The range of line numbers in which the artifact appears
-                    LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
-                    Logger.info("NON: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
-                    for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                        LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
-                        fileGT.update(annotation);
-                    }
-                }
-            }
+            Logger.debug("Node: {}", node);
+            analyzeNode(fileGT, node);
         });
 
         return true;
     }
+
+    private static void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
+        switch (node.diffType) {
+            case ADD -> {
+                // Add artifact to the ground truth
+                Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
+                Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
+                // The range of line numbers in which the artifact appears
+                LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
+                Logger.debug("ADD: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
+                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
+                    LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
+                    fileGT.insert(annotation);
+                }
+            }
+            case REM -> {
+                // Mark artifact as removed from the ground truth
+                LineRange rangeInFile = node.getLinesAtTime(Time.BEFORE);
+                Logger.debug("REM: Line Range: %s".formatted(rangeInFile));
+                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
+                    fileGT.markRemoved(i);
+                }
+            }
+            case NON -> {
+                // The feature mapping and presence condition might have changed - we have to update the entry
+                Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
+                Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
+
+                // The range of line numbers in which the artifact appears
+                LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
+                Logger.debug("NON: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
+                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
+                    LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
+                    fileGT.update(annotation);
+                }
+            }
+        }
+    }
+
 }
