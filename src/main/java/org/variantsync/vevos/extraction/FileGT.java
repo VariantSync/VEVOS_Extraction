@@ -72,7 +72,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         public Mutable markRemoved(int lineNumber) {
             Assert.assertTrue(!consumed);
 
-            Assert.assertTrue(this.removedIndices.add(lineNumber-1));
+            this.removedIndices.add(lineNumber-1);
             return this;
         }
 

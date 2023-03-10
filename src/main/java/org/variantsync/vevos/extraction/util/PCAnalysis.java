@@ -23,6 +23,7 @@ import java.io.*;
 import java.nio.file.Path;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
     public static final TriFunction<Repository, Path, Analysis.Hooks, Analysis> AnalysisFactory = (repo, repoOutputDir, pcAnalysis) -> new Analysis(
@@ -90,16 +91,16 @@ public class PCAnalysis implements Analysis.Hooks {
                 Logger.error(e);
                 throw e;
             }
-            System.out.printf("found a ground truth for %d files%n", gt.size());
-
-            for (String file : gt.fileGTs().keySet()) {
-                FileGT fileGT = gt.get(file);
-                System.out.printf("File: %s%n", file);
-
-                for (LineAnnotation line : fileGT) {
-                    System.out.printf("%s%n", line);
-                }
-            }
+//            System.out.printf("found a ground truth for %d files%n", gt.size());
+//
+//            for (String file : gt.fileGTs().keySet()) {
+//                FileGT fileGT = gt.get(file);
+//                System.out.printf("File: %s%n", file);
+//
+//                for (LineAnnotation line : fileGT) {
+//                    System.out.printf("%s%n", line);
+//                }
+//            }
         }
 
         System.out.println();
@@ -163,15 +164,7 @@ public class PCAnalysis implements Analysis.Hooks {
         switch (node.diffType) {
             case ADD -> {
                 // Add artifact to the ground truth
-                Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
-                Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
-                // The range of line numbers in which the artifact appears
-                LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
-                Logger.debug("ADD: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
-                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                    LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString());
-                    fileGT.insert(annotation);
-                }
+                applyAnnotation(node, fileGT::insert);
             }
             case REM -> {
                 // Mark artifact as removed from the ground truth
@@ -180,21 +173,50 @@ public class PCAnalysis implements Analysis.Hooks {
                 for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
                     fileGT.markRemoved(i);
                 }
+                if (node.isIf()) {
+                    int endIfLocation = findEndIf(node, Time.AFTER);
+                    fileGT.markRemoved(endIfLocation);
+                }
             }
             case NON -> {
                 // The feature mapping and presence condition might have changed - we have to update the entry
-                Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
-                Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
-
-                // The range of line numbers in which the artifact appears
-                LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
-                Logger.debug("NON: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
-                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                    LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString());
-                    fileGT.update(annotation);
-                }
+                applyAnnotation(node, fileGT::update);
             }
         }
+    }
+
+    private static void applyAnnotation(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
+        Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
+        Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
+        // The range of line numbers in which the artifact appears
+        LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
+        Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
+
+        for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
+            LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
+            function.apply(annotation);
+        }
+
+        if (node.isIf()) {
+            int endIfLocation = findEndIf(node, Time.AFTER);
+            if (endIfLocation > 0) {
+                LineAnnotation endIfAnnotation = new LineAnnotation(endIfLocation, "", "", "endif");
+                function.apply(endIfAnnotation);
+            }
+        }
+    }
+
+    private static void handleEndIf(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
+
+    }
+
+    private static int findEndIf(DiffNode node, Time time) {
+        for (DiffNode child : node.getAllChildren()) {
+            if (child.isAnnotation()) {
+                return findEndIf(child, time);
+            }
+        }
+        return node.getToLine().atTime(time);
     }
 
 }

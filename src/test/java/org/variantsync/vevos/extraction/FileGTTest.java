@@ -8,9 +8,9 @@ public class FileGTTest {
     public static FileGT.Complete simpleFileGT() {
         FileGT.Mutable unstableAfter = new FileGT.Mutable();
 
-        unstableAfter.insert(new LineAnnotation(1, null, null));
-        unstableAfter.insert(new LineAnnotation(3, null, null));
-        unstableAfter.insert(new LineAnnotation(2, null, null));
+        unstableAfter.insert(new LineAnnotation(1, null, null, ""));
+        unstableAfter.insert(new LineAnnotation(3, null, null, ""));
+        unstableAfter.insert(new LineAnnotation(2, null, null, ""));
 
         return unstableAfter
                 .finishMutation()
@@ -25,7 +25,7 @@ public class FileGTTest {
         var withInserted = unstableAfter.finishMutation();
         var stableAfter = withInserted.combine(completeBefore);
 
-        Assertions.assertTrue(!completeBefore.consumed);
+        Assertions.assertFalse(completeBefore.consumed);
         Assertions.assertTrue(unstableAfter.consumed);
         Assertions.assertTrue(withInserted.consumed);
 
@@ -50,8 +50,8 @@ public class FileGTTest {
 
         FileGT.Mutable unstableAfter = new FileGT.Mutable();
 
-        unstableAfter.insert(new LineAnnotation(2, null, null));
-        unstableAfter.insert(new LineAnnotation(5, null, null));
+        unstableAfter.insert(new LineAnnotation(2, null, null, ""));
+        unstableAfter.insert(new LineAnnotation(5, null, null, ""));
 
         var finalGT = unstableAfter
                 .finishMutation()
@@ -70,9 +70,9 @@ public class FileGTTest {
 
         FileGT.Mutable unstableAfter = new FileGT.Mutable();
 
-        unstableAfter.insert(new LineAnnotation(2, null, null))
-                .insert(new LineAnnotation(3, null, null))
-                .insert(new LineAnnotation(4, null, null));
+        unstableAfter.insert(new LineAnnotation(2, null, null, ""))
+                .insert(new LineAnnotation(3, null, null, ""))
+                .insert(new LineAnnotation(4, null, null, ""));
 
         var finalGT = unstableAfter
                 .finishMutation()
@@ -125,11 +125,11 @@ public class FileGTTest {
 
         FileGT.Mutable unstableAfter = new FileGT.Mutable();
 
-        unstableAfter.insert(new LineAnnotation(2, null, null))
-                .insert(new LineAnnotation(4, null, null))
-                .insert(new LineAnnotation(5, null, null));
+        unstableAfter.insert(new LineAnnotation(2, null, null, ""))
+                .insert(new LineAnnotation(4, null, null, ""))
+                .insert(new LineAnnotation(5, null, null, ""));
 
-        unstableAfter.update(new LineAnnotation(1, null, null));
+        unstableAfter.update(new LineAnnotation(1, null, null, ""));
 
         var finalGT = unstableAfter
                 .markRemoved(2)
