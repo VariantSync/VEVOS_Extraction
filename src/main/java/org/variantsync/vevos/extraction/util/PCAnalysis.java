@@ -97,16 +97,6 @@ public class PCAnalysis implements Analysis.Hooks {
             Logger.error(e);
             throw e;
         }
-        System.out.printf("found a ground truth for %d files%n", this.groundTruth.size());
-
-        for (String file : this.groundTruth.fileGTs().keySet()) {
-            FileGT fileGT = this.groundTruth.get(file);
-            System.out.printf("File: %s%n", file);
-
-            for (LineAnnotation line : fileGT) {
-                System.out.printf("%s%n", line);
-            }
-        }
 
         this.groundTruth = new GroundTruth(new Hashtable<>());
     }
@@ -124,6 +114,8 @@ public class PCAnalysis implements Analysis.Hooks {
         Logger.debug("Name of processed file is %s".formatted(fileName));
 
         if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
+            // We set the entry to null to mark it as removed
+            this.groundTruth.fileGTs().put(fileName, null);
             // We return early, if the file has been completely deleted
             return true;
         }

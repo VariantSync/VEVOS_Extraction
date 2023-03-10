@@ -13,6 +13,9 @@ public record LineAnnotation(int lineNumber, String featureMapping, String prese
         return new LineAnnotation(this.lineNumber + offset, this.featureMapping, this.presenceCondition, this.nodeType);
     }
 
-
+    @Override
+    public String toString() {
+        return "%d, %s, FM =%s, PC = %s".formatted(lineNumber, nodeType, featureMapping, presenceCondition);
+    }
 
 }
