@@ -2,11 +2,12 @@ package org.variantsync.vevos.extraction;
 
 import org.variantsync.diffdetective.util.Assert;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 
-public class FileGT implements Iterable<LineAnnotation>{
+public class FileGT implements Iterable<LineAnnotation>, Serializable {
     private final ArrayList<LineAnnotation> annotations;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;

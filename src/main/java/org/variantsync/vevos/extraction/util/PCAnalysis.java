@@ -7,25 +7,19 @@ import org.prop4j.Node;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
-import org.variantsync.diffdetective.analysis.FilterAnalysis;
-import org.variantsync.diffdetective.analysis.PreprocessingAnalysis;
-import org.variantsync.diffdetective.analysis.StatisticsAnalysis;
-import org.variantsync.diffdetective.datasets.ParseOptions;
+import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.metadata.EditClassCount;
-import org.variantsync.diffdetective.show.Show;
 import org.variantsync.diffdetective.util.LineRange;
-import org.variantsync.diffdetective.validation.EditClassValidation;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.diffdetective.variation.diff.filter.DiffTreeFilter;
-import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
+import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
 import org.variantsync.vevos.extraction.FileGT;
 import org.variantsync.vevos.extraction.GroundTruth;
 import org.variantsync.vevos.extraction.LineAnnotation;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.Hashtable;
 import java.util.List;
@@ -60,7 +54,17 @@ public class PCAnalysis implements Analysis.Hooks {
                 defaultOptions.repositoriesDirectory(),
                 defaultOptions.outputDirectory(),
                 defaultOptions.datasetsFile(),
-                ParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
+                repo -> {
+                    final PatchDiffParseOptions repoDefault = repo.getParseOptions();
+                    return new PatchDiffParseOptions(
+                            PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
+                            new DiffTreeParseOptions(
+                                    repoDefault.diffTreeParseOptions().annotationParser(),
+                                    true,
+                                    false
+                            )
+                    );
+                },
                 repo -> new DiffFilter.Builder()
                         .allowMerge(false)
                         .allowAllChangeTypes()
@@ -80,6 +84,12 @@ public class PCAnalysis implements Analysis.Hooks {
             System.out.printf("next commit: %s%n", commit);
 
             GroundTruth gt = analysis.groundTruthMap.get(commit);
+            try (ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream("results/" + commit.getName() + ".gt"))) {
+               os.writeObject(gt);
+            } catch (IOException e) {
+                Logger.error(e);
+                throw e;
+            }
             System.out.printf("found a ground truth for %d files%n", gt.size());
 
             for (String file : gt.fileGTs().keySet()) {
@@ -89,6 +99,31 @@ public class PCAnalysis implements Analysis.Hooks {
                 for (LineAnnotation line : fileGT) {
                     System.out.printf("%s%n", line);
                 }
+            }
+        }
+
+        System.out.println();
+        System.out.println("***************************************");
+        System.out.println();
+        // Try deserialization
+        for (RevCommit commit : analysis.groundTruthMap.keySet()) {
+            try (ObjectInputStream is = new ObjectInputStream(new FileInputStream("results/" + commit.getName() + ".gt"))) {
+                Object loaded = is.readObject();
+                if (loaded instanceof GroundTruth loadedGT) {
+                    System.out.printf("loaded a ground truth for %d files%n", loadedGT.size());
+
+                    for (String file : loadedGT.fileGTs().keySet()) {
+                        FileGT fileGT = loadedGT.get(file);
+                        System.out.printf("File: %s%n", file);
+
+                        for (LineAnnotation line : fileGT) {
+                            System.out.printf("%s%n", line);
+                        }
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                Logger.error(e);
+                throw new RuntimeException(e);
             }
         }
     }
@@ -134,7 +169,7 @@ public class PCAnalysis implements Analysis.Hooks {
                 LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
                 Logger.debug("ADD: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
                 for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                    LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
+                    LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString());
                     fileGT.insert(annotation);
                 }
             }
@@ -155,7 +190,7 @@ public class PCAnalysis implements Analysis.Hooks {
                 LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
                 Logger.debug("NON: Line Range: %s, Presence Condition: %s".formatted(rangeInFile, presenceCondition));
                 for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                    LineAnnotation annotation = new LineAnnotation(i, featureMapping, presenceCondition);
+                    LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString());
                     fileGT.update(annotation);
                 }
             }

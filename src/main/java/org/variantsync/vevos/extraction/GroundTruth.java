@@ -1,9 +1,10 @@
 package org.variantsync.vevos.extraction;
 
+import java.io.Serializable;
 import java.util.Hashtable;
 import java.util.function.Function;
 
-public record GroundTruth(Hashtable<String, FileGT> fileGTs) {
+public record GroundTruth(Hashtable<String, FileGT> fileGTs) implements Serializable {
     public synchronized FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
