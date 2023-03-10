@@ -68,6 +68,7 @@ public class FastExtraction {
                                 System.out.printf("*****************   %s   ******************", commit.getName());
                                 System.out.println();
                                 print(loadedGT);
+                                // TODO: Save completed ground truth
                                 completedGroundTruth = loadedGT;
                             } else {
                                 Logger.error("Was not able to load ground truth");
