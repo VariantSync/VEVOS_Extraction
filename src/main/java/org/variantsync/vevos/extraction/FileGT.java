@@ -101,7 +101,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         blockStack.push(rootBlock);
         for (LineAnnotation line : this.annotations) {
             if (line.nodeType().equals("endif")) {
-                // skip endif
+                // Collect a completed block
+                BlockAnnotation block = blockStack.pop();
+                block.setLineEndInclusive(line.lineNumber()-1);
+                blocks.add(block);
                 continue;
             }
             if (blockStack.isEmpty()) {
