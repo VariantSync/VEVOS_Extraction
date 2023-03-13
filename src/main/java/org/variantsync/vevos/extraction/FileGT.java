@@ -1,5 +1,6 @@
 package org.variantsync.vevos.extraction;
 
+import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
@@ -102,9 +103,14 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         for (LineAnnotation line : this.annotations) {
             if (line.nodeType().equals("endif")) {
                 // Collect a completed block
-                BlockAnnotation block = blockStack.pop();
-                block.setLineEndInclusive(line.lineNumber()-1);
-                blocks.add(block);
+                if (blockStack.isEmpty()) {
+                    Logger.warn("No block for endif");
+                    Logger.warn(this);
+                } else {
+                    BlockAnnotation block = blockStack.pop();
+                    block.setLineEndInclusive(line.lineNumber() - 1);
+                    blocks.add(block);
+                }
                 continue;
             }
             if (blockStack.isEmpty()) {
