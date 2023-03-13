@@ -1,11 +1,10 @@
 package org.variantsync.vevos.extraction;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
-public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializable {
+public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables) implements Serializable {
     public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
@@ -19,6 +18,9 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializab
     }
 
     public void complete(GroundTruth base) {
+        // update the variables
+        this.variables.addAll(base.variables);
+
         Set<String> baseFiles = base.fileGTs.keySet();
         Set<String> updatedFiles = this.fileGTs.keySet();
 
@@ -58,9 +60,38 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs) implements Serializab
                     this.fileGTs.remove(baseFile);
                 } else {
                     FileGT.Mutable incompleteGT = (FileGT.Mutable) updatedFileGT;
+                    // TODO: FileGT.Complete.empty() is only a workaround and should be handled by diff detective (see issue regarding endif nodes)
+                    // Ideally, we would reuse partial file ground truths
                     this.fileGTs.put(baseFile, incompleteGT.finishMutation().combine(FileGT.Complete.empty()));
                 }
             }
         }
+    }
+
+    public String variablesListAsString() {
+        List<String> variablesList = new ArrayList<>(this.variables);
+        Collections.sort(variablesList);
+
+        StringBuilder sb = new StringBuilder();
+        for (String name : variablesList) {
+            if (name.equals("True") || name.equals("False")) {
+                continue;
+            }
+            sb.append(name).append(System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
+    public String asCSVString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Path;File Condition;Block Condition;Presence Condition;start;end");
+        sb.append(System.lineSeparator());
+        ArrayList<String> fileNames = new ArrayList<>(this.fileGTs.keySet());
+        Collections.sort(fileNames);
+        for (String name : fileNames) {
+            FileGT fileGT = this.fileGTs.get(name);
+            sb.append(fileGT.asAggregatedCSVLines());
+        }
+        return sb.toString();
     }
 }

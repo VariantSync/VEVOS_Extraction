@@ -17,17 +17,21 @@ import org.variantsync.vevos.extraction.Serde;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Set;
 import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
     private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
+    private final Set<String> observedVariables;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
+        this.observedVariables = new HashSet<>();
     }
 
-    private static void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
+    private void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
         switch (node.diffType) {
             case ADD -> {
                 // Add artifact to the ground truth
@@ -48,12 +52,14 @@ public class PCAnalysis implements Analysis.Hooks {
         }
     }
 
-    private static void applyAnnotation(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
+    private void applyAnnotation(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
         Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
         Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
         // The range of line numbers in which the artifact appears
         LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
         Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
+
+        observedVariables.addAll(presenceCondition.getUniqueContainedFeatures());
 
         for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
             LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
@@ -73,10 +79,11 @@ public class PCAnalysis implements Analysis.Hooks {
         Files.createDirectories(resultFile.getParent());
 
         Logger.info("Finished Commit: {}%n", commit.name());
-        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>()));
-
+        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>(), new HashSet<>()));
+        groundTruth.variables().addAll(this.observedVariables);
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit);
+        this.observedVariables.clear();
     }
 
     @Override
@@ -86,7 +93,7 @@ public class PCAnalysis implements Analysis.Hooks {
 
     @Override
     public boolean analyzeDiffTree(Analysis analysis) throws Exception {
-        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>()));
+        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileName = analysis.getCurrentPatch().getFileName();

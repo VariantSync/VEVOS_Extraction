@@ -1,12 +1,9 @@
 package org.variantsync.vevos.extraction;
 
-import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 
 public class FileGT implements Iterable<LineAnnotation>, Serializable {
     private final ArrayList<LineAnnotation> annotations;
@@ -73,7 +70,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("File: ").append(this.file).append("\n");
+        sb.append("File: ").append(this.file).append(System.lineSeparator());
 
         for (LineAnnotation line : this) {
             sb.append(line);
@@ -82,6 +79,67 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         sb.append("+++");
         sb.append("\n");
         return sb.toString();
+    }
+
+    public String asAggregatedCSVLines() {
+        StringBuilder sb = new StringBuilder();
+        for (BlockAnnotation block : this.aggregateBlocks()) {
+            sb.append(this.file);
+            sb.append(";1;");
+            sb.append(block.asCSVLine());
+            sb.append(System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
+    public ArrayList<BlockAnnotation> aggregateBlocks() {
+        ArrayList<BlockAnnotation> blocks = new ArrayList<>();
+        // The root annotation is always true and covers all lines
+        BlockAnnotation rootBlock = new BlockAnnotation(1, this.annotations.size(), "True", "True");
+
+        LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
+        blockStack.push(rootBlock);
+        for (LineAnnotation line : this.annotations) {
+            if (line.nodeType().equals("endif")) {
+                // skip endif
+                continue;
+            }
+            if (blockStack.isEmpty()) {
+                // Push a new block onto the stack
+                blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+                continue;
+            }
+
+            BlockAnnotation lastBlock = blockStack.peekFirst();
+
+            // Still in the same block
+            if (line.featureMapping().equals(lastBlock.featureMapping()) && line.presenceCondition().equals(lastBlock.presenceCondition())) {
+                // We are still in the same block if the feature mapping remains the same
+                continue;
+            }
+
+            // new block, we have to unwind the stack in reverse order to find all completed blocks
+            for(BlockAnnotation block = blockStack.peekFirst(); block != null; block=blockStack.peekFirst()) {
+                if (line.presenceCondition().contains(block.featureMapping())) {
+                    // The current line is nested in retrieved block
+                    break;
+                }
+                // Collect a completed block
+                block.setLineEndInclusive(line.lineNumber()-1);
+                blocks.add(blockStack.pop());
+            }
+
+            // Push a new block onto the stack
+            blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+        }
+        // Unwind the stack fully
+        while(!blockStack.isEmpty()) {
+            BlockAnnotation block = blockStack.pop();
+            block.setLineEndInclusive(this.annotations.size());
+            blocks.add(block);
+        }
+        blocks.sort(Comparator.comparingInt(BlockAnnotation::lineStartInclusive));
+        return blocks;
     }
 
     public static class Mutable extends FileGT {

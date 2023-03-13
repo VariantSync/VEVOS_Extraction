@@ -1,8 +1,13 @@
 package org.variantsync.vevos.extraction;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.tinylog.Logger;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 public class Serde {
 
@@ -39,5 +44,22 @@ public class Serde {
             Logger.error(e);
             throw new UncheckedIOException(e);
         }
+    }
+
+    public static void writeToFile(Path path, String text, OpenOption... options) {
+        try {
+            Files.writeString(path, text, options);
+        } catch (IOException e) {
+            Logger.error(e);
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public static void writeToFile(Path path, String text) {
+        writeToFile(path, text, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+    }
+
+    public static void appendText(Path path, String text) {
+        writeToFile(path, text, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
     }
 }

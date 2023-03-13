@@ -6,26 +6,29 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
-import org.variantsync.diffdetective.analysis.FilterAnalysis;
-import org.variantsync.diffdetective.analysis.PreprocessingAnalysis;
 import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
-import org.variantsync.diffdetective.variation.diff.filter.DiffTreeFilter;
 import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
-import org.variantsync.diffdetective.variation.diff.transform.CutNonEditedSubtrees;
 import org.variantsync.vevos.extraction.util.PCAnalysis;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.function.BiFunction;
 
 public class FastExtraction {
+    private final static Path EXTRACTION_DIR = Path.of("extraction-results");
+    private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
+    private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
+    private final static String INCOMPLETE_PC_COMMIT_FILE = "PARTIAL_SUCCESS_COMMITS.txt";
+    private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
+    private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
+    private static final String VARIABLES_FILE = "VARIABLES.txt";
+    private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
 
     public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
             "PCAnalysis",
@@ -60,22 +63,33 @@ public class FastExtraction {
                         throw new RuntimeException(e);
                     }
 
-                    GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>());
+                    GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
                     for (RevCommit commit : commits) {
-                        // TODO: Handle a commit having no ground truth (e.g., error or no visible changes)
                         File file = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
-                        GroundTruth loadedGT = Serde.deserialize(file);
-                        Logger.info("Completing ground truth for {}", commit.getName());
-                        loadedGT.complete(completedGroundTruth);
-                        if (print) {
-                            print(loadedGT, commit.getName());
+                        if (Files.exists(file.toPath())) {
+                            GroundTruth loadedGT = Serde.deserialize(file);
+                            Logger.info("Completing ground truth for {}", commit.getName());
+                            loadedGT.complete(completedGroundTruth);
+                            if (print) {
+                                print(loadedGT, commit.getName());
+                            }
+                            completedGroundTruth = loadedGT;
                         }
-                        // TODO: Save completed ground truth
-                        completedGroundTruth = loadedGT;
+                        // Save the extracted ground truth
+                        Path resultsRoot = EXTRACTION_DIR.resolve(repo.getRepositoryName());
+                        Path commitSaveDir = resultsRoot.resolve("data").resolve(commit.getName());
+                        try {
+                            Files.createDirectories(commitSaveDir);
+                        } catch (IOException e) {
+                            Logger.error(e);
+                            throw new UncheckedIOException(e);
+                        }
+                        Serde.writeToFile(commitSaveDir.resolve(VARIABLES_FILE), completedGroundTruth.variablesListAsString());
+                        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV), completedGroundTruth.asCSVString());
+                        Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
                     }
                 }
         );
-
     }
 
     private static void print(GroundTruth groundTruth, String commitName) {
