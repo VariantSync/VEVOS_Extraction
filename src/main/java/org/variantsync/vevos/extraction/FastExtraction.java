@@ -86,6 +86,9 @@ public class FastExtraction {
                         }
                         Serde.writeToFile(commitSaveDir.resolve(VARIABLES_FILE), completedGroundTruth.variablesListAsString());
                         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV), completedGroundTruth.asCSVString());
+                        Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage());
+                        Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName).reduce((s, s2) -> s + " " + s2);
+                        parentIds.ifPresent(s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s));
                         Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
                     }
                 }
