@@ -65,6 +65,13 @@ public class PCAnalysis implements Analysis.Hooks {
             LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
             function.apply(annotation);
             if (node.isAnnotation()) {
+                // TODO: Bugfix here, the following lines cause problems
+                // #endif /* (!defined(HAVE_GETHOSTBYNAME_R) || !defined(HAVE_GETHOSTBYADDR_R) || \
+                //           !defined(HAVE_GETPWUID_R)      || !defined(HAVE_GETGRGID_R)) && \
+                //          (!defined(HAVE_MTSAFE_GETHOSTBYNAME) || !defined(HAVE_MTSAFE_GETHOSTBYADDR)) */
+                //
+                //#if (!defined(HAVE_GETHOSTBYNAME_R) || !defined(HAVE_GETHOSTBYADDR_R)) && \
+                //    (!defined(HAVE_MTSAFE_GETHOSTBYNAME) || !defined(HAVE_MTSAFE_GETHOSTBYADDR))
                 // For annotations, we are only interested in annotating the head, not the body
                 break;
             }
