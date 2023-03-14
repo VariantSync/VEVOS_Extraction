@@ -35,7 +35,7 @@ public class PCAnalysis implements Analysis.Hooks {
         switch (node.diffType) {
             case ADD -> {
                 // Add artifact to the ground truth
-                applyAnnotation(node, fileGT::insert);
+                applyAnnotation(node, fileGT, fileGT::insert);
             }
             case REM -> {
                 // Mark artifact as removed from the ground truth
@@ -47,12 +47,12 @@ public class PCAnalysis implements Analysis.Hooks {
             }
             case NON -> {
                 // The feature mapping and presence condition might have changed - we have to update the entry
-                applyAnnotation(node, fileGT::update);
+                applyAnnotation(node, fileGT, fileGT::update);
             }
         }
     }
 
-    private void applyAnnotation(DiffNode node, Function<LineAnnotation, FileGT.Mutable> function) {
+    private void applyAnnotation(DiffNode node, FileGT fileGT, Function<LineAnnotation, FileGT.Mutable> function) {
         Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
         Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
         // The range of line numbers in which the artifact appears
@@ -62,18 +62,12 @@ public class PCAnalysis implements Analysis.Hooks {
         observedVariables.addAll(presenceCondition.getUniqueContainedFeatures());
 
         for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-            LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
-            function.apply(annotation);
             if (node.isAnnotation()) {
-                // TODO: Bugfix here, the following lines cause problems
-                // #endif /* (!defined(HAVE_GETHOSTBYNAME_R) || !defined(HAVE_GETHOSTBYADDR_R) || \
-                //           !defined(HAVE_GETPWUID_R)      || !defined(HAVE_GETGRGID_R)) && \
-                //          (!defined(HAVE_MTSAFE_GETHOSTBYNAME) || !defined(HAVE_MTSAFE_GETHOSTBYADDR)) */
-                //
-                //#if (!defined(HAVE_GETHOSTBYNAME_R) || !defined(HAVE_GETHOSTBYADDR_R)) && \
-                //    (!defined(HAVE_MTSAFE_GETHOSTBYNAME) || !defined(HAVE_MTSAFE_GETHOSTBYADDR))
-                // For annotations, we are only interested in annotating the head, not the body
-                break;
+                LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
+                function.apply(annotation);
+            } else {
+                // For artifacts, we grow the root mapping
+                fileGT.growIfRequired(i);
             }
         }
     }

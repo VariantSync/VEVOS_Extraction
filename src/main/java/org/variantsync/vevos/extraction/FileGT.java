@@ -37,13 +37,14 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         return this.annotations.set(index, annotation);
     }
 
-    protected void growIfRequired(int index) {
+    public void growIfRequired(int index) {
         // Increase the size of the array if necessary
         if (index >= this.annotations.size()) {
             this.annotations.ensureCapacity(index + 1);
         }
-        while (index >= this.annotations.size()) {
-            this.annotations.add(null);
+        for (int i = this.annotations.size(); i <= index; i++) {
+            // Initialized lines get the root annotation by default
+            this.annotations.add(LineAnnotation.rootAnnotation(i));
         }
     }
 
@@ -101,18 +102,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
         blockStack.push(rootBlock);
         for (LineAnnotation line : this.annotations) {
-            if (line.nodeType().equals("endif")) {
-                // Collect a completed block
-                if (blockStack.isEmpty()) {
-                    Logger.warn("No block for endif");
-                    Logger.warn(this);
-                } else {
-                    BlockAnnotation block = blockStack.pop();
-                    block.setLineEndInclusive(line.lineNumber() - 1);
-                    blocks.add(block);
-                }
-                continue;
-            }
+            Assert.assertTrue(!line.equals(LineAnnotation.EMPTY), "Encountered unexpected `empty` annotation. The entire file should have been mapped");
+
             if (blockStack.isEmpty()) {
                 // Push a new block onto the stack
                 blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
@@ -216,8 +207,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
             for (int i = 0; i < this.size(); i++) {
                 if (this.get(i) == null) {
-                    // If there are still null values, they must have occurred due to an endif, which is not processed by DiffDetective
-                    this.insert(i, new LineAnnotation(i+1, "", "", "endif"));
+                    // If there are still null values, mark them
+                    this.insert(i, LineAnnotation.EMPTY);
                 }
             }
             return new Complete(this);

@@ -4,6 +4,7 @@ package org.variantsync.vevos.extraction;
 import java.io.Serializable;
 
 public record LineAnnotation(int lineNumber, String featureMapping, String presenceCondition, String nodeType) implements Serializable {
+    public final static LineAnnotation EMPTY = new LineAnnotation(-1, "", "", "");
 
     public int index() {
         return this.lineNumber-1;
@@ -11,6 +12,10 @@ public record LineAnnotation(int lineNumber, String featureMapping, String prese
 
     public LineAnnotation withOffset(int offset) {
         return new LineAnnotation(this.lineNumber + offset, this.featureMapping, this.presenceCondition, this.nodeType);
+    }
+
+    public static LineAnnotation rootAnnotation(int lineNumber) {
+        return new LineAnnotation(lineNumber, "True", "True", "ROOT");
     }
 
     @Override
