@@ -60,7 +60,7 @@ public class FastExtraction {
     }
 
     private static final BiConsumer<Repository, Path> runner = (repo, repoOutputDir) -> {
-        boolean print = true;
+        boolean print = false;
         Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 
         ArrayList<RevCommit> commits = new ArrayList<>();
