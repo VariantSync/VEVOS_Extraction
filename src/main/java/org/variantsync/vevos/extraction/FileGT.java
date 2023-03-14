@@ -129,8 +129,12 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 blocks.add(blockStack.pop());
             }
 
-            // Push a new block onto the stack
-            blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+            // If the current line is in a new block
+            Assert.assertTrue(blockStack.peekFirst() != null);
+            if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
+                // Push a new block onto the stack
+                blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+            }
         }
         // Unwind the stack fully
         while(!blockStack.isEmpty()) {
