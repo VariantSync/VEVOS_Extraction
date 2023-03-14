@@ -40,8 +40,8 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
                     continue;
                 }
             }
-            FileGT.Incomplete updatedFileGT = ((FileGT.Mutable) this.get(updatedFile)).finishMutation();
-            this.fileGTs.put(updatedFile,updatedFileGT.combine(FileGT.Complete.empty()));
+            FileGT.Complete updatedFileGT = ((FileGT.Mutable) this.get(updatedFile)).finishMutation();
+            this.fileGTs.put(updatedFile,updatedFileGT);
         }
         // TODO: This is only a workaround and should be handled by diff detective (see above)
         this.fileGTs.remove("/dev/null");
@@ -60,9 +60,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
                     this.fileGTs.remove(baseFile);
                 } else {
                     FileGT.Mutable incompleteGT = (FileGT.Mutable) updatedFileGT;
-                    // TODO: FileGT.Complete.empty() is only a workaround and should be handled by diff detective (see issue regarding endif nodes)
-                    // Ideally, we would reuse partial file ground truths
-                    this.fileGTs.put(baseFile, incompleteGT.finishMutation().combine(FileGT.Complete.empty()));
+                    this.fileGTs.put(baseFile, incompleteGT.finishMutation());
                 }
             }
         }

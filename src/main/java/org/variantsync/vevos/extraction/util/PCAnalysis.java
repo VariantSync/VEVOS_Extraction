@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
-import java.util.function.Function;
 
 public class PCAnalysis implements Analysis.Hooks {
     private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
@@ -33,26 +32,18 @@ public class PCAnalysis implements Analysis.Hooks {
 
     private void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
         switch (node.diffType) {
-            case ADD -> {
+            case ADD, NON -> {
                 // Add artifact to the ground truth
-                applyAnnotation(node, fileGT, fileGT::insert);
+                applyAnnotation(node, fileGT);
             }
             case REM -> {
-                // Mark artifact as removed from the ground truth
-                LineRange rangeInFile = node.getLinesAtTime(Time.BEFORE);
-                Logger.debug("REM: Line Range: %s".formatted(rangeInFile));
-                for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-                    fileGT.markRemoved(i);
-                }
-            }
-            case NON -> {
-                // The feature mapping and presence condition might have changed - we have to update the entry
-                applyAnnotation(node, fileGT, fileGT::update);
+                // Do nothing, we recalculate the PCs completely for an updated file. Thus, removed lines do not appear
+                // in the updated version in any case
             }
         }
     }
 
-    private void applyAnnotation(DiffNode node, FileGT fileGT, Function<LineAnnotation, FileGT.Mutable> function) {
+    private void applyAnnotation(DiffNode node, FileGT.Mutable fileGT) {
         Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
         Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
         // The range of line numbers in which the artifact appears
@@ -64,7 +55,7 @@ public class PCAnalysis implements Analysis.Hooks {
         for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
             if (node.isAnnotation()) {
                 LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
-                function.apply(annotation);
+                fileGT.insert(annotation);
             } else {
                 // For artifacts, we grow the root mapping
                 fileGT.growIfRequired(i);

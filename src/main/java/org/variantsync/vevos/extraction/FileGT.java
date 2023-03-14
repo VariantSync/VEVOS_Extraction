@@ -1,6 +1,5 @@
 package org.variantsync.vevos.extraction;
 
-import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
@@ -51,22 +50,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     @Override
     public Iterator<LineAnnotation> iterator() {
         return this.annotations.iterator();
-    }
-
-    public boolean isMutable() {
-        return this instanceof Mutable;
-    }
-
-    public boolean isIncomplete() {
-        return this instanceof Incomplete;
-    }
-
-    public boolean isComplete() {
-        return this instanceof Complete;
-    }
-
-    public boolean isRemoved() {
-        return this instanceof Removed;
     }
 
     @Override
@@ -130,7 +113,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             }
 
             // If the current line is in a new block
-            Assert.assertTrue(blockStack.peekFirst() != null);
+            Assert.assertTrue(blockStack.peekFirst() != null, this.toString());
             if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
                 // Push a new block onto the stack
                 blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
@@ -147,13 +130,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     public static class Mutable extends FileGT {
-        private final HashSet<Integer> updatedIndices;
-        private final HashSet<Integer> removedIndices;
 
         public Mutable(String file) {
             super(file);
-            this.updatedIndices = new HashSet<>();
-            this.removedIndices = new HashSet<>();
         }
 
         public Mutable insert(LineAnnotation line) {
@@ -162,84 +141,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             return this;
         }
 
-        public Mutable update(LineAnnotation line) {
-            Assert.assertTrue(!consumed);
-            this.insert(line);
-            this.updatedIndices.add(line.index());
-            return this;
-        }
-
-        public Mutable markRemoved(int lineNumber) {
-            Assert.assertTrue(!consumed);
-
-            this.removedIndices.add(lineNumber-1);
-            return this;
-        }
-
-        public Incomplete finishMutation() {
+        public Complete finishMutation() {
             this.consumed = true;
-            return new Incomplete(this);
-        }
-    }
-
-    public static class Incomplete extends FileGT {
-        private final HashSet<Integer> updatedIndices;
-        private final HashSet<Integer> removedIndices;
-
-        private Incomplete(Mutable mutableGT) {
-            super(mutableGT);
-            this.updatedIndices = mutableGT.updatedIndices;
-            this.removedIndices = mutableGT.removedIndices;
-        }
-
-        public Complete combine(Complete oldGT) {
-            this.consumed = true;
-
-            // The offset is required to track differences between indices of the before and the after version of the
-            // ground truth
-            // Lines that have been removed reduce the offset by 1
-            // Lines that have been added increase the offset by 1
-            int offset = 0;
-            for (int i = 0; i < oldGT.size(); i++) {
-                if (this.removedIndices.contains(i)) {
-                    // The annotated line has been removed, adjust the offset and check the next one
-                    offset -= 1;
-                    continue;
-                }
-                offset = this.findPositionAndInsert(oldGT.get(i), i, offset);
-            }
-
-            for (int i = 0; i < this.size(); i++) {
-                if (this.get(i) == null) {
-                    // If there are still null values, mark them
-                    this.insert(i, LineAnnotation.EMPTY);
-                }
-            }
             return new Complete(this);
-        }
-
-        private int findPositionAndInsert(LineAnnotation annotation, int index, int offset) {
-            // We have to increment the offset for each line that has been added in the new version
-            // For this, we check positions in the target annotations starting from the index with offset
-            for (int j = index+offset; j < Integer.MAX_VALUE; j++) {
-                if (j < this.size() && this.get(j) != null) {
-                    if (!this.updatedIndices.contains(j)) {
-                        // There is an added line, increase the offset and check the next possible location
-                        offset += 1;
-                    } else {
-                        // This line has been updated, so we do not take it into the new ground truth
-                        break;
-                    }
-                } else {
-                    // Found an empty spot in the FileGroundTruth. This is where the annotation belongs
-                    // Apply the offset to the annotations line number;
-                    var previousEntry = this.insert(j, annotation.withOffset(offset));
-                    Assert.assertTrue(previousEntry == null);
-                    break;
-                }
-            }
-            // Return the updated offset
-            return offset;
         }
     }
 
@@ -249,7 +153,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             super(file);
         }
 
-        private Complete(Incomplete incomplete) {
+        private Complete(Mutable incomplete) {
             super(incomplete);
         }
 
