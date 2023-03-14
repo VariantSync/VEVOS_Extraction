@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.util;
+package org.variantsync.vevos.extraction;
 
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;

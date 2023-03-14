@@ -70,16 +70,11 @@ public final class BlockAnnotation {
     }
 
     private static final Pattern t = Pattern.compile("True");
-    private static final Pattern tInConjunction = Pattern.compile("(True & )|( & True)");
     private static final Pattern f = Pattern.compile("False");
     private static final Pattern not_1 = Pattern.compile("^-");
     private static final Pattern not_2 = Pattern.compile(" -");
     private static final Pattern and = Pattern.compile(" & ");
     private String normalizeCondition(String condition) {
-//        condition = condition.replaceAll(tInConjunction.pattern(), "");
-//        if (condition.contains("& False") || condition.contains("False &")) {
-//            return "0";
-//        }
         condition = condition.replaceAll(t.pattern(), "1");
         condition = condition.replaceAll(f.pattern(), "0");
         condition = condition.replaceAll(not_1.pattern(), "!");
