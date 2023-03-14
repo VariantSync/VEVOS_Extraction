@@ -44,7 +44,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
         for (int i = this.annotations.size(); i <= index; i++) {
             // Initialized lines get the root annotation by default
-            this.annotations.add(LineAnnotation.rootAnnotation(i));
+            this.annotations.add(LineAnnotation.rootAnnotation(i+1));
         }
     }
 
