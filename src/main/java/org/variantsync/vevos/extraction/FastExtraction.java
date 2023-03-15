@@ -51,15 +51,15 @@ public class FastExtraction {
             = "diff-detective.repo-storage-dir";
 
     public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
-            "PCAnalysis",
-            List.of(
+        "PCAnalysis",
+        List.of(
 //                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
 //                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
-                    new PCAnalysis()
-            ),
-            repo,
-            repoOutputDir
-    );
+                new PCAnalysis()
+        ),
+        repo,
+        repoOutputDir
+);
 
     public FastExtraction(Properties properties) {
         this.properties = properties;
@@ -100,26 +100,27 @@ public class FastExtraction {
             throw new RuntimeException(e);
         }
 
-        GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
         try(ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(this.properties.getProperty(THREAD_COUNT)))) {
-            postprocess(repo, commits, completedGroundTruth, threadPool);
+            postprocess(repo, commits, threadPool);
             Logger.info("Awaiting termination of threadpool");
             threadPool.shutdown();
         }
     };
 
-    private void postprocess(Repository repo, ArrayList<RevCommit> commits, GroundTruth completedGroundTruth, ExecutorService threadPool) {
+    private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
         boolean print = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
+        int processedCount = 0;
+        GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
+
         for (RevCommit commit : commits) {
             File file = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
             if (Files.exists(file.toPath())) {
                 GroundTruth loadedGT = Serde.deserialize(file);
                 Logger.info("Completing ground truth for {}", commit.getName());
-                loadedGT.complete(completedGroundTruth);
+                completedGroundTruth.updateWith(loadedGT);
                 if (print) {
-                    print(loadedGT, commit.getName());
+                    print(completedGroundTruth, commit.getName());
                 }
-                completedGroundTruth = loadedGT;
             }
             // Save the extracted ground truth
             Path extractionDir = Path.of(this.properties.getProperty(GT_SAVE_DIR));
@@ -143,6 +144,8 @@ public class FastExtraction {
             threadPool.submit(() -> parentIds.ifPresent(s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s)));
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
+            processedCount++;
+            Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
         }
     }
 

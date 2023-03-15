@@ -20,6 +20,7 @@ import java.util.Set;
 public class PCAnalysis implements Analysis.Hooks {
     private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
     private final Set<String> observedVariables;
+    private int numProcessed = 0;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
@@ -66,12 +67,15 @@ public class PCAnalysis implements Analysis.Hooks {
         Path resultFile = Path.of("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
         Files.createDirectories(resultFile.getParent());
 
-        Logger.info("Finished Commit: {}%n", commit.name());
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>(), new HashSet<>()));
         groundTruth.variables().addAll(this.observedVariables);
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit);
         this.observedVariables.clear();
+        synchronized(this) {
+            this.numProcessed++;
+            Logger.info("Finished Commit ({}): {}", this.numProcessed, commit.name());
+        }
     }
 
     @Override
@@ -86,7 +90,6 @@ public class PCAnalysis implements Analysis.Hooks {
         // Get the ground truth for this file
         String fileName = analysis.getCurrentPatch().getFileName();
         Logger.debug("Name of processed file is %s".formatted(fileName));
-
         if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
             // We set the entry to null to mark it as removed
             groundTruth.fileGTs().put(fileName, new FileGT.Removed(fileName));

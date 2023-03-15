@@ -17,52 +17,21 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         return this.fileGTs.size();
     }
 
-    public void complete(GroundTruth base) {
+    public void updateWith(GroundTruth updated) {
         // update the variables
-        this.variables.addAll(base.variables);
+        this.variables.addAll(updated.variables);
 
-        Set<String> baseFiles = base.fileGTs.keySet();
-        Set<String> updatedFiles = this.fileGTs.keySet();
-
-        // First, handle files that have been newly added, their ground truth has to be set to complete
+        // Handle files that have been newly added or updated, their ground truth has to be set to complete
         // There is no real base to combine them with, so we combine them with an empty FileGT
-        for (String updatedFile : updatedFiles) {
-            if (baseFiles.contains(updatedFile)) {
+        for (String updatedFile : updated.fileGTs.keySet()) {
+            FileGT fileGT = updated.get(updatedFile);
+            if (fileGT instanceof FileGT.Removed) {
+                // It is set to removed if the entire file has been removed
+                this.fileGTs.remove(updatedFile);
                 continue;
             }
-            FileGT temp = this.get(updatedFile);
-            if (temp instanceof FileGT.Removed) {
-                if (temp.file.equals("/dev/null")) {
-                    // TODO: This is only a workaround and should be handled by diff detective
-                    // The case occurs, if certain temporary files have been tracken by accident
-                    // Ideally, diff detective would associate the name of the file before the removal, and not
-                    // the name of the file after removal
-                    continue;
-                }
-            }
-            FileGT.Complete updatedFileGT = ((FileGT.Mutable) this.get(updatedFile)).finishMutation();
-            this.fileGTs.put(updatedFile,updatedFileGT);
-        }
-        // TODO: This is only a workaround and should be handled by diff detective (see above)
-        this.fileGTs.remove("/dev/null");
-
-        // Then, handle files that have had a GT before
-        for (String baseFile : baseFiles) {
-            FileGT.Complete baseFileGT = (FileGT.Complete) base.get(baseFile);
-            if (!updatedFiles.contains(baseFile)) {
-                // This file has not been updated, we want the entire ground truth for it
-                this.fileGTs.put(baseFile, baseFileGT);
-            } else {
-                // This file has been updated and needs to be completed
-                FileGT updatedFileGT = this.get(baseFile);
-                if (updatedFileGT instanceof FileGT.Removed) {
-                    // It is set to null if the entire file has been removed
-                    this.fileGTs.remove(baseFile);
-                } else {
-                    FileGT.Mutable incompleteGT = (FileGT.Mutable) updatedFileGT;
-                    this.fileGTs.put(baseFile, incompleteGT.finishMutation());
-                }
-            }
+            FileGT.Complete updatedFileGT = ((FileGT.Mutable) updated.get(updatedFile)).finishMutation();
+            this.fileGTs.put(updatedFile, updatedFileGT);
         }
     }
 
@@ -87,7 +56,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         ArrayList<String> fileNames = new ArrayList<>(this.fileGTs.keySet());
         Collections.sort(fileNames);
         for (String name : fileNames) {
-            if( this.fileGTs.get(name) instanceof FileGT.Complete fileGT) {
+            if (this.fileGTs.get(name) instanceof FileGT.Complete fileGT) {
                 sb.append(fileGT.csvLines());
             } else {
                 throw new IllegalStateException("Not possible to create CSV line for incomplete file ground truth");

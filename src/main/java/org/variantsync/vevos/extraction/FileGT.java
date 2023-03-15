@@ -87,19 +87,19 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     public static class Complete extends FileGT {
 
-        private final Lazy<ArrayList<BlockAnnotation>> aggregatedBlocks;
-        private final Lazy<String> csvText;
+        private final ArrayList<BlockAnnotation> aggregatedBlocks;
+        private final String csvText;
 
-        private Complete(String file) {
-            super(file);
-            aggregatedBlocks = Lazy.of(ArrayList::new);
-            csvText = Lazy.of(() -> "");
+        private Complete(String fileName) {
+            super(fileName);
+            aggregatedBlocks = new ArrayList<>();
+            csvText = "";
         }
 
         private Complete(Mutable incomplete) {
             super(incomplete);
-            aggregatedBlocks = Lazy.of(() -> aggregateBlocks(this));
-            csvText = Lazy.of(() -> csvLines(this));
+            aggregatedBlocks = aggregateBlocks(this);
+            csvText = csvLines(this);
         }
 
         public static Complete empty() {
@@ -108,17 +108,17 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
         // TODO: Implement caching of aggregated blocks and CSV lines
         public String csvLines() {
-            return this.csvText.run();
+            return this.csvText;
         }
 
         public ArrayList<BlockAnnotation> aggregatedBlocks() {
-            return this.aggregatedBlocks.run();
+            return this.aggregatedBlocks;
         }
 
 
         private static String csvLines(Complete complete) {
             StringBuilder sb = new StringBuilder();
-            for (BlockAnnotation block : complete.aggregatedBlocks.run()) {
+            for (BlockAnnotation block : complete.aggregatedBlocks) {
                 sb.append(complete.file);
                 sb.append(";1;");
                 sb.append(block.asCSVLine());
