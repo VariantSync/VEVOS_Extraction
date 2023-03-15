@@ -28,10 +28,11 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
             if (fileGT instanceof FileGT.Removed) {
                 // It is set to removed if the entire file has been removed
                 this.fileGTs.remove(updatedFile);
-                continue;
+            } else if (fileGT instanceof FileGT.Complete updatedFileGT) {
+                this.fileGTs.put(updatedFile, updatedFileGT);
+            } else {
+                throw new IllegalStateException("Unexpected incomplete ground truth");
             }
-            FileGT.Complete updatedFileGT = ((FileGT.Mutable) updated.get(updatedFile)).finishMutation();
-            this.fileGTs.put(updatedFile, updatedFileGT);
         }
     }
 

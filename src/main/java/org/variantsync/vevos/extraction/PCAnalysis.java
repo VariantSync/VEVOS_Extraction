@@ -12,15 +12,12 @@ import org.variantsync.diffdetective.variation.diff.Time;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Set;
+import java.util.*;
 
 public class PCAnalysis implements Analysis.Hooks {
     private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
     private final Set<String> observedVariables;
-    private int numProcessed = 0;
+    private static int numProcessed = 0;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
@@ -69,12 +66,18 @@ public class PCAnalysis implements Analysis.Hooks {
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>(), new HashSet<>()));
         groundTruth.variables().addAll(this.observedVariables);
+        // Complete all new or updated file ground truths
+        for (Map.Entry<String, FileGT> entry : groundTruth.fileGTs().entrySet()) {
+            if (entry.getValue() instanceof FileGT.Mutable mutable) {
+                groundTruth.fileGTs().put(entry.getKey(), mutable.finishMutation());
+            }
+        }
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit);
         this.observedVariables.clear();
-        synchronized(this) {
-            this.numProcessed++;
-            Logger.info("Finished Commit ({}): {}", this.numProcessed, commit.name());
+        synchronized(PCAnalysis.class) {
+            PCAnalysis.numProcessed++;
+            Logger.info("Finished Commit ({}): {}", PCAnalysis.numProcessed, commit.name());
         }
     }
 

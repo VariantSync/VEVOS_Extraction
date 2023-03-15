@@ -1,9 +1,10 @@
 package org.variantsync.vevos.extraction;
 
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-public final class BlockAnnotation {
+public final class BlockAnnotation implements Serializable {
     private int lineStartInclusive;
     private int lineEndInclusive;
     private final String featureMapping;

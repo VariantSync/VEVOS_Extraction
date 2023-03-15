@@ -99,7 +99,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private Complete(Mutable incomplete) {
             super(incomplete);
             aggregatedBlocks = aggregateBlocks(this);
-            csvText = csvLines(this);
+            // TODO: Consider how to handle this
+//            csvText = csvLines(this);
+            csvText = "csvLines(this)";
         }
 
         public static Complete empty() {

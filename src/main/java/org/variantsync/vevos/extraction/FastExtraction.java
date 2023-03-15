@@ -29,6 +29,7 @@ public class FastExtraction {
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final String VARIABLES_FILE = "VARIABLES.txt";
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
+    private static final String CODE_VARIABILITY_BIN = "code-variability.spl.bin";
 
     private Properties properties;
 
@@ -137,6 +138,7 @@ public class FastExtraction {
 
             String groundTruthAsCSV = completedGroundTruth.asCSVString();
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV), groundTruthAsCSV));
+            threadPool.submit(() -> Serde.serialize(commitSaveDir.resolve(CODE_VARIABILITY_BIN).toFile(), completedGroundTruth));
 
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage()));
 
