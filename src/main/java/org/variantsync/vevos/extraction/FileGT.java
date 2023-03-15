@@ -1,7 +1,6 @@
 package org.variantsync.vevos.extraction;
 
 import org.variantsync.diffdetective.util.Assert;
-import org.variantsync.functjonal.Lazy;
 
 import java.io.Serializable;
 import java.util.*;
@@ -99,16 +98,13 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private Complete(Mutable incomplete) {
             super(incomplete);
             aggregatedBlocks = aggregateBlocks(this);
-            // TODO: Consider how to handle this
-//            csvText = csvLines(this);
-            csvText = "csvLines(this)";
+            csvText = csvLines(this);
         }
 
         public static Complete empty() {
             return new Complete("");
         }
 
-        // TODO: Implement caching of aggregated blocks and CSV lines
         public String csvLines() {
             return this.csvText;
         }
@@ -116,7 +112,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         public ArrayList<BlockAnnotation> aggregatedBlocks() {
             return this.aggregatedBlocks;
         }
-
 
         private static String csvLines(Complete complete) {
             StringBuilder sb = new StringBuilder();
@@ -165,7 +160,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 }
 
                 // If the current line is in a new block
-                Assert.assertTrue(blockStack.peekFirst() != null, complete.toString());
+                Assert.assertTrue(blockStack.peekFirst() != null, "%s\nProblem while processing line %d of file %s".formatted(complete.toString(), line.lineNumber(), complete.file));
                 if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
                     // Push a new block onto the stack
                     blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));

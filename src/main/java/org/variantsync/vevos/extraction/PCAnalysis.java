@@ -38,8 +38,8 @@ public class PCAnalysis implements Analysis.Hooks {
     }
 
     private void applyAnnotation(DiffNode node, FileGT.Mutable fileGT) {
-        Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(true);
-        Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(true);
+        Node featureMapping = node.getFeatureMapping(Time.AFTER).toCNF(false);
+        Node presenceCondition = node.getPresenceCondition(Time.AFTER).toCNF(false);
         // The range of line numbers in which the artifact appears
         LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
         Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));

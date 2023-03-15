@@ -29,12 +29,7 @@ public class FastExtraction {
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final String VARIABLES_FILE = "VARIABLES.txt";
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
-    private static final String CODE_VARIABILITY_BIN = "code-variability.spl.bin";
-
-    private Properties properties;
-
-    public static final String THREAD_COUNT
-            = "extraction.thread_count";
+    private final Properties properties;
 
     public static final String PRINT_ENABLED
             = "extraction.print-enabled";
@@ -101,7 +96,7 @@ public class FastExtraction {
             throw new RuntimeException(e);
         }
 
-        try(ExecutorService threadPool = Executors.newFixedThreadPool(Integer.parseInt(this.properties.getProperty(THREAD_COUNT)))) {
+        try(ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
             postprocess(repo, commits, threadPool);
             Logger.info("Awaiting termination of threadpool");
             threadPool.shutdown();
@@ -138,7 +133,6 @@ public class FastExtraction {
 
             String groundTruthAsCSV = completedGroundTruth.asCSVString();
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV), groundTruthAsCSV));
-            threadPool.submit(() -> Serde.serialize(commitSaveDir.resolve(CODE_VARIABILITY_BIN).toFile(), completedGroundTruth));
 
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage()));
 
