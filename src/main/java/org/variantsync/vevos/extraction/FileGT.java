@@ -1,6 +1,7 @@
 package org.variantsync.vevos.extraction;
 
 import org.variantsync.diffdetective.util.Assert;
+import org.variantsync.functjonal.Lazy;
 
 import java.io.Serializable;
 import java.util.*;
@@ -66,69 +67,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         return sb.toString();
     }
 
-    public String asAggregatedCSVLines() {
-        StringBuilder sb = new StringBuilder();
-        for (BlockAnnotation block : this.aggregateBlocks()) {
-            sb.append(this.file);
-            sb.append(";1;");
-            sb.append(block.asCSVLine());
-            sb.append(System.lineSeparator());
-        }
-        return sb.toString();
-    }
-
-    public ArrayList<BlockAnnotation> aggregateBlocks() {
-        ArrayList<BlockAnnotation> blocks = new ArrayList<>();
-        // The root annotation is always true and covers all lines
-        BlockAnnotation rootBlock = new BlockAnnotation(1, this.annotations.size(), "True", "True");
-
-        LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
-        blockStack.push(rootBlock);
-        for (LineAnnotation line : this.annotations) {
-            Assert.assertTrue(!line.equals(LineAnnotation.EMPTY), "Encountered unexpected `empty` annotation. The entire file should have been mapped");
-
-            if (blockStack.isEmpty()) {
-                // Push a new block onto the stack
-                blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
-                continue;
-            }
-
-            BlockAnnotation lastBlock = blockStack.peekFirst();
-
-            // Still in the same block
-            if (line.featureMapping().equals(lastBlock.featureMapping()) && line.presenceCondition().equals(lastBlock.presenceCondition())) {
-                // We are still in the same block if the feature mapping remains the same
-                continue;
-            }
-
-            // new block, we have to unwind the stack in reverse order to find all completed blocks
-            for(BlockAnnotation block = blockStack.peekFirst(); block != null; block=blockStack.peekFirst()) {
-                if (line.presenceCondition().contains(block.featureMapping())) {
-                    // The current line is nested in retrieved block
-                    break;
-                }
-                // Collect a completed block
-                block.setLineEndInclusive(line.lineNumber()-1);
-                blocks.add(blockStack.pop());
-            }
-
-            // If the current line is in a new block
-            Assert.assertTrue(blockStack.peekFirst() != null, this.toString());
-            if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
-                // Push a new block onto the stack
-                blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
-            }
-        }
-        // Unwind the stack fully
-        while(!blockStack.isEmpty()) {
-            BlockAnnotation block = blockStack.pop();
-            block.setLineEndInclusive(this.annotations.size());
-            blocks.add(block);
-        }
-        blocks.sort(Comparator.comparingInt(BlockAnnotation::lineStartInclusive));
-        return blocks;
-    }
-
     public static class Mutable extends FileGT {
 
         public Mutable(String file) {
@@ -149,16 +87,96 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     public static class Complete extends FileGT {
 
+        private final Lazy<ArrayList<BlockAnnotation>> aggregatedBlocks;
+        private final Lazy<String> csvText;
+
         private Complete(String file) {
             super(file);
+            aggregatedBlocks = Lazy.of(ArrayList::new);
+            csvText = Lazy.of(() -> "");
         }
 
         private Complete(Mutable incomplete) {
             super(incomplete);
+            aggregatedBlocks = Lazy.of(() -> aggregateBlocks(this));
+            csvText = Lazy.of(() -> csvLines(this));
         }
 
         public static Complete empty() {
             return new Complete("");
+        }
+
+        // TODO: Implement caching of aggregated blocks and CSV lines
+        public String csvLines() {
+            return this.csvText.run();
+        }
+
+        public ArrayList<BlockAnnotation> aggregatedBlocks() {
+            return this.aggregatedBlocks.run();
+        }
+
+
+        private static String csvLines(Complete complete) {
+            StringBuilder sb = new StringBuilder();
+            for (BlockAnnotation block : complete.aggregatedBlocks.run()) {
+                sb.append(complete.file);
+                sb.append(";1;");
+                sb.append(block.asCSVLine());
+                sb.append(System.lineSeparator());
+            }
+            return sb.toString();
+        }
+
+        private static ArrayList<BlockAnnotation> aggregateBlocks(Complete complete) {
+            ArrayList<BlockAnnotation> blocks = new ArrayList<>();
+            // The root annotation is always true and covers all lines
+            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), "True", "True");
+
+            LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
+            blockStack.push(rootBlock);
+            for (LineAnnotation line : complete) {
+                Assert.assertTrue(!line.equals(LineAnnotation.EMPTY), "Encountered unexpected `empty` annotation. The entire file should have been mapped");
+
+                if (blockStack.isEmpty()) {
+                    // Push a new block onto the stack
+                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+                    continue;
+                }
+
+                BlockAnnotation lastBlock = blockStack.peekFirst();
+
+                // Still in the same block
+                if (line.featureMapping().equals(lastBlock.featureMapping()) && line.presenceCondition().equals(lastBlock.presenceCondition())) {
+                    // We are still in the same block if the feature mapping remains the same
+                    continue;
+                }
+
+                // new block, we have to unwind the stack in reverse order to find all completed blocks
+                for(BlockAnnotation block = blockStack.peekFirst(); block != null; block=blockStack.peekFirst()) {
+                    if (line.presenceCondition().contains(block.featureMapping())) {
+                        // The current line is nested in retrieved block
+                        break;
+                    }
+                    // Collect a completed block
+                    block.setLineEndInclusive(line.lineNumber()-1);
+                    blocks.add(blockStack.pop());
+                }
+
+                // If the current line is in a new block
+                Assert.assertTrue(blockStack.peekFirst() != null, complete.toString());
+                if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
+                    // Push a new block onto the stack
+                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+                }
+            }
+            // Unwind the stack fully
+            while(!blockStack.isEmpty()) {
+                BlockAnnotation block = blockStack.pop();
+                block.setLineEndInclusive(complete.size());
+                blocks.add(block);
+            }
+            blocks.sort(Comparator.comparingInt(BlockAnnotation::lineStartInclusive));
+            return blocks;
         }
 
     }

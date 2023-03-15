@@ -87,8 +87,11 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         ArrayList<String> fileNames = new ArrayList<>(this.fileGTs.keySet());
         Collections.sort(fileNames);
         for (String name : fileNames) {
-            FileGT fileGT = this.fileGTs.get(name);
-            sb.append(fileGT.asAggregatedCSVLines());
+            if( this.fileGTs.get(name) instanceof FileGT.Complete fileGT) {
+                sb.append(fileGT.csvLines());
+            } else {
+                throw new IllegalStateException("Not possible to create CSV line for incomplete file ground truth");
+            }
         }
         return sb.toString();
     }

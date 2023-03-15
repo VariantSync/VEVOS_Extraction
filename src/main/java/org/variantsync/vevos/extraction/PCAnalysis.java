@@ -9,10 +9,6 @@ import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.vevos.extraction.FileGT;
-import org.variantsync.vevos.extraction.GroundTruth;
-import org.variantsync.vevos.extraction.LineAnnotation;
-import org.variantsync.vevos.extraction.Serde;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
