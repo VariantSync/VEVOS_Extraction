@@ -32,7 +32,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     protected LineAnnotation insert(int index, LineAnnotation annotation) {
-        growIfRequired(index);
+        // +1 to account for the endif
+        growIfRequired(index+1);
         return this.annotations.set(index, annotation);
     }
 
@@ -172,7 +173,15 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 block.setLineEndInclusive(complete.size());
                 blocks.add(block);
             }
-            blocks.sort(Comparator.comparingInt(BlockAnnotation::lineStartInclusive));
+            blocks.sort((blockAnnotation, t1) -> {
+                int c = Integer.compare(blockAnnotation.lineStartInclusive(), t1.lineStartInclusive());
+                if (c != 0) {
+                    return c;
+                } else {
+                    // If the start lines are the same, the block with the higher end line is taken first
+                    return -1 * Integer.compare(blockAnnotation.lineEndExclusive(), t1.lineEndExclusive());
+                }
+            });
             return blocks;
         }
 

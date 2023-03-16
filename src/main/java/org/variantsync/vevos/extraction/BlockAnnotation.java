@@ -74,13 +74,23 @@ public final class BlockAnnotation implements Serializable {
     private static final Pattern f = Pattern.compile("False");
     private static final Pattern not_1 = Pattern.compile("^-");
     private static final Pattern not_2 = Pattern.compile(" -");
+    private static final Pattern not_3 = Pattern.compile("\\(-");
     private static final Pattern and = Pattern.compile(" & ");
+    private static final Pattern or = Pattern.compile(" \\| ");
+    private static final Pattern variableStart = Pattern.compile("\\$\\{");
+    private static final Pattern variableEnd = Pattern.compile("}");
+    private static final Pattern quotation = Pattern.compile("\"");
     private String normalizeCondition(String condition) {
         condition = condition.replaceAll(t.pattern(), "1");
         condition = condition.replaceAll(f.pattern(), "0");
         condition = condition.replaceAll(not_1.pattern(), "!");
         condition = condition.replaceAll(not_2.pattern(), " !");
+        condition = condition.replaceAll(not_3.pattern(), "(!");
         condition = condition.replaceAll(and.pattern(), " && ");
+        condition = condition.replaceAll(or.pattern(), " || ");
+        condition = condition.replaceAll(variableStart.pattern(), "");
+        condition = condition.replaceAll(variableEnd.pattern(), "");
+        condition = condition.replaceAll(quotation.pattern(), "");
         return condition;
     }
 }

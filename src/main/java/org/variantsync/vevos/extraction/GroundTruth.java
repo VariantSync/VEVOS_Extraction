@@ -3,6 +3,7 @@ package org.variantsync.vevos.extraction;
 import java.io.Serializable;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables) implements Serializable {
     public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
@@ -36,6 +37,9 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         }
     }
 
+    private static final Pattern variableStart = Pattern.compile("\\$\\{");
+    private static final Pattern variableEnd = Pattern.compile("}");
+    private static final Pattern quotation = Pattern.compile("\"");
     public String variablesListAsString() {
         List<String> variablesList = new ArrayList<>(this.variables);
         Collections.sort(variablesList);
@@ -45,6 +49,9 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
             if (name.equals("True") || name.equals("False")) {
                 continue;
             }
+            name = name.replaceAll(variableStart.pattern(), "");
+            name = name.replaceAll(variableEnd.pattern(), "");
+            name = name.replaceAll(quotation.pattern(), "");
             sb.append(name).append(System.lineSeparator());
         }
         return sb.toString();

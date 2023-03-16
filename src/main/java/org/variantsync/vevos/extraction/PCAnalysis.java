@@ -52,7 +52,7 @@ public class PCAnalysis implements Analysis.Hooks {
                 fileGT.insert(annotation);
             } else {
                 // For artifacts, we grow the root mapping
-                fileGT.growIfRequired(i);
+                fileGT.growIfRequired(i-1);
             }
         }
     }
