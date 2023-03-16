@@ -91,10 +91,12 @@ public class PCAnalysis implements Analysis.Hooks {
         GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
-        String fileName = analysis.getCurrentPatch().getFileName();
+        String fileName = analysis.getCurrentPatch().getFileName(Time.BEFORE);
         Logger.debug("Name of processed file is %s".formatted(fileName));
-        if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
-            // We set the entry to null to mark it as removed
+        var changeType = analysis.getCurrentPatch().getChangeType();
+        if (changeType == DiffEntry.ChangeType.DELETE || changeType == DiffEntry.ChangeType.RENAME) {
+            // We set the entry as removed if it was deleted or renamed
+            // If it was renamed, its ground truth will be recalculated
             groundTruth.fileGTs().put(fileName, new FileGT.Removed(fileName));
             // We return early, if the file has been completely deleted
             return true;
