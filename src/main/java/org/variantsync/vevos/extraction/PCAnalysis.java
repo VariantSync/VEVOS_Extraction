@@ -17,12 +17,11 @@ import java.util.*;
 public class PCAnalysis implements Analysis.Hooks {
     private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
     private final Set<String> observedVariables;
-    private int numProcessed;
+    public static int numProcessed = 0;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
         this.observedVariables = new HashSet<>();
-        this.numProcessed = 0;
     }
 
     private void analyzeNode(FileGT.Mutable fileGT, DiffNode node) {
@@ -76,9 +75,9 @@ public class PCAnalysis implements Analysis.Hooks {
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit);
         this.observedVariables.clear();
-        synchronized(this) {
-            this.numProcessed++;
-            Logger.info("Finished Commit ({}): {}", this.numProcessed, commit.name());
+        synchronized(PCAnalysis.class) {
+            PCAnalysis.numProcessed++;
+            Logger.info("Finished Commit ({}): {}", PCAnalysis.numProcessed, commit.name());
         }
     }
 

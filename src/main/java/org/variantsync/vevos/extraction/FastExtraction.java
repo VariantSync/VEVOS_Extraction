@@ -101,6 +101,7 @@ public class FastExtraction {
             Logger.info("Awaiting termination of threadpool");
             threadPool.shutdown();
         }
+        PCAnalysis.numProcessed = 0;
     };
 
     private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
