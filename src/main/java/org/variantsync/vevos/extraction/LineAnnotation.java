@@ -3,6 +3,13 @@ package org.variantsync.vevos.extraction;
 
 import java.io.Serializable;
 
+/**
+ * Represents the ground truth annotation for a single line in a file
+ * @param lineNumber
+ * @param featureMapping
+ * @param presenceCondition
+ * @param nodeType
+ */
 public record LineAnnotation(int lineNumber, String featureMapping, String presenceCondition, String nodeType) implements Serializable {
     public final static LineAnnotation EMPTY = new LineAnnotation(-1, "", "", "");
 

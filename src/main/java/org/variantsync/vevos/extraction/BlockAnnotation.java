@@ -4,11 +4,24 @@ import java.io.Serializable;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+/**
+ * Represents the ground truth annotation for a block of lines in a file with the same feature mapping
+ */
 public final class BlockAnnotation implements Serializable {
-    private int lineStartInclusive;
-    private int lineEndInclusive;
+    private static final Pattern t = Pattern.compile("True");
+    private static final Pattern f = Pattern.compile("False");
+    private static final Pattern not_1 = Pattern.compile("^-");
+    private static final Pattern not_2 = Pattern.compile(" -");
+    private static final Pattern not_3 = Pattern.compile("\\(-");
+    private static final Pattern and = Pattern.compile(" & ");
+    private static final Pattern or = Pattern.compile(" \\| ");
+    private static final Pattern variableStart = Pattern.compile("\\$\\{");
+    private static final Pattern variableEnd = Pattern.compile("}");
+    private static final Pattern quotation = Pattern.compile("\"");
     private final String featureMapping;
     private final String presenceCondition;
+    private int lineStartInclusive;
+    private int lineEndInclusive;
 
     public BlockAnnotation(int lineStartInclusive, int lineEndInclusive, String featureMapping, String presenceCondition) {
         this.lineStartInclusive = lineStartInclusive;
@@ -70,16 +83,12 @@ public final class BlockAnnotation implements Serializable {
         return "%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping), normalizeCondition(this.presenceCondition), this.lineStartInclusive, this.lineEndInclusive);
     }
 
-    private static final Pattern t = Pattern.compile("True");
-    private static final Pattern f = Pattern.compile("False");
-    private static final Pattern not_1 = Pattern.compile("^-");
-    private static final Pattern not_2 = Pattern.compile(" -");
-    private static final Pattern not_3 = Pattern.compile("\\(-");
-    private static final Pattern and = Pattern.compile(" & ");
-    private static final Pattern or = Pattern.compile(" \\| ");
-    private static final Pattern variableStart = Pattern.compile("\\$\\{");
-    private static final Pattern variableEnd = Pattern.compile("}");
-    private static final Pattern quotation = Pattern.compile("\"");
+    /**
+     * Normalizes the given feature mapping or presence condition String to KernelHaven format.
+     *
+     * @param condition The mapping/PC String to be normalized
+     * @return A normalized version of the condition
+     */
     private String normalizeCondition(String condition) {
         condition = condition.replaceAll(t.pattern(), "1");
         condition = condition.replaceAll(f.pattern(), "0");

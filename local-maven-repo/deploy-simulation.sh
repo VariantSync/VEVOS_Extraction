@@ -1,2 +1,0 @@
-mvn deploy:deploy-file -DgroupId=org.variantsync.vevos -DartifactId=simulation -Dversion=1.1.2 -Durl=file:../local-maven-repo/ -DrepositoryId=local-maven-repo -DupdateReleaseInfo=true -Dfile=../src/main/resources/lib/simulation-1.1.2-jar-with-dependencies.jar
-rm -rf ~/.m2/repository/org/variantsync/vevos/

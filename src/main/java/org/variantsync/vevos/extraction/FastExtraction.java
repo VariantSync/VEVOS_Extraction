@@ -24,49 +24,56 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 public class FastExtraction {
+    public static final String PRINT_ENABLED
+            = "extraction.print-enabled";
+    public static final String GT_SAVE_DIR
+            = "extraction.gt-save-dir";
+    public static final String DATASET_FILE
+            = "diff-detective.dataset-file";
+    public static final String DD_OUTPUT_DIR
+            = "diff-detective.output-dir";
+    public static final String REPO_SAVE_DIR
+            = "diff-detective.repo-storage-dir";
+    public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
+            "PCAnalysis",
+            List.of(
+                    new PCAnalysis()
+            ),
+            repo,
+            repoOutputDir
+    );
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final String VARIABLES_FILE = "VARIABLES.txt";
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     private final Properties properties;
+    private final BiConsumer<Repository, Path> runner = (repo, repoOutputDir) -> {
+        Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 
-    public static final String PRINT_ENABLED
-            = "extraction.print-enabled";
+        ArrayList<RevCommit> commits = new ArrayList<>();
+        try (Git gitRepo = repo.getGitRepo().run()) {
+            gitRepo.log().call().forEach(commits::add);
+            Collections.reverse(commits);
+        } catch (GitAPIException e) {
+            Logger.error(e);
+            throw new RuntimeException(e);
+        }
 
-    public static final String GT_SAVE_DIR
-            = "extraction.gt-save-dir";
-
-    public static final String DATASET_FILE
-            = "diff-detective.dataset-file";
-
-    public static final String DD_OUTPUT_DIR
-            = "diff-detective.output-dir";
-
-    public static final String REPO_SAVE_DIR
-            = "diff-detective.repo-storage-dir";
-
-    public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
-        "PCAnalysis",
-        List.of(
-//                    new PreprocessingAnalysis(new CutNonEditedSubtrees()),
-//                    new FilterAnalysis(DiffTreeFilter.notEmpty()), // filters unwanted trees
-                new PCAnalysis()
-        ),
-        repo,
-        repoOutputDir
-);
+        try (ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+            postprocess(repo, commits, threadPool);
+            Logger.info("Awaiting termination of threadpool");
+            threadPool.shutdown();
+        }
+        PCAnalysis.numProcessed = 0;
+    };
 
     public FastExtraction(Properties properties) {
         this.properties = properties;
     }
 
-    public void run(AnalysisRunner.Options options) throws IOException {
-        AnalysisRunner.run(options, runner);
-    }
-
     /**
-     * Main method to start the analysis.
+     * Main method to start the extraction.
      *
      * @param args Command-line options.
      * @throws IOException When copying the log file fails.
@@ -84,26 +91,132 @@ public class FastExtraction {
         extraction.run(options);
     }
 
-    private final BiConsumer<Repository, Path> runner = (repo, repoOutputDir) -> {
-        Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
+    /**
+     * Prints the given ground truth to console.
+     *
+     * @param groundTruth GT to print
+     * @param commitName  The id of the commit for which the GT has been calculated
+     */
+    private static void print(GroundTruth groundTruth, String commitName) {
+        System.out.println();
+        System.out.printf("*****************   %s   ******************", commitName);
+        System.out.println();
+        for (String file : groundTruth.fileGTs().keySet()) {
+            System.out.println(groundTruth.get(file));
+        }
+    }
 
-        ArrayList<RevCommit> commits = new ArrayList<>();
-        try (Git gitRepo = repo.getGitRepo().run()) {
-            gitRepo.log().call().forEach(commits::add);
-            Collections.reverse(commits);
-        } catch (GitAPIException e) {
+    /**
+     * Options for the execution of DiffDetective
+     *
+     * @param properties The properties loaded by main()
+     * @return The options instance
+     */
+    public static AnalysisRunner.Options diffdetectiveOptions(Properties properties) {
+
+        return new AnalysisRunner.Options(
+                Path.of(properties.getProperty(REPO_SAVE_DIR)),
+                Path.of(properties.getProperty(DD_OUTPUT_DIR)),
+                Path.of(properties.getProperty(DATASET_FILE)),
+                repo -> {
+                    final PatchDiffParseOptions repoDefault = repo.getParseOptions();
+                    return new PatchDiffParseOptions(
+                            PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
+                            new DiffTreeParseOptions(
+                                    repoDefault.diffTreeParseOptions().annotationParser(),
+                                    false,
+                                    false
+                            )
+                    );
+                },
+                repo -> new DiffFilter.Builder()
+                        .allowMerge(false)
+                        .allowAllChangeTypes()
+                        .allowAllFileExtensions()
+                        .build(),
+                true,
+                false
+        );
+    }
+
+    /**
+     * Parses the file in which the properties are located from the arguments.
+     *
+     * @param args the arguments to parse
+     * @return the properties file
+     */
+    private static File getPropertiesFile(String[] args) {
+        File propertiesFile = null;
+        if (args.length > 0) {
+            propertiesFile = new File(args[0]);
+        }
+
+        if (propertiesFile == null) {
+            Logger.error("You must specify a .properties file as first argument");
+            quitOnError();
+        }
+
+        return propertiesFile;
+    }
+
+    /**
+     * Loads the properties in the given file.
+     *
+     * @param propertiesFile The file to load
+     * @return The loaded properties
+     */
+    private static Properties getProperties(File propertiesFile) {
+        Properties props = new Properties();
+        try (FileInputStream input = new FileInputStream(propertiesFile)) {
+            props.load(input);
+        } catch (IOException e) {
+            Logger.error("problem while loading properties");
             Logger.error(e);
-            throw new RuntimeException(e);
+            quitOnError();
         }
+        return props;
+    }
 
-        try(ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
-            postprocess(repo, commits, threadPool);
-            Logger.info("Awaiting termination of threadpool");
-            threadPool.shutdown();
+    /**
+     * Throws an error if the host OS is Windows.
+     */
+    private static void checkOS() {
+        boolean isWindows = System.getProperty("os.name")
+                .toLowerCase().startsWith("windows");
+        Logger.info("OS NAME: " + System.getProperty("os.name"));
+        if (isWindows) {
+            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
+                    "checked out correctly.");
+            quitOnError();
         }
-        PCAnalysis.numProcessed = 0;
-    };
+    }
 
+    /**
+     * Logs an error message and quits the extraction with an exception.
+     */
+    public static void quitOnError() {
+        Logger.error("An error occurred and the program has to quit.");
+        throw new IllegalStateException("Not able to continue analysis due to previous error");
+    }
+
+    /**
+     * Starts the extraction.
+     *
+     * @param options The options for DiffDetective
+     * @throws IOException If an IO error occurs in DiffDetective
+     */
+    public void run(AnalysisRunner.Options options) throws IOException {
+        AnalysisRunner.run(options, runner);
+    }
+
+    /**
+     * Incrementally combines the ground truths from the first to the last commit. The ground truth for unmodified files
+     * are reused. New file ground truths are added for created files, and old ground truths are updated for modified files.
+     *
+     * @param repo       The repo that has been analyzed
+     * @param commits    A list of commits in the repo
+     * @param threadPool A thread pool for multithreading of IO operations
+     */
     private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
         boolean print = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
         int processedCount = 0;
@@ -144,84 +257,5 @@ public class FastExtraction {
             processedCount++;
             Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
         }
-    }
-
-    private static void print(GroundTruth groundTruth, String commitName) {
-        System.out.println();
-        System.out.printf("*****************   %s   ******************", commitName);
-        System.out.println();
-        for (String file : groundTruth.fileGTs().keySet()) {
-            System.out.println(groundTruth.get(file));
-        }
-    }
-
-    public static AnalysisRunner.Options diffdetectiveOptions(Properties properties) {
-//        AnalysisRunner.Options defaultOptions = AnalysisRunner.Options.DEFAULT(args);
-
-        return new AnalysisRunner.Options(
-                Path.of(properties.getProperty(REPO_SAVE_DIR)),
-                Path.of(properties.getProperty(DD_OUTPUT_DIR)),
-                        Path.of(properties.getProperty(DATASET_FILE)),
-                repo -> {
-                    final PatchDiffParseOptions repoDefault = repo.getParseOptions();
-                    return new PatchDiffParseOptions(
-                            PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
-                            new DiffTreeParseOptions(
-                                    repoDefault.diffTreeParseOptions().annotationParser(),
-                                    false,
-                                    false
-                            )
-                    );
-                },
-                repo -> new DiffFilter.Builder()
-                        .allowMerge(false)
-                        .allowAllChangeTypes()
-                        .allowAllFileExtensions()
-                        .build(),
-                true,
-                false
-        );
-    }
-
-    private static File getPropertiesFile(String[] args) {
-        File propertiesFile = null;
-        if (args.length > 0) {
-            propertiesFile = new File(args[0]);
-        }
-
-        if (propertiesFile == null) {
-            Logger.error("You must specify a .properties file as first argument");
-            quitOnError();
-        }
-
-        return propertiesFile;
-    }
-
-    private static Properties getProperties(File propertiesFile) {
-        Properties props = new Properties();
-        try (FileInputStream input = new FileInputStream(propertiesFile)) {
-            props.load(input);
-        } catch (IOException e) {
-            Logger.error("problem while loading properties");
-            Logger.error(e);
-            quitOnError();
-        }
-        return props;
-    }
-
-    private static void checkOS() {
-        boolean isWindows = System.getProperty("os.name")
-                .toLowerCase().startsWith("windows");
-        Logger.info("OS NAME: " + System.getProperty("os.name"));
-        if (isWindows) {
-            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
-                    "checked out correctly.");
-            quitOnError();
-        }
-    }
-
-    public static void quitOnError() {
-        Logger.error("An error occurred and the program has to quit.");
-        throw new IllegalStateException("Not able to continue analysis due to previous error");
     }
 }

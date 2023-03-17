@@ -5,7 +5,17 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+/**
+ * The ground truth for the files of a repository at a specific commit (i.e., version).
+ *
+ * @param fileGTs   The ground truths for each file
+ * @param variables The set of variables that can appear in the presence conditions
+ */
 public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables) implements Serializable {
+    private static final Pattern variableStart = Pattern.compile("\\$\\{");
+    private static final Pattern variableEnd = Pattern.compile("}");
+    private static final Pattern quotation = Pattern.compile("\"");
+
     public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
@@ -37,9 +47,6 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         }
     }
 
-    private static final Pattern variableStart = Pattern.compile("\\$\\{");
-    private static final Pattern variableEnd = Pattern.compile("}");
-    private static final Pattern quotation = Pattern.compile("\"");
     public String variablesListAsString() {
         List<String> variablesList = new ArrayList<>(this.variables);
         Collections.sort(variablesList);
