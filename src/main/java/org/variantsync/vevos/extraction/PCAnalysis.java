@@ -1,11 +1,13 @@
 package org.variantsync.vevos.extraction;
 
+import org.apache.maven.plugin.logging.Log;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.prop4j.Node;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.metadata.EditClassCount;
+import org.variantsync.diffdetective.show.Show;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
@@ -43,16 +45,20 @@ public class PCAnalysis implements Analysis.Hooks {
         // The range of line numbers in which the artifact appears
         LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
         Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
-
         observedVariables.addAll(presenceCondition.getUniqueContainedFeatures());
 
-        for (int i = rangeInFile.getFromInclusive(); i < rangeInFile.getToExclusive(); i++) {
-            if (node.isAnnotation()) {
-                LineAnnotation annotation = new LineAnnotation(i, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
+        // Grow the root mapping
+        List<DiffNode.Label.Line> diffLines = node.getLabel().diffLines();
+        if (diffLines.size() > 0) {
+            DiffNode.Label.Line lastLine = diffLines.get(diffLines.size() - 1);
+            fileGT.growIfRequired(lastLine.lineNumber().afterEdit());
+        }
+
+        // Insert the annotations
+        if (node.isAnnotation()) {
+            for (int lineNumber = rangeInFile.getFromInclusive(); lineNumber < rangeInFile.getToExclusive(); lineNumber++) {
+                LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
                 fileGT.insert(annotation);
-            } else {
-                // For artifacts, we grow the root mapping
-                fileGT.growIfRequired(i-1);
             }
         }
     }
@@ -91,19 +97,22 @@ public class PCAnalysis implements Analysis.Hooks {
         GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
-        String fileName = analysis.getCurrentPatch().getFileName(Time.BEFORE);
-        Logger.debug("Name of processed file is %s".formatted(fileName));
-        var changeType = analysis.getCurrentPatch().getChangeType();
-        if (changeType == DiffEntry.ChangeType.DELETE || changeType == DiffEntry.ChangeType.RENAME) {
-            // We set the entry as removed if it was deleted or renamed
-            // If it was renamed, its ground truth will be recalculated
-            groundTruth.fileGTs().put(fileName, new FileGT.Removed(fileName));
+        String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
+        String fileNameAfter = analysis.getCurrentPatch().getFileName(Time.AFTER);
+        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
+        DiffEntry.ChangeType changeType = analysis.getCurrentPatch().getChangeType();
+        if (changeType == DiffEntry.ChangeType.DELETE || (changeType != DiffEntry.ChangeType.ADD && !fileNameBefore.equals(fileNameAfter))) {
+            // We set the entry of the old name as removed if the file was deleted or the name changed without the file being added as new
+            groundTruth.fileGTs().put(fileNameBefore, new FileGT.Removed(fileNameBefore));
+        }
+
+        if (analysis.getCurrentPatch().getChangeType() == DiffEntry.ChangeType.DELETE) {
             // We return early, if the file has been completely deleted
             return true;
         }
 
         // At this point, it must be an instance of FileGT.Mutable
-        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileName, k -> new FileGT.Mutable(fileName));
+        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileNameAfter, k -> new FileGT.Mutable(fileNameAfter));
 
         analysis.getCurrentDiffTree().forAll(node -> {
             Logger.debug("Node: {}", node);
