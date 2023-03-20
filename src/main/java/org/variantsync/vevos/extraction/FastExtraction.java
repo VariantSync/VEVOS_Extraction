@@ -227,8 +227,10 @@ public class FastExtraction {
                 // Check whether the last commit is the first parent of this commit.
                 // If this is the case, we can continue with the existing ground truth.
                 // If this is not the case, we have to load the completed ground truth of the parent.
-                RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElseThrow();
-                if (!firstParent.equals(lastCommit)) {
+                RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElse(null);
+                if (firstParent == null) {
+                    completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
+                } else if (!firstParent.equals(lastCommit)) {
                     File parentGT = new File("results/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
                     completedGroundTruth = Serde.deserialize(parentGT);
                 }
