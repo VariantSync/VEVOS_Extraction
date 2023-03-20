@@ -8,9 +8,9 @@ public class FileGTTest {
     public static FileGT.Complete simpleFileGT() {
         FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
-        unstableAfter.insert(new LineAnnotation(1, null, null, ""));
-        unstableAfter.insert(new LineAnnotation(3, null, null, ""));
-        unstableAfter.insert(new LineAnnotation(2, null, null, ""));
+        unstableAfter.insert(new LineAnnotation(1, "True", "True", ""));
+        unstableAfter.insert(new LineAnnotation(3, "True", "True", ""));
+        unstableAfter.insert(new LineAnnotation(2, "True", "True", ""));
 
         return unstableAfter
                 .finishMutation();

@@ -60,10 +60,16 @@ public class FastExtraction {
             throw new RuntimeException(e);
         }
 
-        try (ExecutorService threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+        ExecutorService threadPool = null;
+        try {
+            threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
             postprocess(repo, commits, threadPool);
             Logger.info("Awaiting termination of threadpool");
             threadPool.shutdown();
+        } finally {
+            if (threadPool != null) {
+                threadPool.shutdownNow();
+            }
         }
         PCAnalysis.numProcessed = 0;
     };
