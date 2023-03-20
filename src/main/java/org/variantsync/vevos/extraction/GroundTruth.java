@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * The ground truth for the files of a repository at a specific commit (i.e., version).
@@ -36,15 +37,37 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         // There is no real base to combine them with, so we combine them with an empty FileGT
         for (String updatedFile : updated.fileGTs.keySet()) {
             FileGT fileGT = updated.get(updatedFile);
-            if (fileGT instanceof FileGT.Removed) {
-                // It is set to removed if the entire file has been removed
-                this.fileGTs.remove(updatedFile);
-            } else if (fileGT instanceof FileGT.Complete updatedFileGT) {
-                this.fileGTs.put(updatedFile, updatedFileGT);
+            if (fileGT instanceof FileGT.Removed || fileGT instanceof FileGT.Complete) {
+                // Update the GT version number
+                FileGT oldVersion = this.fileGTs.get(updatedFile);
+                fileGT.setVersion(oldVersion.version());
+                fileGT.incrementVersion();
+                this.fileGTs.put(updatedFile, fileGT);
             } else {
                 throw new IllegalStateException("Unexpected incomplete ground truth");
             }
         }
+    }
+
+    public static GroundTruth merge(GroundTruth... groundTruths) {
+        Set<String> fileUnion = Arrays.stream(groundTruths).flatMap(gt -> gt.fileGTs.keySet().stream()).collect(Collectors.toSet());
+        Set<String> variables = Arrays.stream(groundTruths).flatMap(gt -> gt.variables.stream()).collect(Collectors.toSet());
+        GroundTruth merged = new GroundTruth(new HashMap<>(), new HashSet<>(variables));
+
+        for (String fileName : fileUnion) {
+            FileGT latestVersion = null;
+            for (GroundTruth gt : groundTruths) {
+                FileGT next = gt.get(fileName);
+                if (next == null) {
+                    continue;
+                }
+                if (latestVersion == null || latestVersion.version() < next.version()) {
+                    latestVersion = next;
+                }
+                merged.fileGTs.put(fileName, latestVersion);
+            }
+        }
+        return merged;
     }
 
     public String variablesListAsString() {

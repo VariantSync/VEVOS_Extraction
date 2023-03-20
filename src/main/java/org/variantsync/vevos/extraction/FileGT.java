@@ -18,17 +18,21 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     private final ArrayList<LineAnnotation> annotations;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;
+    // The version number
+    private long version;
 
     protected FileGT(String file) {
         this.annotations = new ArrayList<>();
         this.consumed = false;
         this.file = file;
+        this.version = 0;
     }
 
     protected FileGT(FileGT other) {
         this.annotations = other.annotations;
         this.consumed = false;
         this.file = other.file;
+        this.version = other.version;
     }
 
     /**
@@ -46,6 +50,18 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
      */
     protected LineAnnotation get(int index) {
         return this.annotations.get(index);
+    }
+
+    public long version() {
+        return this.version;
+    }
+
+    public void incrementVersion() {
+        this.version++;
+    }
+
+    public void setVersion(long version) {
+        this.version = version;
     }
 
 
