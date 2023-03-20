@@ -130,7 +130,7 @@ public class FastExtraction {
                     );
                 },
                 repo -> new DiffFilter.Builder()
-                        .allowMerge(false)
+                        .allowMerge(true)
                         .allowAllChangeTypes()
                         .allowAllFileExtensions()
                         .build(),
@@ -220,12 +220,22 @@ public class FastExtraction {
     private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
         boolean print = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
         int processedCount = 0;
+        RevCommit lastCommit = null;
         GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
-
         for (RevCommit commit : commits) {
-            File file = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
-            if (Files.exists(file.toPath())) {
-                GroundTruth loadedGT = Serde.deserialize(file);
+            if (lastCommit != null) {
+                // Check whether the last commit is the first parent of this commit.
+                // If this is the case, we can continue with the existing ground truth.
+                // If this is not the case, we have to load the completed ground truth of the parent.
+                RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElseThrow();
+                if (!firstParent.equals(lastCommit)) {
+                    File parentGT = new File("results/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
+                    completedGroundTruth = Serde.deserialize(parentGT);
+                }
+            }
+            File currentGTFile = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+            if (Files.exists(currentGTFile.toPath())) {
+                GroundTruth loadedGT = Serde.deserialize(currentGTFile);
                 Logger.info("Completing ground truth for {}", commit.getName());
                 completedGroundTruth.updateWith(loadedGT);
                 if (print) {
@@ -233,6 +243,7 @@ public class FastExtraction {
                 }
             }
             // Save the extracted ground truth
+            Serde.serialize(currentGTFile, completedGroundTruth);
             Path extractionDir = Path.of(this.properties.getProperty(GT_SAVE_DIR));
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             Path commitSaveDir = resultsRoot.resolve("data").resolve(commit.getName());
@@ -256,6 +267,7 @@ public class FastExtraction {
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
             processedCount++;
             Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
+            lastCommit = commit;
         }
     }
 }
