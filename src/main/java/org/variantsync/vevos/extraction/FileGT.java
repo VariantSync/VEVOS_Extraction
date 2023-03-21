@@ -1,12 +1,10 @@
 package org.variantsync.vevos.extraction;
 
+import org.variantsync.diffdetective.diff.text.DiffLineNumber;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * The ground truth for a single file at a specific commit.
@@ -16,17 +14,24 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     protected final String file;
     // List of annotation for each line
     private final ArrayList<LineAnnotation> annotations;
+    // Set of annotation block starts and ends
+    protected final HashSet<Integer> blockEnds;
+    protected final HashSet<Integer> blockStarts;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;
 
     protected FileGT(String file) {
         this.annotations = new ArrayList<>();
+        this.blockStarts = new HashSet<>();
+        this.blockEnds = new HashSet<>();
         this.consumed = false;
         this.file = file;
     }
 
     protected FileGT(FileGT other) {
         this.annotations = other.annotations;
+        this.blockStarts = other.blockStarts;
+        this.blockEnds = other.blockEnds;
         this.consumed = false;
         this.file = other.file;
     }
@@ -131,6 +136,14 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             this.consumed = true;
             return new Complete(this);
         }
+
+        public void markBlockEnd(int lineNumber) {
+            this.blockEnds.add(lineNumber);
+        }
+
+        public void markBlockStart(int lineNumber) {
+            this.blockStarts.add(lineNumber);
+        }
     }
 
     /**
@@ -190,28 +203,18 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                     continue;
                 }
 
-                BlockAnnotation lastBlock = blockStack.peekFirst();
-
-                // Still in the same block
-                if (line.featureMapping().equals(lastBlock.featureMapping()) && line.presenceCondition().equals(lastBlock.presenceCondition())) {
-                    // We are still in the same block if the feature mapping remains the same
-                    continue;
-                }
-
                 // new block, we have to unwind the stack in reverse order to find all completed blocks
-                for (BlockAnnotation block = blockStack.peekFirst(); block != null; block = blockStack.peekFirst()) {
-                    if (line.presenceCondition().contains(block.featureMapping())) {
-                        // The current line is nested in retrieved block
-                        break;
-                    }
+                if (complete.blockEnds.contains(line.lineNumber())) {
+                    // The current line is nested in retrieved block
                     // Collect a completed block
+                    BlockAnnotation block = blockStack.pop();
                     block.setLineEndInclusive(line.lineNumber() - 1);
-                    blocks.add(blockStack.pop());
+                    blocks.add(block);
                 }
 
                 // If the current line is in a new block
                 Assert.assertTrue(blockStack.peekFirst() != null, "%s\nProblem while processing line %d of file %s".formatted(complete.toString(), line.lineNumber(), complete.file));
-                if (!line.featureMapping().equals(Objects.requireNonNull(blockStack.peekFirst()).featureMapping())) {
+                if (complete.blockStarts.contains(line.lineNumber())) {
                     // Push a new block onto the stack
                     blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
                 }

@@ -44,11 +44,15 @@ public class PCAnalysis implements Analysis.Hooks {
                 Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
                 observedVariables.addAll(presenceCondition.getUniqueContainedFeatures());
 
-                // Grow the root mapping
-                List<DiffNode.Label.Line> diffLines = node.getLabel().diffLines();
-                if (diffLines.size() > 0) {
-                    DiffNode.Label.Line lastLine = diffLines.get(diffLines.size() - 1);
-                    fileGT.growIfRequired(lastLine.lineNumber().afterEdit());
+                if (node.isAnnotation()) {
+                    // Mark the start and end of this annotation block
+                    fileGT.markBlockStart(node.getFromLine().afterEdit());
+                    fileGT.markBlockEnd(node.getToLine().afterEdit());
+                    // Grow the root mapping
+                    fileGT.growIfRequired(node.getToLine().afterEdit());
+                } else {
+                    // Grow the root mapping
+                    fileGT.growIfRequired(node.getToLine().afterEdit()-1);
                 }
 
                 // Insert the annotations
