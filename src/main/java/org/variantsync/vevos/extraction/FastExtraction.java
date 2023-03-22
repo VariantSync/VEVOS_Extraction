@@ -271,7 +271,9 @@ public class FastExtraction {
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage()));
 
             Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName).reduce((s, s2) -> s + " " + s2);
-            threadPool.submit(() -> parentIds.ifPresent(s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s)));
+            threadPool.submit(() -> parentIds.ifPresentOrElse(
+                    s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s),
+                    () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), "")));
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
             processedCount++;
