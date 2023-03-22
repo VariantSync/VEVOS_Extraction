@@ -61,7 +61,6 @@ RUN cp target/Extraction-jar-with* .
 # Copy required scripts and properties
 COPY docker-resources/* /home/user/
 RUN mkdir -p /home/user/src/main/resources
-RUN mv tinylog.properties src/main/resources/
 
 RUN mkdir -p /home/user/ground-truth/
 # permissions for calculon

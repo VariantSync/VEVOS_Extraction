@@ -9,11 +9,11 @@ ls -l ground-truth
 if [ "$1" == 'verification' ]
 then
     echo "Executing variability extraction defined in verification.properties."
-    java -jar Extraction-jar-with-dependencies.jar verification.properties
+    java -jar -Dtinylog.configuration=/home/user/tinylog.properties Extraction-jar-with-dependencies.jar verification.properties
 elif [ "$1" == 'custom' ]
 then
     echo "Executing variability extraction defined in custom.properties."
-    java -jar Extraction-jar-with-dependencies.jar custom.properties
+    java -jar -Dtinylog.configuration=/home/user/tinylog.properties Extraction-jar-with-dependencies.jar custom.properties
 elif [ "$1" == '--help' ]
 then
     echo "Examples:"
