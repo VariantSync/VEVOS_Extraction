@@ -50,7 +50,10 @@ public class FastExtraction {
                 r,
                 out
         );
-        Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
+        final int availableProcessors = Runtime.getRuntime().availableProcessors();
+        final int commitsToProcessPerThread = 50;
+
+        Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
 
         ArrayList<RevCommit> commits = new ArrayList<>();
         try (Git gitRepo = repo.getGitRepo().run()) {
@@ -63,7 +66,7 @@ public class FastExtraction {
 
         ExecutorService threadPool = null;
         try {
-            threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            threadPool = Executors.newFixedThreadPool(availableProcessors);
             postprocess(repo, analysis.getGroundTruthMap(), commits, threadPool);
         } finally {
             if (threadPool != null) {
