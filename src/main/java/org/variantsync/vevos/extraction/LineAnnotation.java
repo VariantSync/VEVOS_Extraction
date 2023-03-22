@@ -1,6 +1,9 @@
 package org.variantsync.vevos.extraction;
 
 
+import org.prop4j.Node;
+import org.prop4j.True;
+
 import java.io.Serializable;
 
 /**
@@ -10,8 +13,8 @@ import java.io.Serializable;
  * @param presenceCondition
  * @param nodeType
  */
-public record LineAnnotation(int lineNumber, String featureMapping, String presenceCondition, String nodeType) implements Serializable {
-    public final static LineAnnotation EMPTY = new LineAnnotation(-1, "", "", "");
+public record LineAnnotation(int lineNumber, Node featureMapping, Node presenceCondition, String nodeType) implements Serializable {
+    public final static LineAnnotation EMPTY = new LineAnnotation(-1, new True(), new True(), "");
 
     public int index() {
         return this.lineNumber-1;
@@ -22,7 +25,7 @@ public record LineAnnotation(int lineNumber, String featureMapping, String prese
     }
 
     public static LineAnnotation rootAnnotation(int lineNumber) {
-        return new LineAnnotation(lineNumber, "True", "True", "ROOT");
+        return new LineAnnotation(lineNumber, new True(), new True(), "ROOT");
     }
 
     @Override

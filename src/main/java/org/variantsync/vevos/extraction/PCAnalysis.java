@@ -10,8 +10,6 @@ import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -21,11 +19,9 @@ import java.util.*;
 public class PCAnalysis implements Analysis.Hooks {
     public static int numProcessed = 0;
     private final Hashtable<String, GroundTruth> groundTruthMap;
-    private final Set<String> observedVariables;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
-        this.observedVariables = new HashSet<>();
     }
 
     public Hashtable<String, GroundTruth> getGroundTruthMap() {
@@ -46,7 +42,6 @@ public class PCAnalysis implements Analysis.Hooks {
                 // The range of line numbers in which the artifact appears
                 LineRange rangeInFile = node.getLinesAtTime(Time.AFTER);
                 Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
-                observedVariables.addAll(presenceCondition.getUniqueContainedFeatures());
 
                 if (node.isAnnotation()) {
                     // Mark the start and end of this annotation block
@@ -62,7 +57,7 @@ public class PCAnalysis implements Analysis.Hooks {
                 // Insert the annotations
                 if (node.isAnnotation()) {
                     for (int lineNumber = rangeInFile.getFromInclusive(); lineNumber < rangeInFile.getToExclusive(); lineNumber++) {
-                        LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name);
+                        LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping, presenceCondition, node.nodeType.name);
                         fileGT.insert(annotation);
                     }
                 }
@@ -79,14 +74,14 @@ public class PCAnalysis implements Analysis.Hooks {
         RevCommit commit = analysis.getCurrentCommit();
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
-        groundTruth.variables().addAll(this.observedVariables);
         // Complete all new or updated file ground truths
         for (Map.Entry<String, FileGT> entry : groundTruth.fileGTs().entrySet()) {
             if (entry.getValue() instanceof FileGT.Mutable mutable) {
-                groundTruth.fileGTs().put(entry.getKey(), mutable.finishMutation());
+                FileGT.Complete complete = mutable.finishMutation();
+                groundTruth.variables().addAll(complete.getVariables());
+                groundTruth.fileGTs().put(entry.getKey(), complete);
             }
         }
-        this.observedVariables.clear();
         synchronized (PCAnalysis.class) {
             PCAnalysis.numProcessed++;
             Logger.info("Finished Commit ({}): {}", PCAnalysis.numProcessed, commit.name());
