@@ -34,14 +34,6 @@ public class FastExtraction {
             = "diff-detective.output-dir";
     public static final String REPO_SAVE_DIR
             = "diff-detective.repo-storage-dir";
-    public static final BiFunction<Repository, Path, Analysis> AnalysisFactory = (repo, repoOutputDir) -> new Analysis(
-            "PCAnalysis",
-            List.of(
-                    new PCAnalysis()
-            ),
-            repo,
-            repoOutputDir
-    );
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
@@ -49,6 +41,15 @@ public class FastExtraction {
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     private final Properties properties;
     private final BiConsumer<Repository, Path> runner = (repo, repoOutputDir) -> {
+        PCAnalysis analysis = new PCAnalysis();
+        final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
+                "PCAnalysis",
+                List.of(
+                        analysis
+                ),
+                r,
+                out
+        );
         Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir));
 
         ArrayList<RevCommit> commits = new ArrayList<>();
@@ -63,14 +64,15 @@ public class FastExtraction {
         ExecutorService threadPool = null;
         try {
             threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-            postprocess(repo, commits, threadPool);
-            Logger.info("Awaiting termination of threadpool");
-            threadPool.shutdown();
+            postprocess(repo, analysis.getGroundTruthMap(), commits, threadPool);
         } finally {
             if (threadPool != null) {
-                threadPool.shutdownNow();
+                Logger.info("Awaiting termination of threadpool");
+                threadPool.shutdown();
             }
         }
+        analysis.getGroundTruthMap().clear();
+        Logger.info("Cleared analysis ({})", analysis.getGroundTruthMap().size());
         PCAnalysis.numProcessed = 0;
     };
 
@@ -223,35 +225,31 @@ public class FastExtraction {
      * @param commits    A list of commits in the repo
      * @param threadPool A thread pool for multithreading of IO operations
      */
-    private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
+    private void postprocess(Repository repo, Hashtable<String, GroundTruth> groundTruthHashtable, ArrayList<RevCommit> commits, ExecutorService threadPool) {
         boolean print = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
         int processedCount = 0;
-        RevCommit lastCommit = null;
-        GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
         for (RevCommit commit : commits) {
-            if (lastCommit != null) {
-                // Check whether the last commit is the first parent of this commit.
-                // If this is the case, we can continue with the existing ground truth.
-                // If this is not the case, we have to load the completed ground truth of the parent.
-                RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElse(null);
-                if (firstParent == null) {
-                    completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
-                } else if (!firstParent.equals(lastCommit)) {
-                    File parentGT = new File("results/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
-                    completedGroundTruth = Serde.deserialize(parentGT);
-                }
+            GroundTruth completedGroundTruth;
+            // Check whether the last commit is the first parent of this commit.
+            // If this is the case, we can continue with the existing ground truth.
+            // If this is not the case, we have to load the completed ground truth of the parent.
+            RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElse(null);
+            if (firstParent == null) {
+                completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
+            } else {
+                // Get a clone of the ground truth of the first parent
+                completedGroundTruth = groundTruthHashtable.get(firstParent.getName()).clone();
             }
-            File currentGTFile = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
-            if (Files.exists(currentGTFile.toPath())) {
-                GroundTruth loadedGT = Serde.deserialize(currentGTFile);
+            if (groundTruthHashtable.containsKey(commit.getName())) {
                 Logger.info("Completing ground truth for {}", commit.getName());
-                completedGroundTruth.updateWith(loadedGT);
+                GroundTruth current = groundTruthHashtable.get(commit.getName());
+                completedGroundTruth.updateWith(current);
                 if (print) {
                     print(completedGroundTruth, commit.getName());
                 }
             }
-            // Save the extracted ground truth
-            Serde.serialize(currentGTFile, completedGroundTruth);
+            // Save the updated ground truth
+            groundTruthHashtable.put(commit.getName(), completedGroundTruth);
             Path extractionDir = Path.of(this.properties.getProperty(GT_SAVE_DIR));
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             Path commitSaveDir = resultsRoot.resolve("data").resolve(commit.getName());
@@ -275,7 +273,6 @@ public class FastExtraction {
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
             processedCount++;
             Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
-            lastCommit = commit;
         }
     }
 }

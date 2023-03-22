@@ -16,6 +16,10 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
 
+    public GroundTruth clone() {
+        return new GroundTruth(new HashMap<>(fileGTs), new HashSet<>(variables));
+    }
+
     public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }

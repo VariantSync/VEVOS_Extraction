@@ -20,12 +20,16 @@ import java.util.*;
  */
 public class PCAnalysis implements Analysis.Hooks {
     public static int numProcessed = 0;
-    private final Hashtable<RevCommit, GroundTruth> groundTruthMap;
+    private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Set<String> observedVariables;
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
         this.observedVariables = new HashSet<>();
+    }
+
+    public Hashtable<String, GroundTruth> getGroundTruthMap() {
+        return groundTruthMap;
     }
 
     /**
@@ -73,11 +77,8 @@ public class PCAnalysis implements Analysis.Hooks {
     @Override
     public void endCommit(Analysis analysis) throws Exception {
         RevCommit commit = analysis.getCurrentCommit();
-        var repo = analysis.getRepository();
-        Path resultFile = Path.of("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
-        Files.createDirectories(resultFile.getParent());
 
-        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit, new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
         groundTruth.variables().addAll(this.observedVariables);
         // Complete all new or updated file ground truths
         for (Map.Entry<String, FileGT> entry : groundTruth.fileGTs().entrySet()) {
@@ -85,8 +86,6 @@ public class PCAnalysis implements Analysis.Hooks {
                 groundTruth.fileGTs().put(entry.getKey(), mutable.finishMutation());
             }
         }
-        Serde.serialize(resultFile.toFile(), groundTruth);
-        this.groundTruthMap.remove(commit);
         this.observedVariables.clear();
         synchronized (PCAnalysis.class) {
             PCAnalysis.numProcessed++;
@@ -101,7 +100,7 @@ public class PCAnalysis implements Analysis.Hooks {
 
     @Override
     public boolean analyzeDiffTree(Analysis analysis) throws Exception {
-        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
