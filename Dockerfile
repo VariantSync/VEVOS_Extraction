@@ -64,10 +64,12 @@ RUN mkdir -p /home/user/src/main/resources
 RUN mv tinylog.properties src/main/resources/
 
 RUN mkdir -p /home/user/ground-truth/
-RUN chown user:user /home/user -R
+# permissions for calculon
+RUN chown 1015:user /home/user -R
 RUN chmod +x entrypoint.sh
 RUN chmod +x fix-perms.sh
 RUN chmod +x extract.sh
 
 ENTRYPOINT ["./entrypoint.sh", "./extract.sh"]
-USER user
+# calculon user
+USER 1015
