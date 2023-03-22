@@ -3,6 +3,7 @@ echo "Starting extraction"
 cd /home/user || exit
 
 echo "Files in ground-truth folder:"
+ls -l /home/user
 ls -l ground-truth
 
 if [ "$1" == 'verification' ]
