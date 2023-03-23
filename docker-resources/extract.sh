@@ -25,5 +25,5 @@ then
     echo "./start-extraction.sh custom"
 else
     echo "Executing variability extraction defined in without_linux.properties."
-    java -jar Extraction-jar-with-dependencies.jar without_linux.properties
+    java -jar -Dtinylog.configuration=/home/user/tinylog.properties Extraction-jar-with-dependencies.jar without_linux.properties
 fi
