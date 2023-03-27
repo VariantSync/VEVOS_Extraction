@@ -142,8 +142,8 @@ public class FastExtraction {
                 },
                 repo -> new DiffFilter.Builder()
                         .allowMerge(true)
-                        .allowAllChangeTypes()
-                        .allowAllFileExtensions()
+                        // TODO: make configurable
+                        .allowedFileExtensions("h", "hpp", "c", "cpp")
                         .build(),
                 true,
                 false
