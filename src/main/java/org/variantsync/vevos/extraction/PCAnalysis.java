@@ -84,7 +84,9 @@ public class PCAnalysis implements Analysis.Hooks {
         }
         synchronized (PCAnalysis.class) {
             PCAnalysis.numProcessed++;
-            Logger.info("Finished Commit ({}): {}", PCAnalysis.numProcessed, commit.name());
+            if (PCAnalysis.numProcessed % 10_000 == 0) {
+                Logger.info("Finished Commit ({}): {}", PCAnalysis.numProcessed, commit.name());
+            }
         }
     }
 

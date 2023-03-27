@@ -244,7 +244,9 @@ public class FastExtraction {
                 completedGroundTruth = groundTruthHashtable.get(firstParent.getName()).clone();
             }
             if (groundTruthHashtable.containsKey(commit.getName())) {
-                Logger.info("Completing ground truth for {}", commit.getName());
+                if (processedCount % 10_000 == 0) {
+                    Logger.info("Completing ground truth for {}", commit.getName());
+                }
                 GroundTruth current = groundTruthHashtable.get(commit.getName());
                 completedGroundTruth.updateWith(current);
                 if (print) {
@@ -276,8 +278,10 @@ public class FastExtraction {
                     () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), "")));
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
+            if (processedCount % 10_000 == 0) {
+                Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
+            }
             processedCount++;
-            Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
         }
     }
 }
