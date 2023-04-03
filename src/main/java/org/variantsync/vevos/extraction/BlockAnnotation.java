@@ -1,7 +1,5 @@
 package org.variantsync.vevos.extraction;
 
-import org.prop4j.Node;
-
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -20,12 +18,12 @@ public final class BlockAnnotation implements Serializable {
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
-    private final Node featureMapping;
-    private final Node presenceCondition;
+    private final String featureMapping;
+    private final String presenceCondition;
     private int lineStartInclusive;
     private int lineEndInclusive;
 
-    public BlockAnnotation(int lineStartInclusive, int lineEndInclusive, Node featureMapping, Node presenceCondition) {
+    public BlockAnnotation(int lineStartInclusive, int lineEndInclusive, String featureMapping, String presenceCondition) {
         this.lineStartInclusive = lineStartInclusive;
         this.lineEndInclusive = lineEndInclusive;
         this.featureMapping = featureMapping;
@@ -74,7 +72,7 @@ public final class BlockAnnotation implements Serializable {
     }
 
     public String asCSVLine() {
-        return "%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping.toString()), normalizeCondition(this.presenceCondition.toString()), this.lineStartInclusive, this.lineEndInclusive);
+        return "%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping), normalizeCondition(this.presenceCondition), this.lineStartInclusive, this.lineEndInclusive);
     }
 
     /**

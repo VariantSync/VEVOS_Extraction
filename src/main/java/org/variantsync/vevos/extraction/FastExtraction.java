@@ -67,15 +67,13 @@ public class FastExtraction {
         ExecutorService threadPool = null;
         try {
             threadPool = Executors.newFixedThreadPool(availableProcessors);
-            postprocess(repo, analysis.getGroundTruthMap(), commits, threadPool);
+            postprocess(repo, commits, threadPool);
         } finally {
             if (threadPool != null) {
                 Logger.info("Awaiting termination of threadpool");
                 threadPool.shutdown();
             }
         }
-        analysis.getGroundTruthMap().clear();
-        Logger.info("Cleared analysis ({})", analysis.getGroundTruthMap().size());
         PCAnalysis.numProcessed = 0;
     };
 
@@ -228,33 +226,37 @@ public class FastExtraction {
      * @param commits    A list of commits in the repo
      * @param threadPool A thread pool for multithreading of IO operations
      */
-    private void postprocess(Repository repo, Hashtable<String, GroundTruth> groundTruthHashtable, ArrayList<RevCommit> commits, ExecutorService threadPool) {
+    private void postprocess(Repository repo, ArrayList<RevCommit> commits, ExecutorService threadPool) {
         boolean print = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
         int processedCount = 0;
+        RevCommit lastCommit = null;
+        GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
         for (RevCommit commit : commits) {
-            GroundTruth completedGroundTruth;
-            // Check whether the last commit is the first parent of this commit.
-            // If this is the case, we can continue with the existing ground truth.
-            // If this is not the case, we have to load the completed ground truth of the parent.
-            RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElse(null);
-            if (firstParent == null) {
-                completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
-            } else {
-                // Get a clone of the ground truth of the first parent
-                completedGroundTruth = groundTruthHashtable.get(firstParent.getName()).clone();
+            if (lastCommit != null) {
+                // Check whether the last commit is the first parent of this commit.
+                // If this is the case, we can continue with the existing ground truth.
+                // If this is not the case, we have to load the completed ground truth of the parent.
+                RevCommit firstParent = Arrays.stream(commit.getParents()).findFirst().orElse(null);
+                if (firstParent == null) {
+                    completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
+                } else if (!firstParent.equals(lastCommit)) {
+                    File parentGT = new File("results/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
+                    completedGroundTruth = Serde.deserialize(parentGT);
+                }
             }
-            if (groundTruthHashtable.containsKey(commit.getName())) {
+            File currentGTFile = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+            if (Files.exists(currentGTFile.toPath())) {
+                GroundTruth loadedGT = Serde.deserialize(currentGTFile);
                 if (processedCount % 1_000 == 0) {
                     Logger.info("Completing ground truth for {}", commit.getName());
                 }
-                GroundTruth current = groundTruthHashtable.get(commit.getName());
-                completedGroundTruth.updateWith(current);
+                completedGroundTruth.updateWith(loadedGT);
                 if (print) {
                     print(completedGroundTruth, commit.getName());
                 }
             }
-            // Save the updated ground truth
-            groundTruthHashtable.put(commit.getName(), completedGroundTruth);
+            // Save the extracted ground truth
+            Serde.serialize(currentGTFile, completedGroundTruth);
             Path extractionDir = Path.of(this.properties.getProperty(GT_SAVE_DIR));
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             Path commitSaveDir = resultsRoot.resolve("data").resolve(commit.getName());
@@ -279,8 +281,9 @@ public class FastExtraction {
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
             if (processedCount % 1_000 == 0) {
-                Logger.info("Saved ground truth for commit {} of {}", processedCount, commits.size());
+                Logger.info("Saved ground truth for commit {} of {}", processedCount+1, commits.size());
             }
+            lastCommit = commit;
             processedCount++;
         }
     }

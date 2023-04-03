@@ -2,16 +2,17 @@ package org.variantsync.vevos.extraction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.prop4j.True;
+
+import java.util.Collections;
 
 public class FileGTTest {
 
     public static FileGT.Complete simpleFileGT() {
         FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
-        unstableAfter.insert(new LineAnnotation(1, new True(), new True(), ""));
-        unstableAfter.insert(new LineAnnotation(3, new True(), new True(), ""));
-        unstableAfter.insert(new LineAnnotation(2, new True(), new True(), ""));
+        unstableAfter.insert(new LineAnnotation(1, "True", "True", "", Collections.singleton("True")));
+        unstableAfter.insert(new LineAnnotation(3, "True", "True", "", Collections.singleton("True")));
+        unstableAfter.insert(new LineAnnotation(2, "True", "True", "", Collections.singleton("True")));
 
         return unstableAfter
                 .finishMutation();

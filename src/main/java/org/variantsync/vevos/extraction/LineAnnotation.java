@@ -1,10 +1,9 @@
 package org.variantsync.vevos.extraction;
 
 
-import org.prop4j.Node;
-import org.prop4j.True;
-
 import java.io.Serializable;
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Represents the ground truth annotation for a single line in a file
@@ -13,19 +12,19 @@ import java.io.Serializable;
  * @param presenceCondition
  * @param nodeType
  */
-public record LineAnnotation(int lineNumber, Node featureMapping, Node presenceCondition, String nodeType) implements Serializable {
-    public final static LineAnnotation EMPTY = new LineAnnotation(-1, new True(), new True(), "");
+public record LineAnnotation(int lineNumber, String featureMapping, String presenceCondition, String nodeType, Set<String> uniqueContainedFeatures) implements Serializable {
+    public final static LineAnnotation EMPTY = new LineAnnotation(-1, "True", "True", "", Collections.singleton("True"));
 
     public int index() {
         return this.lineNumber-1;
     }
 
     public LineAnnotation withOffset(int offset) {
-        return new LineAnnotation(this.lineNumber + offset, this.featureMapping, this.presenceCondition, this.nodeType);
+        return new LineAnnotation(this.lineNumber + offset, this.featureMapping, this.presenceCondition, this.nodeType, this.uniqueContainedFeatures);
     }
 
     public static LineAnnotation rootAnnotation(int lineNumber) {
-        return new LineAnnotation(lineNumber, new True(), new True(), "ROOT");
+        return new LineAnnotation(lineNumber, "True", "True", "ROOT", Collections.singleton("True"));
     }
 
     @Override

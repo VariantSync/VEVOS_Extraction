@@ -10,6 +10,8 @@ import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.Time;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -22,10 +24,6 @@ public class PCAnalysis implements Analysis.Hooks {
 
     public PCAnalysis() {
         this.groundTruthMap = new Hashtable<>();
-    }
-
-    public Hashtable<String, GroundTruth> getGroundTruthMap() {
-        return groundTruthMap;
     }
 
     /**
@@ -57,7 +55,7 @@ public class PCAnalysis implements Analysis.Hooks {
                 // Insert the annotations
                 if (node.isAnnotation()) {
                     for (int lineNumber = rangeInFile.getFromInclusive(); lineNumber < rangeInFile.getToExclusive(); lineNumber++) {
-                        LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping, presenceCondition, node.nodeType.name);
+                        LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name, presenceCondition.getUniqueContainedFeatures());
                         fileGT.insert(annotation);
                     }
                 }
@@ -72,6 +70,9 @@ public class PCAnalysis implements Analysis.Hooks {
     @Override
     public void endCommit(Analysis analysis) throws Exception {
         RevCommit commit = analysis.getCurrentCommit();
+        var repo = analysis.getRepository();
+        Path resultFile = Path.of("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+        Files.createDirectories(resultFile.getParent());
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Complete all new or updated file ground truths
@@ -82,6 +83,8 @@ public class PCAnalysis implements Analysis.Hooks {
                 groundTruth.fileGTs().put(entry.getKey(), complete);
             }
         }
+        Serde.serialize(resultFile.toFile(), groundTruth);
+        this.groundTruthMap.remove(commit.getName());
         synchronized (PCAnalysis.class) {
             PCAnalysis.numProcessed++;
             if (PCAnalysis.numProcessed % 1_000 == 0) {

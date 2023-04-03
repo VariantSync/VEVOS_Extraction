@@ -1,7 +1,5 @@
 package org.variantsync.vevos.extraction;
 
-import org.prop4j.True;
-import org.variantsync.diffdetective.diff.text.DiffLineNumber;
 import org.variantsync.diffdetective.util.Assert;
 
 import java.io.Serializable;
@@ -72,7 +70,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     protected LineAnnotation insert(int index, LineAnnotation annotation) {
         // +1 to account for the endif
         growIfRequired(index + 1);
-        this.variables.addAll(annotation.presenceCondition().getUniqueContainedFeatures());
+        this.variables.addAll(annotation.uniqueContainedFeatures());
         return this.annotations.set(index, annotation);
     }
 
@@ -199,7 +197,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private static ArrayList<BlockAnnotation> aggregateBlocks(Complete complete) {
             ArrayList<BlockAnnotation> blocks = new ArrayList<>();
             // The root annotation is always true and covers all lines
-            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), new True(), new True());
+            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), "True", "True");
 
             LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
             blockStack.push(rootBlock);
