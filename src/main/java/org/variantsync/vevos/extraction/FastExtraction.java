@@ -51,7 +51,7 @@ public class FastExtraction {
                 out
         );
         final int availableProcessors = Runtime.getRuntime().availableProcessors();
-        final int commitsToProcessPerThread = 100;
+        final int commitsToProcessPerThread = 256;
 
         Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
 
