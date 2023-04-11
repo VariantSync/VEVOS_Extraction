@@ -21,9 +21,11 @@ import java.util.*;
 public class PCAnalysis implements Analysis.Hooks {
     public static int numProcessed = 0;
     private final Hashtable<String, GroundTruth> groundTruthMap;
+    private final Path diffDetectiveCache;
 
-    public PCAnalysis() {
+    public PCAnalysis(Path diffDetectiveCache) {
         this.groundTruthMap = new Hashtable<>();
+        this.diffDetectiveCache = diffDetectiveCache;
     }
 
     /**
@@ -71,7 +73,7 @@ public class PCAnalysis implements Analysis.Hooks {
     public void endCommit(Analysis analysis) throws Exception {
         RevCommit commit = analysis.getCurrentCommit();
         var repo = analysis.getRepository();
-        Path resultFile = Path.of("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+        Path resultFile = diffDetectiveCache.resolve("pc").resolve(repo.getRepositoryName()).resolve(commit.getName() + ".gt");
         Files.createDirectories(resultFile.getParent());
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));

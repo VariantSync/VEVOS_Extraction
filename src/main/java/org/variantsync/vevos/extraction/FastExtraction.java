@@ -40,42 +40,6 @@ public class FastExtraction {
     private static final String VARIABLES_FILE = "VARIABLES.txt";
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     private final Properties properties;
-    private final BiConsumer<Repository, Path> runner = (repo, repoOutputDir) -> {
-        PCAnalysis analysis = new PCAnalysis();
-        final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
-                "PCAnalysis",
-                List.of(
-                        analysis
-                ),
-                r,
-                out
-        );
-        final int availableProcessors = Runtime.getRuntime().availableProcessors();
-        final int commitsToProcessPerThread = 256;
-
-        Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
-
-        ArrayList<RevCommit> commits = new ArrayList<>();
-        try (Git gitRepo = repo.getGitRepo().run()) {
-            gitRepo.log().call().forEach(commits::add);
-            Collections.reverse(commits);
-        } catch (GitAPIException e) {
-            Logger.error(e);
-            throw new RuntimeException(e);
-        }
-
-        ExecutorService threadPool = null;
-        try {
-            threadPool = Executors.newFixedThreadPool(availableProcessors);
-            postprocess(repo, commits, threadPool);
-        } finally {
-            if (threadPool != null) {
-                Logger.info("Awaiting termination of threadpool");
-                threadPool.shutdown();
-            }
-        }
-        PCAnalysis.numProcessed = 0;
-    };
 
     public FastExtraction(Properties properties) {
         this.properties = properties;
@@ -208,6 +172,45 @@ public class FastExtraction {
         throw new IllegalStateException("Not able to continue analysis due to previous error");
     }
 
+    private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
+        return (repo, repoOutputDir) -> {
+            PCAnalysis analysis = new PCAnalysis(Path.of(diffDetectiveCache));
+            final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
+                    "PCAnalysis",
+                    List.of(
+                            analysis
+                    ),
+                    r,
+                    out
+            );
+            final int availableProcessors = Runtime.getRuntime().availableProcessors();
+            final int commitsToProcessPerThread = 256;
+
+            Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
+
+            ArrayList<RevCommit> commits = new ArrayList<>();
+            try (Git gitRepo = repo.getGitRepo().run()) {
+                gitRepo.log().call().forEach(commits::add);
+                Collections.reverse(commits);
+            } catch (GitAPIException e) {
+                Logger.error(e);
+                throw new RuntimeException(e);
+            }
+
+            ExecutorService threadPool = null;
+            try {
+                threadPool = Executors.newFixedThreadPool(availableProcessors);
+                postprocess(repo, commits, threadPool);
+            } finally {
+                if (threadPool != null) {
+                    Logger.info("Awaiting termination of threadpool");
+                    threadPool.shutdown();
+                }
+            }
+            PCAnalysis.numProcessed = 0;
+        };
+    }
+
     /**
      * Starts the extraction.
      *
@@ -215,7 +218,7 @@ public class FastExtraction {
      * @throws IOException If an IO error occurs in DiffDetective
      */
     public void run(AnalysisRunner.Options options) throws IOException {
-        AnalysisRunner.run(options, runner);
+        AnalysisRunner.run(options, buildRunner(properties.getProperty(DD_OUTPUT_DIR)));
     }
 
     /**
@@ -231,6 +234,7 @@ public class FastExtraction {
         int processedCount = 0;
         RevCommit lastCommit = null;
         GroundTruth completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
+        final String diffDetectiveCache = properties.getProperty(DD_OUTPUT_DIR);
         for (RevCommit commit : commits) {
             if (lastCommit != null) {
                 // Check whether the last commit is the first parent of this commit.
@@ -240,11 +244,11 @@ public class FastExtraction {
                 if (firstParent == null) {
                     completedGroundTruth = new GroundTruth(new HashMap<>(), new HashSet<>());
                 } else if (!firstParent.equals(lastCommit)) {
-                    File parentGT = new File("results/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
+                    File parentGT = new File(diffDetectiveCache + "/pc/" + repo.getRepositoryName() + "/" + firstParent.getName() + ".gt");
                     completedGroundTruth = Serde.deserialize(parentGT);
                 }
             }
-            File currentGTFile = new File("results/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
+            File currentGTFile = new File(diffDetectiveCache + "/pc/" + repo.getRepositoryName() + "/" + commit.getName() + ".gt");
             if (Files.exists(currentGTFile.toPath())) {
                 GroundTruth loadedGT = Serde.deserialize(currentGTFile);
                 if (processedCount % 1_000 == 0) {
@@ -281,7 +285,7 @@ public class FastExtraction {
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
             if (processedCount % 1_000 == 0) {
-                Logger.info("Saved ground truth for commit {} of {}", processedCount+1, commits.size());
+                Logger.info("Saved ground truth for commit {} of {}", processedCount + 1, commits.size());
             }
             lastCommit = commit;
             processedCount++;
