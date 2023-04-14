@@ -56,7 +56,7 @@ RUN set -eux; \
 WORKDIR /home/user
 # Copy JAR from previous stage
 COPY --from=0 /home/user/target /home/user/target
-RUN cp target/Extraction-jar-with* .
+RUN cp target/*Extraction-jar-with* .
 
 # Copy required scripts and properties
 COPY docker-resources/* /home/user/
