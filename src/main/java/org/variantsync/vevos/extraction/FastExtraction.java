@@ -167,6 +167,8 @@ public class FastExtraction {
             final int commitsToProcessPerThread = 256;
 
             Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
+
+            FastPCAnalysis.numProcessed = 0;
         };
     }
 
