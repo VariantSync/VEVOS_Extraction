@@ -48,7 +48,17 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     }
 
     public String variablesListAsString() {
-        List<String> variablesList = new ArrayList<>(this.variables);
+        return variablesListAsString(this.variables);
+    }
+
+    public String combinedVariablesListAsString(GroundTruth other) {
+        HashSet<String> variables = new HashSet<>(this.variables);
+        variables.addAll(other.variables);
+        return variablesListAsString(variables);
+    }
+
+    private static String variablesListAsString(Set<String> variables) {
+        List<String> variablesList = new ArrayList<>(variables);
         Collections.sort(variablesList);
 
         StringBuilder sb = new StringBuilder();
