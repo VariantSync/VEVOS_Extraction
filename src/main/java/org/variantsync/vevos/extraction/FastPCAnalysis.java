@@ -79,14 +79,16 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
         }
         
-        this.groundTruthMapBefore.remove(commit.getName());
-        this.groundTruthMapAfter.remove(commit.getName());
         synchronized (FastPCAnalysis.class) {
             FastPCAnalysis.numProcessed++;
-            if (FastPCAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("Finished Commit ({}): {}", FastPCAnalysis.numProcessed, commit.name());
-            }
         }
+    }
+
+    @Override
+    public void endBatch(Analysis analysis) {
+        this.groundTruthMapBefore.clear();
+        this.groundTruthMapAfter.clear();
+        Logger.info("Finished Batch. Processed {} commits in total.", FastPCAnalysis.numProcessed);
     }
 
     @Override

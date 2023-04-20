@@ -30,6 +30,8 @@ public class FastExtraction {
             = "diff-detective.output-dir";
     public static final String REPO_SAVE_DIR
             = "diff-detective.repo-storage-dir";
+    public static final String NUM_THREADS
+            = "diff-detective.num-threads";
     private final Properties properties;
 
     public FastExtraction(Properties properties) {
@@ -163,10 +165,16 @@ public class FastExtraction {
                     r,
                     out
             );
-            final int availableProcessors = Runtime.getRuntime().availableProcessors();
-            final int commitsToProcessPerThread = 256;
+            final int availableProcessors;
+            String numThreads = this.properties.getProperty(NUM_THREADS);
+            if (numThreads == null || numThreads.equals("")) {
+                availableProcessors = Runtime.getRuntime().availableProcessors();
+            } else {
+                availableProcessors = Integer.parseInt(numThreads);
+            }
+            final int batchSize = 256;
 
-            Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), commitsToProcessPerThread, availableProcessors);
+            Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), batchSize, availableProcessors);
 
             FastPCAnalysis.numProcessed = 0;
         };
