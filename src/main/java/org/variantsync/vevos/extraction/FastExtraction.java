@@ -167,7 +167,7 @@ public class FastExtraction {
             );
             final int availableProcessors;
             String numThreads = this.properties.getProperty(NUM_THREADS);
-            if (numThreads == null || numThreads.equals("")) {
+            if (numThreads == null || numThreads.trim().equals("") || numThreads.trim().equals("0")) {
                 availableProcessors = Runtime.getRuntime().availableProcessors();
             } else {
                 availableProcessors = Integer.parseInt(numThreads);
