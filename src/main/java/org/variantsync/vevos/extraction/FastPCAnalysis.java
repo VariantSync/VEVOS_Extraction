@@ -45,7 +45,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public void endCommit(Analysis analysis) {
         RevCommit commit = analysis.getCurrentCommit();
         // Retrieve data being processed by the current thread
-        var currentBatch = threadBatches.get(Thread.currentThread().threadId());
+        var currentBatch = threadBatches.get(Thread.currentThread().getId());
         HashMap<String, GroundTruth> groundTruthMapBefore = currentBatch.groundTruthMapBefore;
         HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
 
@@ -98,7 +98,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     @Override
     public void beginBatch(Analysis analysis) {
         // Initialize the data for the current thread
-        var id = Thread.currentThread().threadId();
+        var id = Thread.currentThread().getId();
         Logger.info("Starting new batch for thread " + id);
         threadBatches.put(id, new ThreadBatch(new HashMap<>(), new HashMap<>()));
     }
@@ -106,7 +106,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     @Override
     public void endBatch(Analysis analysis) {
         // Clean up the data of the fully-processed batch
-        var id = Thread.currentThread().threadId();
+        var id = Thread.currentThread().getId();
         Logger.info("Cleaning up data of batch for thread " + id);
         threadBatches.remove(id);
     }
@@ -119,7 +119,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     @Override
     public boolean analyzeDiffTree(Analysis analysis) {
         // Retrieve data being processed by the current thread
-        var currentBatch = threadBatches.get(Thread.currentThread().threadId());
+        var currentBatch = threadBatches.get(Thread.currentThread().getId());
         HashMap<String, GroundTruth> groundTruthMapBefore = currentBatch.groundTruthMapBefore;
         HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
 
