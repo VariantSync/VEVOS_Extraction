@@ -12,6 +12,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence conditions for each file,
@@ -25,14 +26,14 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
     private static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
     public static int numProcessed = 0;
-    private final Hashtable<Long, ThreadBatch> threadBatches;
+    private final ConcurrentHashMap<Long, ThreadBatch> threadBatches;
     private final boolean printEnabled;
     private final Path resultsRoot;
 
     public FastPCAnalysis(boolean printEnabled, Path resultsRoot) {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
-        this.threadBatches = new Hashtable<>();
+        this.threadBatches = new ConcurrentHashMap<>();
     }
 
     private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
