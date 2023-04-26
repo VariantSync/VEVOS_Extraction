@@ -32,6 +32,8 @@ public class FastExtraction {
             = "diff-detective.repo-storage-dir";
     public static final String NUM_THREADS
             = "diff-detective.num-threads";
+    public static final String BATCH_SIZE
+            = "diff-detective.batch-size";
     private final Properties properties;
 
     public FastExtraction(Properties properties) {
@@ -172,7 +174,13 @@ public class FastExtraction {
             } else {
                 availableProcessors = Integer.parseInt(numThreads);
             }
-            final int batchSize = 256;
+            final int batchSize;
+            String configuredSize = this.properties.getProperty(BATCH_SIZE);
+            if (configuredSize == null || configuredSize.trim().equals("") || configuredSize.trim().equals("0")) {
+                batchSize = 256;
+            } else {
+                batchSize = Integer.parseInt(configuredSize);
+            }
 
             Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), batchSize, availableProcessors);
 

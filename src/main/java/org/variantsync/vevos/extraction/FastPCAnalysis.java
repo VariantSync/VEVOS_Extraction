@@ -25,25 +25,32 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
     private static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
     public static int numProcessed = 0;
-    private final Hashtable<String, GroundTruth> groundTruthMapBefore;
-    private final Hashtable<String, GroundTruth> groundTruthMapAfter;
+    private final Hashtable<Long, ThreadBatch> threadBatches;
     private final boolean printEnabled;
     private final Path resultsRoot;
 
     public FastPCAnalysis(boolean printEnabled, Path resultsRoot) {
-        this.groundTruthMapBefore = new Hashtable<>();
-        this.groundTruthMapAfter = new Hashtable<>();
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
+        this.threadBatches = new Hashtable<>();
+    }
+
+    private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
+                               HashMap<String, GroundTruth> groundTruthMapAfter) {
+
     }
 
     @Override
     public void endCommit(Analysis analysis) {
         RevCommit commit = analysis.getCurrentCommit();
+        // Retrieve data being processed by the current thread
+        var currentBatch = threadBatches.get(Thread.currentThread().threadId());
+        HashMap<String, GroundTruth> groundTruthMapBefore = currentBatch.groundTruthMapBefore;
+        HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
 
         // Complete all new or updated file ground truths
-        GroundTruth groundTruthBefore = this.groundTruthMapBefore.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
-        GroundTruth groundTruthAfter = this.groundTruthMapAfter.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruthBefore = groundTruthMapBefore.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruthAfter = groundTruthMapAfter.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
         PCAnalysis.makeComplete(groundTruthBefore);
         PCAnalysis.makeComplete(groundTruthAfter);
 
@@ -79,9 +86,6 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
         }
 
-        this.groundTruthMapBefore.remove(commit.getName());
-        this.groundTruthMapAfter.remove(commit.getName());
-
         synchronized (FastPCAnalysis.class) {
             FastPCAnalysis.numProcessed++;
             if (FastPCAnalysis.numProcessed % 1_000 == 0) {
@@ -91,14 +95,35 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     }
 
     @Override
+    public void beginBatch(Analysis analysis) {
+        // Initialize the data for the current thread
+        var id = Thread.currentThread().threadId();
+        Logger.info("Starting new batch for thread " + id);
+        threadBatches.put(id, new ThreadBatch(new HashMap<>(), new HashMap<>()));
+    }
+
+    @Override
+    public void endBatch(Analysis analysis) {
+        // Clean up the data of the fully-processed batch
+        var id = Thread.currentThread().threadId();
+        Logger.info("Cleaning up data of batch for thread " + id);
+        threadBatches.remove(id);
+    }
+
+    @Override
     public void initializeResults(Analysis analysis) {
         analysis.append(EditClassCount.KEY, new EditClassCount());
     }
 
     @Override
     public boolean analyzeDiffTree(Analysis analysis) {
-        GroundTruth groundTruthBefore = this.groundTruthMapBefore.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
-        GroundTruth groundTruthAfter = this.groundTruthMapAfter.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        // Retrieve data being processed by the current thread
+        var currentBatch = threadBatches.get(Thread.currentThread().threadId());
+        HashMap<String, GroundTruth> groundTruthMapBefore = currentBatch.groundTruthMapBefore;
+        HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
+
+        GroundTruth groundTruthBefore = groundTruthMapBefore.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruthAfter = groundTruthMapAfter.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
 //        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
