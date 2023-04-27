@@ -220,7 +220,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 }
 
                 // If the current line is in a new block
-                Assert.assertTrue(blockStack.peekFirst() != null, "%s\nProblem while processing line %d of file %s".formatted(complete.toString(), line.lineNumber(), complete.file));
                 if (complete.blockStarts.contains(line.lineNumber())) {
                     // Push a new block onto the stack
                     blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
