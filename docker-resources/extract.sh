@@ -40,4 +40,5 @@ else
     exit 1
 fi
 
-java -Xmx32g -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS
+#java -Xmx32g -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS
+java -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS
