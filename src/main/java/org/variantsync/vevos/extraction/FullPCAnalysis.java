@@ -57,7 +57,7 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
         String fileNameAfter = analysis.getCurrentPatch().getFileName(Time.AFTER);
-        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
+//        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
         DiffEntry.ChangeType changeType = analysis.getCurrentPatch().getChangeType();
         if (changeType == DiffEntry.ChangeType.DELETE || (changeType != DiffEntry.ChangeType.ADD && !fileNameBefore.equals(fileNameAfter))) {
             // We set the entry of the old name as removed if the file was deleted or the name changed without the file being added as new
@@ -73,7 +73,7 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
         final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileNameAfter, k -> new FileGT.Mutable(fileNameAfter));
 
         analysis.getCurrentDiffTree().forAll(node -> {
-            Logger.debug("Node: {}", node);
+//            Logger.debug("Node: {}", node);
             PCAnalysis.analyzeNode(fileGT, node, Time.AFTER);
         });
 

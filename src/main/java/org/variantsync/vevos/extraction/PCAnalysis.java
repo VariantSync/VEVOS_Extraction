@@ -31,7 +31,7 @@ public interface PCAnalysis {
         LineRange rangeInFile = node.getLinesAtTime(time);
         int fromLine = rangeInFile.getFromInclusive();
         int toLine = rangeInFile.getToExclusive();
-        Logger.debug("%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
+//        Logger.debug(() -> "%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
 
         if (node.isAnnotation()) {
             // Mark the start and end of this annotation block

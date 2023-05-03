@@ -99,7 +99,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public void beginBatch(Analysis analysis) {
         // Initialize the data for the current thread
         var id = Thread.currentThread().getId();
-        Logger.info("Starting new batch for thread " + id);
+//        Logger.info("Starting new batch for thread " + id);
         threadBatches.put(id, new ThreadBatch(new HashMap<>(), new HashMap<>()));
     }
 
@@ -107,7 +107,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public void endBatch(Analysis analysis) {
         // Clean up the data of the fully-processed batch
         var id = Thread.currentThread().getId();
-        Logger.info("Cleaning up data of batch for thread " + id);
+//        Logger.info("Cleaning up data of batch for thread " + id);
         threadBatches.remove(id);
     }
 
@@ -129,7 +129,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
         String fileNameAfter = analysis.getCurrentPatch().getFileName(Time.AFTER);
-        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
+//        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
 
         DiffEntry.ChangeType changeType = analysis.getCurrentPatch().getChangeType();
 
@@ -148,7 +148,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         }
 
         analysis.getCurrentDiffTree().forAll(node -> {
-            Logger.debug("Node: {}", node);
+//            Logger.debug("Node: {}", node);
             // If the file is not completely new, we consider the before case
             if (!(changeType == DiffEntry.ChangeType.ADD)) {
                 PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE);
