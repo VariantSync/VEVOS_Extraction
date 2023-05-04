@@ -8,15 +8,17 @@ import java.util.regex.Pattern;
 /**
  * The ground truth for the files of a repository at a specific commit (i.e., version).
  *
- * @param fileGTs   The ground truths for each file
+ * @param fileGTs The ground truths for each file
  * @param variables The set of variables that can appear in the presence conditions
  */
-public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables) implements Serializable {
+public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables)
+                implements Serializable {
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
 
-    public FileGT computeIfAbsent(String file, Function<? super String, ? extends FileGT> mappingFunction) {
+    public FileGT computeIfAbsent(String file,
+                    Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
 
@@ -28,11 +30,16 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         return this.fileGTs.size();
     }
 
+    public boolean isEmpty() {
+        return this.fileGTs.isEmpty();
+    }
+
     public void updateWith(GroundTruth updated) {
         // update the variables
         this.variables.addAll(updated.variables);
 
-        // Handle files that have been newly added or updated, their ground truth has to be set to complete
+        // Handle files that have been newly added or updated, their ground truth has to be set to
+        // complete
         // There is no real base to combine them with, so we combine them with an empty FileGT
         for (String updatedFile : updated.fileGTs.keySet()) {
             FileGT fileGT = updated.get(updatedFile);
@@ -84,7 +91,8 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
             if (this.fileGTs.get(name) instanceof FileGT.Complete fileGT) {
                 sb.append(fileGT.csvLines());
             } else {
-                throw new IllegalStateException("Not possible to create CSV line for incomplete file ground truth");
+                throw new IllegalStateException(
+                                "Not possible to create CSV line for incomplete file ground truth");
             }
         }
         return sb.toString();
