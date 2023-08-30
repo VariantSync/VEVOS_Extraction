@@ -18,6 +18,7 @@ public final class BlockAnnotation implements Serializable {
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
+    private static final Pattern semicolon = Pattern.compile(";");
     private final String featureMapping;
     private final String presenceCondition;
     private int lineStartInclusive;
@@ -92,6 +93,7 @@ public final class BlockAnnotation implements Serializable {
         condition = condition.replaceAll(variableStart.pattern(), "");
         condition = condition.replaceAll(variableEnd.pattern(), "");
         condition = condition.replaceAll(quotation.pattern(), "");
+        condition = condition.replaceAll(semicolon.pattern(), "SEMICOLON");
         return condition;
     }
 }
