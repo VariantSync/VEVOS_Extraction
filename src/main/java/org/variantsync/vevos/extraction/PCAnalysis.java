@@ -1,7 +1,6 @@
 package org.variantsync.vevos.extraction;
 
 import org.prop4j.Node;
-import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.DiffType;
@@ -29,8 +28,8 @@ public interface PCAnalysis {
         Node presenceCondition = node.getPresenceCondition(time).toCNF(false);
         // The range of line numbers in which the artifact appears
         LineRange rangeInFile = node.getLinesAtTime(time);
-        int fromLine = rangeInFile.getFromInclusive();
-        int toLine = rangeInFile.getToExclusive();
+        int fromLine = rangeInFile.fromInclusive();
+        int toLine = rangeInFile.toExclusive();
 //        Logger.debug(() -> "%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
 
         if (node.isAnnotation()) {
