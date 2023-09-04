@@ -16,6 +16,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
+    private static final Pattern semicolon = Pattern.compile(";");
 
     public FileGT computeIfAbsent(String file,
                     Function<? super String, ? extends FileGT> mappingFunction) {
@@ -76,6 +77,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
             name = name.replaceAll(variableStart.pattern(), "");
             name = name.replaceAll(variableEnd.pattern(), "");
             name = name.replaceAll(quotation.pattern(), "");
+            name = name.replaceAll(semicolon.pattern(), "SEMICOLON");
             sb.append(name).append(System.lineSeparator());
         }
         return sb.toString();
