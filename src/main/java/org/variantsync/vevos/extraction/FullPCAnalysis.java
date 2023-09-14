@@ -4,6 +4,7 @@ import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.analysis.Analysis;
+import org.variantsync.diffdetective.editclass.proposed.ProposedEditClasses;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.variation.diff.Time;
 
@@ -47,13 +48,13 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
     @Override
     public void initializeResults(Analysis analysis) {
-        analysis.append(EditClassCount.KEY, new EditClassCount());
+        analysis.append(EditClassCount.KEY, new EditClassCount(ProposedEditClasses.Instance));
     }
 
     @Override
-    public boolean analyzeDiffTree(Analysis analysis) throws Exception {
+    public boolean analyzeVariationDiff(Analysis analysis) throws Exception {
         GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
-//        Show.diff(analysis.getCurrentDiffTree()).showAndAwait();
+//        Show.diff(analysis.getCurrentVariationDiff()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
         String fileNameAfter = analysis.getCurrentPatch().getFileName(Time.AFTER);
@@ -72,7 +73,7 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
         // At this point, it must be an instance of FileGT.Mutable
         final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileNameAfter, k -> new FileGT.Mutable(fileNameAfter));
 
-        analysis.getCurrentDiffTree().forAll(node -> {
+        analysis.getCurrentVariationDiff().forAll(node -> {
 //            Logger.debug("Node: {}", node);
             PCAnalysis.analyzeNode(fileGT, node, Time.AFTER);
         });

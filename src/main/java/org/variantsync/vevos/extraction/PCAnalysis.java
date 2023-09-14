@@ -46,7 +46,7 @@ public interface PCAnalysis {
         // Insert the annotations
         if (node.isAnnotation()) {
             for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
-                LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.nodeType.name, presenceCondition.getUniqueContainedFeatures());
+                LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
                 fileGT.insert(annotation);
             }
         }

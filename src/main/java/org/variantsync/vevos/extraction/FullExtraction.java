@@ -9,7 +9,7 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
-import org.variantsync.diffdetective.variation.diff.parse.DiffTreeParseOptions;
+import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -95,8 +95,8 @@ public class FullExtraction {
                     final PatchDiffParseOptions repoDefault = repo.getParseOptions();
                     return new PatchDiffParseOptions(
                             PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
-                            new DiffTreeParseOptions(
-                                    repoDefault.diffTreeParseOptions().annotationParser(),
+                            new VariationDiffParseOptions(
+                                    repoDefault.variationDiffParseOptions().annotationParser(),
                                     false,
                                     false
                             )
