@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
+    private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final String VARIABLES_FILE = "VARIABLES.txt";
@@ -28,6 +29,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
     public static int numProcessed = 0;
     private final ConcurrentHashMap<Long, ThreadBatch> threadBatches;
+    private final Set<String> failedCommits;
     private final boolean printEnabled;
     private final Path resultsRoot;
 
@@ -35,11 +37,23 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
+        this.failedCommits = ConcurrentHashMap.newKeySet();
     }
 
     private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
                     HashMap<String, GroundTruth> groundTruthMapAfter) {
 
+    }
+
+    @Override
+    public void onFailedCommit(Analysis analysis) {
+        RevCommit commit = analysis.getCurrentCommit();
+
+        synchronized (FastPCAnalysis.class) {
+            Logger.warn("Was not able to extract ground truth for commit " + commit.getName());
+            Serde.appendText(resultsRoot.resolve(ERROR_COMMIT_FILE), commit.getName() + "\n");
+            failedCommits.add(commit.getName());
+        }
     }
 
     @Override
@@ -52,6 +66,11 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
                 Logger.info("Finishing Commit ({}): {}", FastPCAnalysis.numProcessed,
                                 commit.name());
             }
+        }
+
+        if (failedCommits.contains(commit.getName())) {
+            // Return early, if the current commit resulted in an error
+            return;
         }
 
         // Retrieve data being processed by the current thread
