@@ -38,6 +38,12 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
         this.failedCommits = ConcurrentHashMap.newKeySet();
+        try {
+            Files.createDirectories(resultsRoot);
+        } catch (IOException e) {
+            Logger.error(e);
+            throw new UncheckedIOException(e);
+        }
     }
 
     private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
