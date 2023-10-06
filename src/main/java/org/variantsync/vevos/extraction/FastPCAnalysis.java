@@ -94,7 +94,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             // In this case, no changes have been analyzed and we are not interested in the commit's
             // data.
             synchronized (FastPCAnalysis.class) {
-                Logger.warn("Was not able to extract a ground truth for commit " + commit.getName());
+                Logger.debug("No code changes for " + commit.getName());
                 Serde.appendText(resultsRoot.resolve(ERROR_COMMIT_FILE), commit.getName() + "\n");
                 failedCommits.add(commit.getName());
             }
