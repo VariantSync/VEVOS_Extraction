@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
+    private final static String EMPTY_COMMIT_FILE = "EMPTY_COMMITS.txt";
     private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
     private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
     private static final String VARIABLES_FILE = "VARIABLES.txt";
@@ -91,12 +92,11 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
                         new GroundTruth(new HashMap<>(), new HashSet<>()));
         if (groundTruthBefore.isEmpty() && groundTruthAfter.isEmpty()) {
             // Return early and do not save any data, if the ground truths are both empty.
-            // In this case, no changes have been analyzed and we are not interested in the commit's
+            // In this case, no changes have been analyzed, and we are not interested in the commit's
             // data.
             synchronized (FastPCAnalysis.class) {
-                // TODO: Track these commits in their own list (i.e., not in ERROR_COMMIT_FILE)
                 Logger.debug("No code changes for " + commit.getName());
-                Serde.appendText(resultsRoot.resolve(ERROR_COMMIT_FILE), commit.getName() + "\n");
+                Serde.appendText(resultsRoot.resolve(EMPTY_COMMIT_FILE), commit.getName() + "\n");
                 failedCommits.add(commit.getName());
             }
             return;
