@@ -25,3 +25,4 @@ __pycache__
 /warn.txt
 .classpath
 .project
+/logs/
