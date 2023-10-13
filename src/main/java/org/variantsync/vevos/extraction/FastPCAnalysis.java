@@ -53,7 +53,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     }
 
     @Override
-    public void onFailedCommit(Analysis analysis) {
+    public void onFailedParse(Analysis analysis) {
         RevCommit commit = analysis.getCurrentCommit();
 
         synchronized (FastPCAnalysis.class) {
@@ -70,13 +70,14 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         synchronized (FastPCAnalysis.class) {
             FastPCAnalysis.numProcessed++;
             if (FastPCAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("Finishing Commit ({}): {}", FastPCAnalysis.numProcessed,
+                Logger.info("End Processing of Commit ({}): {}", FastPCAnalysis.numProcessed,
                                 commit.name());
             }
         }
 
         if (failedCommits.contains(commit.getName())) {
-            // Return early, if the current commit resulted in an error
+            Logger.warn("Skip writing ground truth for " + commit.getName());
+            // Return early, if the entire commit resulted in an error
             return;
         }
 
