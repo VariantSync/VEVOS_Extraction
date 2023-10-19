@@ -273,7 +273,7 @@ public class FullExtraction {
             String variablesList = completedGroundTruth.variablesListAsString();
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(VARIABLES_FILE), variablesList));
 
-            String groundTruthAsCSV = completedGroundTruth.asCSVString();
+            String groundTruthAsCSV = completedGroundTruth.asPcCsvString();
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV), groundTruthAsCSV));
 
             threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage()));

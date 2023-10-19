@@ -2,6 +2,7 @@ package org.variantsync.vevos.extraction;
 
 import org.prop4j.Node;
 import org.variantsync.diffdetective.util.LineRange;
+import org.variantsync.diffdetective.variation.DiffLinesLabel;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.DiffType;
 import org.variantsync.diffdetective.variation.diff.Time;
@@ -17,7 +18,7 @@ public interface PCAnalysis {
      * @param node   The node that is to be analyzed
      * @param time Whether we should handle the node as before or after the edit
      */
-    static void analyzeNode(FileGT.Mutable fileGT, DiffNode node, Time time) {
+    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time) {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
             return;
         }
@@ -27,10 +28,24 @@ public interface PCAnalysis {
         Node featureMapping = node.getFeatureMapping(time).toCNF(false);
         Node presenceCondition = node.getPresenceCondition(time).toCNF(false);
         // The range of line numbers in which the artifact appears
-        LineRange rangeInFile = node.getLinesAtTime(time);
-        int fromLine = rangeInFile.fromInclusive();
-        int toLine = rangeInFile.toExclusive();
-//        Logger.debug(() -> "%s: Line Range: %s, Presence Condition: %s".formatted(node.diffType, rangeInFile, presenceCondition));
+        LineRange currentRange;
+        LineRange counterpartRange;
+        switch (time) {
+            case BEFORE -> {
+                currentRange = node.getLinesAtTime(Time.BEFORE);
+                counterpartRange = node.getLinesAtTime(Time.AFTER);
+            }
+            case AFTER -> {
+                currentRange = node.getLinesAtTime(Time.AFTER);
+                counterpartRange = node.getLinesAtTime(Time.BEFORE);
+            }
+            default -> {
+                // Because Java cannot assess statically that this case will never occur *sigh*
+                throw new IllegalStateException();
+            }
+        }
+        int fromLine = currentRange.fromInclusive();
+        int toLine = currentRange.toExclusive();
 
         if (node.isAnnotation()) {
             // Mark the start and end of this annotation block
@@ -49,6 +64,9 @@ public interface PCAnalysis {
                 LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
                 fileGT.insert(annotation);
             }
+        } else {
+            // set the matching
+            fileGT.setMatching(currentRange, counterpartRange);
         }
     }
 

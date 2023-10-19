@@ -83,18 +83,32 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         return sb.toString();
     }
 
-    public String asCSVString() {
+    public String asPcCsvString() {
+        return generateCsv(
+                "Path;File Condition;Block Condition;Presence Condition;start;end",
+                FileGT.Complete::csvPCLines
+        );
+    }
+
+    public String asMatchingCsvString() {
+        return generateCsv(
+                "Path;Line Number; Counterpart",
+                FileGT.Complete::csvMatchingLines
+        );
+    }
+
+    private String generateCsv(String header, Function<FileGT.Complete, String> lineGenerator) {
         StringBuilder sb = new StringBuilder();
-        sb.append("Path;File Condition;Block Condition;Presence Condition;start;end");
+        sb.append(header);
         sb.append(System.lineSeparator());
         ArrayList<String> fileNames = new ArrayList<>(this.fileGTs.keySet());
         Collections.sort(fileNames);
         for (String name : fileNames) {
             if (this.fileGTs.get(name) instanceof FileGT.Complete fileGT) {
-                sb.append(fileGT.csvLines());
+                sb.append(lineGenerator.apply(fileGT));
             } else {
                 throw new IllegalStateException(
-                                "Not possible to create CSV line for incomplete file ground truth");
+                        "Not possible to create CSV line for incomplete file ground truth");
             }
         }
         return sb.toString();

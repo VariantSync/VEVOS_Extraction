@@ -1,6 +1,7 @@
 package org.variantsync.vevos.extraction;
 
 import org.variantsync.diffdetective.util.Assert;
+import org.variantsync.diffdetective.util.LineRange;
 
 import java.io.Serializable;
 import java.util.*;
@@ -13,6 +14,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     protected final String file;
     // List of annotation for each line
     private final ArrayList<LineAnnotation> annotations;
+    // A matching of this file's lines to counterparts associated with the same commit
+    // i.e., the matching line numbers before or after the changes have been applied
+    // a match is -1 if there is no counterpart
+    protected final ArrayList<Integer> matching;
     // The set of variables occurring in the annotations of this file
     private final Set<String> variables;
     // Set of annotation block starts and ends
@@ -23,6 +28,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     protected FileGT(String file) {
         this.annotations = new ArrayList<>();
+        this.matching = new ArrayList<>();
         this.blockStarts = new HashSet<>();
         this.blockEnds = new HashSet<>();
         this.consumed = false;
@@ -32,6 +38,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     protected FileGT(FileGT other) {
         this.annotations = other.annotations;
+        this.matching = other.matching;
         this.blockStarts = other.blockStarts;
         this.blockEnds = other.blockEnds;
         this.consumed = false;
@@ -75,6 +82,16 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     /**
+     * Set the match for the given line number.
+     * @param lineNumber The line number in the current version of the file
+     * @param matchedLine The matching line number in the counterpart version of the file
+     */
+    protected void setMatching(int lineNumber, int matchedLine) {
+        Assert.assertTrue(this.matching.get(lineNumber) == -1 || this.matching.get(lineNumber) == matchedLine);
+        this.matching.set(lineNumber, matchedLine);
+    }
+
+    /**
      * Increases the size of the ground truth to the given size. All added items are filled with the root annotation (i.e., true)
      *
      * @param size The size to grow to
@@ -82,9 +99,11 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     public void growIfRequired(int size) {
         // Increase the size of the array if necessary
         this.annotations.ensureCapacity(size);
+        this.matching.ensureCapacity(size);
         for (int lineNumber = this.annotations.size() + 1; lineNumber < size + 1; lineNumber++) {
             // Initialized lines get the root annotation by default
             this.annotations.add(LineAnnotation.rootAnnotation(lineNumber));
+            this.matching.add(-1);
         }
     }
 
@@ -134,6 +153,29 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
+         * Set the matching of line numbers between current file version and counterpart file version.
+         * @param currentRange The range of lines in the current file version
+         * @param counterpartRange The range of lines in the counterpart file version
+         */
+        public void setMatching(LineRange currentRange, LineRange counterpartRange) {
+            Assert.assertTrue(!consumed);
+            // They must span the same number of lines
+            int lineNumber = currentRange.fromInclusive();
+            int endNumber = currentRange.toExclusive();
+            int matchedLine = counterpartRange.fromInclusive();
+            int matchEnd = counterpartRange.toExclusive();
+
+            if (matchedLine != -1) {
+                // If there is a match, the matched regions must have the same size
+                Assert.assertEquals(endNumber-lineNumber, matchEnd-matchedLine);
+                // Set the matches
+                for (; lineNumber < currentRange.toExclusive(); lineNumber++, matchedLine++) {
+                    this.setMatching(lineNumber, matchedLine);
+                }
+            }
+        }
+
+        /**
          * Finish the mutation of the ground truth and return an instance of an immutable file ground truth.
          * After finishing the mutation, insert will throw an exception if it is called.
          *
@@ -141,6 +183,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
          */
         public Complete finishMutation() {
             this.consumed = true;
+            // Set the root matching to 0
+            if (!this.matching.isEmpty()) {
+                this.matching.set(0, 0);
+            }
             return new Complete(this);
         }
 
@@ -158,7 +204,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
      */
     public static class Complete extends FileGT {
         private final ArrayList<BlockAnnotation> aggregatedBlocks;
-        private final String csvText;
+        private final String csvPCText;
+        private final String csvMatchingText;
 
         /**
          * Initializes an immutable file ground truth with the given mutable ground truth.
@@ -168,7 +215,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private Complete(Mutable mutable) {
             super(mutable);
             aggregatedBlocks = aggregateBlocks(this);
-            csvText = csvLines(this);
+            csvPCText = csvPCLines(this);
+            csvMatchingText = csvMatchingLines(this);
         }
 
         /**
@@ -177,12 +225,30 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
          *
          * @return A String with the block annotations in KernelHaven's csv format
          */
-        private static String csvLines(Complete complete) {
+        private static String csvPCLines(Complete complete) {
             StringBuilder sb = new StringBuilder();
             for (BlockAnnotation block : complete.aggregatedBlocks) {
                 sb.append(complete.file);
                 sb.append(";1;");
                 sb.append(block.asCSVLine());
+                sb.append(System.lineSeparator());
+            }
+            return sb.toString();
+        }
+
+        /**
+         * Determines the textual representation of the line matchings as csv lines.
+         *
+         * @return A String with the line matchings in csv format
+         */
+        private static String csvMatchingLines(Complete complete) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < complete.matching.size(); i++) {
+                sb.append(complete.file);
+                sb.append(";");
+                sb.append(i);
+                sb.append(";");
+                sb.append(complete.matching.get(i));
                 sb.append(System.lineSeparator());
             }
             return sb.toString();
@@ -250,9 +316,16 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
          *
          * @return A String with the block annotations in KernelHaven's csv format
          */
-        public String csvLines() {
-            return this.csvText;
+        public String csvPCLines() {
+            return this.csvPCText;
         }
+
+        /**
+         * Returns the textual representation of the line matchings as csv lines which can be directly used for exporting.
+         *
+         * @return A String with the line matchings in csv format
+         */
+        public String csvMatchingLines() { return this.csvMatchingText; }
 
         /**
          * @return The list of block annotations for this file.

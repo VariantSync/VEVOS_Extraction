@@ -28,6 +28,8 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private static final String VARIABLES_FILE = "VARIABLES.txt";
     private static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
     private static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
+    private static final String CODE_MATCHING_CSV_BEFORE = "code-matching.before.spl.csv";
+    private static final String CODE_MATCHING_CSV_AFTER = "code-matching.after.spl.csv";
     public static int numProcessed = 0;
     private final ConcurrentHashMap<Long, ThreadBatch> threadBatches;
     private final Set<String> failedCommits;
@@ -122,11 +124,20 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         String variablesList = groundTruthBefore.combinedVariablesListAsString(groundTruthAfter);
         Serde.writeToFile(commitSaveDir.resolve(VARIABLES_FILE), variablesList);
 
-        String groundTruthAsCSVBefore = groundTruthBefore.asCSVString();
-        String groundTruthAsCSVAfter = groundTruthAfter.asCSVString();
+        String pcAsCSVBefore = groundTruthBefore.asPcCsvString();
+        String pcAsCSVAfter = groundTruthAfter.asPcCsvString();
+        String matchingAsCSVBefore = groundTruthBefore.asMatchingCsvString();
+        String matchingAsCSVAfter = groundTruthAfter.asMatchingCsvString();
+
         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_BEFORE),
-                        groundTruthAsCSVBefore);
-        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER), groundTruthAsCSVAfter);
+                        pcAsCSVBefore);
+        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER),
+                pcAsCSVAfter);
+
+        Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_BEFORE),
+                matchingAsCSVBefore);
+        Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_AFTER),
+                matchingAsCSVAfter);
 
         Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage());
 
