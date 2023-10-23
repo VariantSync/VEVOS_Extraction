@@ -87,7 +87,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
      * @param matchedLine The matching line number in the counterpart version of the file
      */
     protected void setMatching(int lineNumber, int matchedLine) {
-        Assert.assertTrue(this.matching.get(lineNumber) == -1 || this.matching.get(lineNumber) == matchedLine);
+        Assert.assertTrue(this.matching.get(lineNumber) == -1 || this.matching.get(lineNumber) == matchedLine,
+                "line number mismatch: " + this.matching.get(lineNumber) + " : " + lineNumber);
         this.matching.set(lineNumber, matchedLine);
     }
 
