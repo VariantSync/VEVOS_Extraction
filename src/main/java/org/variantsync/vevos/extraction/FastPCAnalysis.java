@@ -58,6 +58,10 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public void onFailedParse(Analysis analysis) {
         RevCommit commit = analysis.getCurrentCommit();
 
+        extractionFailed(commit);
+    }
+
+    private void extractionFailed(RevCommit commit) {
         synchronized (FastPCAnalysis.class) {
             Logger.warn("Was not able to extract ground truth for commit " + commit.getName());
             Serde.appendText(resultsRoot.resolve(ERROR_COMMIT_FILE), commit.getName() + "\n");
@@ -213,14 +217,23 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         }
 
         analysis.getCurrentVariationDiff().forAll(node -> {
-            // Logger.debug("Node: {}", node);
-            // If the file is not completely new, we consider the before case
-            if (!(changeType == DiffEntry.ChangeType.ADD)) {
-                PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE);
-            }
-            if (!(changeType == DiffEntry.ChangeType.DELETE)) {
-                // If the file has not been deleted, we consider the after case
-                PCAnalysis.analyzeNode(fileGTAfter, node, Time.AFTER);
+            try {
+                // Logger.debug("Node: {}", node);
+                // If the file is not completely new, we consider the before case
+                if (!(changeType == DiffEntry.ChangeType.ADD)) {
+                    PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE);
+                }
+                if (!(changeType == DiffEntry.ChangeType.DELETE)) {
+                    // If the file has not been deleted, we consider the after case
+                    PCAnalysis.analyzeNode(fileGTAfter, node, Time.AFTER);
+                }
+            } catch (MatchingException e) {
+                Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
+                        fileNameBefore,
+                        fileNameAfter,
+                        analysis.getCurrentCommit().getName());
+                Logger.error(e);
+                extractionFailed(analysis.getCurrentCommit());
             }
         });
 

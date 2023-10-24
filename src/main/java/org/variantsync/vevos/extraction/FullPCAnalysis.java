@@ -75,7 +75,14 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
         analysis.getCurrentVariationDiff().forAll(node -> {
 //            Logger.debug("Node: {}", node);
-            PCAnalysis.analyzeNode(fileGT, node, Time.AFTER);
+            try {
+                PCAnalysis.analyzeNode(fileGT, node, Time.AFTER);
+            } catch (MatchingException e) {
+            Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
+                    fileNameBefore,
+                    fileNameAfter,
+                    analysis.getCurrentCommit().getName());
+        }
         });
 
         return true;

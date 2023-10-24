@@ -86,9 +86,15 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
      * @param lineNumber The line number in the current version of the file
      * @param matchedLine The matching line number in the counterpart version of the file
      */
-    protected void setMatching(int lineNumber, int matchedLine) {
-        Assert.assertTrue(this.matching.get(lineNumber) == -1 || this.matching.get(lineNumber) == matchedLine,
-                "line number mismatch for file" + this.file + " -- " + this.matching.get(lineNumber) + " : " + lineNumber);
+    protected void setMatching(int lineNumber, int matchedLine) throws MatchingException {
+        if (this.file.equals("/dev/null")) {
+            // There are no valid matches for the 'null' file
+            return;
+        }
+        if (this.matching.get(lineNumber) != -1 && this.matching.get(lineNumber) != matchedLine) {
+            throw new MatchingException("line number mismatch for " + this.file + " -- " + lineNumber
+                    + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
+        }
         this.matching.set(lineNumber, matchedLine);
     }
 
@@ -158,7 +164,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
          * @param currentRange The range of lines in the current file version
          * @param counterpartRange The range of lines in the counterpart file version
          */
-        public void setMatching(LineRange currentRange, LineRange counterpartRange) {
+        public void setMatching(LineRange currentRange, LineRange counterpartRange) throws MatchingException {
             Assert.assertTrue(!consumed);
             // They must span the same number of lines
             int lineNumber = currentRange.fromInclusive();
@@ -168,7 +174,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
             if (matchedLine != -1) {
                 // If there is a match, the matched regions must have the same size
-                Assert.assertEquals(endNumber-lineNumber, matchEnd-matchedLine);
+                if(endNumber-lineNumber != matchEnd-matchedLine) {
+                    throw new MatchingException("line number mismatch for file" + this.file + " -- ; " +
+                            "ranges have different size " + (endNumber-lineNumber) + " : " + (matchEnd-matchedLine));
+                }
                 // Set the matches
                 for (; lineNumber < currentRange.toExclusive(); lineNumber++, matchedLine++) {
                     this.setMatching(lineNumber, matchedLine);

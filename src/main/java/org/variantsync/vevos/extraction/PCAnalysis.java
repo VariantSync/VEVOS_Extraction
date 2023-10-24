@@ -18,7 +18,7 @@ public interface PCAnalysis {
      * @param node   The node that is to be analyzed
      * @param time Whether we should handle the node as before or after the edit
      */
-    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time) {
+    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time) throws MatchingException {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
             return;
         }
