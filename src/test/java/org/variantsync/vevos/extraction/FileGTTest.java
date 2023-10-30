@@ -10,9 +10,9 @@ public class FileGTTest {
     public static FileGT.Complete simpleFileGT() {
         FileGT.Mutable unstableAfter = new FileGT.Mutable("");
 
-        unstableAfter.insert(new LineAnnotation(1, new FeatureMapping("True"), new PresenceCondition("True"), new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
-        unstableAfter.insert(new LineAnnotation(3, new FeatureMapping("True"), new PresenceCondition("True"), new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
-        unstableAfter.insert(new LineAnnotation(2, new FeatureMapping("True"), new PresenceCondition("True"), new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
+        unstableAfter.insert(new LineAnnotation(1, new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
+        unstableAfter.insert(new LineAnnotation(3, new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
+        unstableAfter.insert(new LineAnnotation(2, new FeatureMapping("True"), new PresenceCondition("True"), "", Collections.singleton("True")));
 
         return unstableAfter
                 .finishMutation();
