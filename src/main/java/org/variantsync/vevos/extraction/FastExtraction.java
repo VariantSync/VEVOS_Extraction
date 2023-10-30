@@ -1,8 +1,5 @@
 package org.variantsync.vevos.extraction;
 
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
@@ -15,7 +12,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
+import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
@@ -24,6 +22,8 @@ public class FastExtraction {
             = "extraction.print-enabled";
     public static final String GT_SAVE_DIR
             = "extraction.gt-save-dir";
+    public static final String IGNORE_PC_CHANGES
+            = "extraction.ignore-pc-changes";
     public static final String DATASET_FILE
             = "diff-detective.dataset-file";
     public static final String DD_OUTPUT_DIR
@@ -158,7 +158,7 @@ public class FastExtraction {
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             boolean printEnabled = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
 
-            FastPCAnalysis analysis = new FastPCAnalysis(printEnabled, resultsRoot);
+            FastPCAnalysis analysis = new FastPCAnalysis(printEnabled, resultsRoot, Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(

@@ -19,22 +19,17 @@ public final class BlockAnnotation implements Serializable {
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
     private static final Pattern semicolon = Pattern.compile(";");
-    private final FeatureMapping featureMappingBefore;
-    private final PresenceCondition presenceConditionBefore;
-    private final FeatureMapping featureMappingAfter;
-    private final PresenceCondition presenceConditionAfter;
+    private final FeatureMapping featureMapping;
+    private final PresenceCondition presenceCondition;
     private int lineStartInclusive;
     private int lineEndInclusive;
 
     public BlockAnnotation(int lineStartInclusive, int lineEndInclusive,
-                           FeatureMapping featureMappingBefore, PresenceCondition presenceConditionBefore,
-                           FeatureMapping featureMappingAfter, PresenceCondition presenceConditionAfter) {
+                           FeatureMapping featureMapping, PresenceCondition presenceCondition) {
         this.lineStartInclusive = lineStartInclusive;
         this.lineEndInclusive = lineEndInclusive;
-        this.featureMappingBefore = featureMappingBefore;
-        this.presenceConditionBefore = presenceConditionBefore;
-        this.featureMappingAfter = featureMappingAfter;
-        this.presenceConditionAfter = presenceConditionAfter;
+        this.featureMapping = featureMapping;
+        this.presenceCondition = presenceCondition;
     }
 
     public void setLineStartInclusive(int lineStartInclusive) {
@@ -60,47 +55,37 @@ public final class BlockAnnotation implements Serializable {
         BlockAnnotation that = (BlockAnnotation) o;
         return lineStartInclusive == that.lineStartInclusive
                 && lineEndInclusive == that.lineEndInclusive
-                && Objects.equals(featureMappingBefore, that.featureMappingBefore)
-                && Objects.equals(presenceConditionBefore, that.presenceConditionBefore)
-                && Objects.equals(featureMappingAfter, that.featureMappingAfter)
-                && Objects.equals(presenceConditionAfter, that.presenceConditionAfter);
+                && Objects.equals(featureMapping, that.featureMapping)
+                && Objects.equals(presenceCondition, that.presenceCondition);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(featureMappingBefore, presenceConditionBefore, featureMappingAfter, presenceConditionAfter, lineStartInclusive, lineEndInclusive);
+        return Objects.hash(featureMapping, presenceCondition, lineStartInclusive, lineEndInclusive);
     }
 
     public boolean annotationEquals(BlockAnnotation other) {
-        return this.featureMappingBefore.equals(other.featureMappingBefore)
-                && this.featureMappingAfter.equals(other.featureMappingAfter)
-                && this.presenceConditionBefore.equals(other.presenceConditionBefore)
-                && this.presenceConditionAfter.equals(other.presenceConditionAfter);
+        return this.featureMapping.equals(other.featureMapping)
+                && this.presenceCondition.equals(other.presenceCondition);
     }
 
     public boolean annotationEquals(LineAnnotation other) {
-        return this.featureMappingBefore.equals(other.featureMappingBefore())
-                && this.featureMappingAfter.equals(other.featureMappingAfter())
-                && this.presenceConditionBefore.equals(other.presenceConditionBefore())
-                && this.presenceConditionAfter.equals(other.presenceConditionAfter());
+        return this.featureMapping.equals(other.featureMapping())
+                && this.presenceCondition.equals(other.presenceCondition());
     }
 
     @Override
     public String toString() {
-        return "BlockAnnotation[" +
+        return "[" +
                 "lineStartInclusive=" + lineStartInclusive + ", " +
                 "lineEndExclusive=" + lineEndInclusive + ", " +
-                "featureMappingBefore=" + featureMappingBefore + ", " +
-                "presenceConditionBefore=" + presenceConditionBefore + ", " +
-                "featureMappingAfter=" + featureMappingAfter + ", " +
-                "presenceConditionAfter=" + presenceConditionAfter + ']';
+                "featureMapping=" + featureMapping + ", " +
+                "presenceCondition=" + presenceCondition + ']';
     }
 
     public String asCSVLine() {
-        return "%s;%s;%s;%s;%d;%d".formatted(normalizeCondition(this.featureMappingBefore.mapping()),
-                normalizeCondition(this.presenceConditionBefore.condition()),
-                normalizeCondition(this.featureMappingAfter.mapping()),
-                normalizeCondition(this.presenceConditionAfter.condition()),
+        return "%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping.mapping()),
+                normalizeCondition(this.presenceCondition.condition()),
                 this.lineStartInclusive,
                 this.lineEndInclusive);
     }

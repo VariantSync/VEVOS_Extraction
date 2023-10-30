@@ -34,13 +34,16 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private final ConcurrentHashMap<Long, ThreadBatch> threadBatches;
     private final Set<String> failedCommits;
     private final boolean printEnabled;
+
+    private final boolean ignorePCChanges;
     private final Path resultsRoot;
 
-    public FastPCAnalysis(boolean printEnabled, Path resultsRoot) {
+    public FastPCAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges) {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
         this.failedCommits = ConcurrentHashMap.newKeySet();
+        this.ignorePCChanges = ignorePCChanges;
         try {
             Files.createDirectories(resultsRoot);
         } catch (IOException e) {
@@ -49,9 +52,19 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         }
     }
 
-    private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
-                    HashMap<String, GroundTruth> groundTruthMapAfter) {
-
+    /**
+     * Prints the given ground truth to console.
+     *
+     * @param groundTruth GT to print
+     * @param commitName  The id of the commit for which the GT has been calculated
+     */
+    private static void print(GroundTruth groundTruth, String commitName) {
+        System.out.println();
+        System.out.printf("*****************   %s   ******************", commitName);
+        System.out.println();
+        for (String file : groundTruth.fileGTs().keySet()) {
+            System.out.println(groundTruth.get(file));
+        }
     }
 
     @Override
@@ -77,7 +90,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             FastPCAnalysis.numProcessed++;
             if (FastPCAnalysis.numProcessed % 1_000 == 0) {
                 Logger.info("End Processing of Commit ({}): {}", FastPCAnalysis.numProcessed,
-                                commit.name());
+                        commit.name());
             }
         }
 
@@ -94,9 +107,9 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
         // Complete all new or updated file ground truths
         GroundTruth groundTruthBefore = groundTruthMapBefore.getOrDefault(commit.getName(),
-                        new GroundTruth(new HashMap<>(), new HashSet<>()));
+                new GroundTruth(new HashMap<>(), new HashSet<>()));
         GroundTruth groundTruthAfter = groundTruthMapAfter.getOrDefault(commit.getName(),
-                        new GroundTruth(new HashMap<>(), new HashSet<>()));
+                new GroundTruth(new HashMap<>(), new HashSet<>()));
         if (groundTruthBefore.isEmpty() && groundTruthAfter.isEmpty()) {
             // Return early and do not save any data, if the ground truths are both empty.
             // In this case, no changes have been analyzed, and we are not interested in the commit's
@@ -134,7 +147,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         String matchingAsCSVAfter = groundTruthAfter.asMatchingCsvString();
 
         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_BEFORE),
-                        pcAsCSVBefore);
+                pcAsCSVBefore);
         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER),
                 pcAsCSVAfter);
 
@@ -146,10 +159,10 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage());
 
         Optional<String> parentIds = Arrays.stream(commit.getParents()).map(RevCommit::getName)
-                        .reduce((s, s2) -> s + " " + s2);
+                .reduce((s, s2) -> s + " " + s2);
         parentIds.ifPresentOrElse(
-                        s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s),
-                        () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), ""));
+                s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s),
+                () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), ""));
 
         synchronized (FastPCAnalysis.class) {
             Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
@@ -186,11 +199,11 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
 
         GroundTruth groundTruthBefore = groundTruthMapBefore.computeIfAbsent(
-                        analysis.getCurrentCommit().getName(),
-                        commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+                analysis.getCurrentCommit().getName(),
+                commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
         GroundTruth groundTruthAfter = groundTruthMapAfter.computeIfAbsent(
-                        analysis.getCurrentCommit().getName(),
-                        commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+                analysis.getCurrentCommit().getName(),
+                commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Show.diff(analysis.getCurrentVariationDiff()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
@@ -206,14 +219,14 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             fileGTBefore = null;
         } else {
             fileGTBefore = (FileGT.Mutable) groundTruthBefore.computeIfAbsent(fileNameBefore,
-                            k -> new FileGT.Mutable(fileNameBefore));
+                    k -> new FileGT.Mutable(fileNameBefore));
         }
         final FileGT.Mutable fileGTAfter;
         if (changeType == DiffEntry.ChangeType.DELETE) {
             fileGTAfter = null;
         } else {
             fileGTAfter = (FileGT.Mutable) groundTruthAfter.computeIfAbsent(fileNameAfter,
-                            k -> new FileGT.Mutable(fileNameAfter));
+                    k -> new FileGT.Mutable(fileNameAfter));
         }
 
         analysis.getCurrentVariationDiff().forAll(node -> {
@@ -221,11 +234,11 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
                 // Logger.debug("Node: {}", node);
                 // If the file is not completely new, we consider the before case
                 if (!(changeType == DiffEntry.ChangeType.ADD)) {
-                    PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE);
+                    PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE, ignorePCChanges);
                 }
                 if (!(changeType == DiffEntry.ChangeType.DELETE)) {
                     // If the file has not been deleted, we consider the after case
-                    PCAnalysis.analyzeNode(fileGTAfter, node, Time.AFTER);
+                    PCAnalysis.analyzeNode(fileGTAfter, node, Time.AFTER, ignorePCChanges);
                 }
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
@@ -240,20 +253,9 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
         return true;
     }
 
+    private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
+                               HashMap<String, GroundTruth> groundTruthMapAfter) {
 
-    /**
-     * Prints the given ground truth to console.
-     *
-     * @param groundTruth GT to print
-     * @param commitName The id of the commit for which the GT has been calculated
-     */
-    private static void print(GroundTruth groundTruth, String commitName) {
-        System.out.println();
-        System.out.printf("*****************   %s   ******************", commitName);
-        System.out.println();
-        for (String file : groundTruth.fileGTs().keySet()) {
-            System.out.println(groundTruth.get(file));
-        }
     }
 
 }

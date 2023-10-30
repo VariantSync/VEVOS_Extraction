@@ -1,7 +1,6 @@
 package org.variantsync.vevos.extraction;
 
 import org.prop4j.Node;
-import org.variantsync.diffdetective.util.Assert;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.DiffLinesLabel;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
@@ -15,11 +14,12 @@ public interface PCAnalysis {
     /**
      * Analyzes the given node and applies its annotation to the file's ground truth
      *
-     * @param fileGT The ground truth that is modified by analyzing the node
-     * @param node   The node that is to be analyzed
-     * @param time   Whether we should handle the node as before or after the edit
+     * @param fileGT          The ground truth that is modified by analyzing the node
+     * @param node            The node that is to be analyzed
+     * @param time            Whether we should handle the node as before or after the edit
+     * @param ignorePCChanges
      */
-    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time) throws MatchingException {
+    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time, boolean ignorePCChanges) throws MatchingException {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
             return;
         }
@@ -27,21 +27,16 @@ public interface PCAnalysis {
             return;
         }
 
-        Time beforeTime;
-        Time afterTime;
-        if (node.diffType == DiffType.NON) {
-            beforeTime = Time.BEFORE;
-            afterTime = Time.AFTER;
-        } else {
-            // In case of ADD or REM we can only use either BEFORE or AFTER, because the node only exists at one time
-            beforeTime = time;
-            afterTime = time;
-        }
+        Node featureMapping;
+        Node presenceCondition;
 
-        Node featureMappingBefore = node.getFeatureMapping(beforeTime).toCNF(false);
-        Node presenceConditionBefore = node.getPresenceCondition(beforeTime).toCNF(false);
-        Node featureMappingAfter = node.getFeatureMapping(afterTime).toCNF(false);
-        Node presenceConditionAfter = node.getPresenceCondition(afterTime).toCNF(false);
+        if (ignorePCChanges && node.diffType == DiffType.NON) {
+            featureMapping = node.getFeatureMapping(Time.BEFORE).toCNF(false);
+            presenceCondition = node.getPresenceCondition(Time.BEFORE).toCNF(false);
+        } else {
+            featureMapping = node.getFeatureMapping(time).toCNF(false);
+            presenceCondition = node.getPresenceCondition(time).toCNF(false);
+        }
 
         // The range of line numbers in which the artifact appears
         LineRange currentRange;
@@ -81,14 +76,14 @@ public interface PCAnalysis {
         }
 
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
-            // Sanity check: We assume that artifact nodes are processed after annotation nodes
-            if (fileGT.get(lineNumber) != null) {
-                Assert.assertFalse(fileGT.get(lineNumber).nodeType().equals("Artifact"));
+            LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
+            if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact")) {
+                // Never overwrite artifact pcs with annotation pcs
+                continue;
             }
             LineAnnotation annotation = new LineAnnotation(lineNumber,
-                    new FeatureMapping(featureMappingBefore.toString()), new PresenceCondition(presenceConditionBefore.toString()),
-                    new FeatureMapping(featureMappingAfter.toString()), new PresenceCondition(presenceConditionAfter.toString()),
-                    node.getNodeType().name, presenceConditionBefore.getUniqueContainedFeatures());
+                    new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
+                    node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
             fileGT.insert(annotation);
         }
     }

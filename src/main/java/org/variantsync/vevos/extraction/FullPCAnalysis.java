@@ -10,7 +10,9 @@ import org.variantsync.diffdetective.variation.diff.Time;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
 
 /**
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence conditions for each file,
@@ -20,10 +22,12 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public static int numProcessed = 0;
     private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Path diffDetectiveCache;
+    private final boolean ignorePCChanges;
 
-    public FullPCAnalysis(Path diffDetectiveCache) {
+    public FullPCAnalysis(Path diffDetectiveCache, boolean ignorePCChanges) {
         this.groundTruthMap = new Hashtable<>();
         this.diffDetectiveCache = diffDetectiveCache;
+        this.ignorePCChanges = ignorePCChanges;
     }
 
     @Override
@@ -76,13 +80,13 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
         analysis.getCurrentVariationDiff().forAll(node -> {
 //            Logger.debug("Node: {}", node);
             try {
-                PCAnalysis.analyzeNode(fileGT, node, Time.AFTER);
+                PCAnalysis.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
             } catch (MatchingException e) {
-            Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
-                    fileNameBefore,
-                    fileNameAfter,
-                    analysis.getCurrentCommit().getName());
-        }
+                Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
+                        fileNameBefore,
+                        fileNameAfter,
+                        analysis.getCurrentCommit().getName());
+            }
         });
 
         return true;

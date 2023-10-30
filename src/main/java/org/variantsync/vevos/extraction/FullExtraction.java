@@ -26,6 +26,8 @@ import java.util.function.BiFunction;
 public class FullExtraction {
     public static final String PRINT_ENABLED
             = "extraction.print-enabled";
+    public static final String IGNORE_PC_CHANGES
+            = "extraction.ignore-pc-changes";
     public static final String GT_SAVE_DIR
             = "extraction.gt-save-dir";
     public static final String DATASET_FILE
@@ -174,7 +176,7 @@ public class FullExtraction {
 
     private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
         return (repo, repoOutputDir) -> {
-            FullPCAnalysis analysis = new FullPCAnalysis(Path.of(diffDetectiveCache));
+            FullPCAnalysis analysis = new FullPCAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(

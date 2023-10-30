@@ -279,7 +279,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private static ArrayList<BlockAnnotation> aggregateBlocks(Complete complete) {
             ArrayList<BlockAnnotation> blocks = new ArrayList<>();
             // The root annotation is always true and covers all lines
-            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), new FeatureMapping("True"), new PresenceCondition("True"), new FeatureMapping("True"), new PresenceCondition("True"));
+            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), new FeatureMapping("True"), new PresenceCondition("True"));
 
             LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
             blockStack.push(rootBlock);
@@ -288,8 +288,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
                 if (blockStack.isEmpty()) {
                     // Push a new block onto the stack
-//                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMappingBefore(),
-//                            line.presenceConditionBefore(), line.featureMappingAfter(), line.presenceConditionAfter()));
+//                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(),
+//                            line.presenceCondition(), line.featureMappingAfter(), line.presenceConditionAfter()));
 //                    continue;
                     throw new IllegalStateException();
                 }
@@ -317,7 +317,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 // If the current line is in a new block
                 if (annotationChange) {
                     // Push a new block onto the stack
-                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMappingBefore(), line.presenceConditionBefore(), line.featureMappingAfter(), line.presenceConditionAfter()));
+                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
                 }
             }
             // Unwind the stack fully
