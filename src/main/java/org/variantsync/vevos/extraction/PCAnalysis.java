@@ -59,9 +59,6 @@ public interface PCAnalysis {
         int toLine = currentRange.toExclusive();
 
         if (node.isAnnotation()) {
-            // Mark the start and end of this annotation block
-            fileGT.markBlockStart(fromLine);
-            fileGT.markBlockEnd(toLine);
             // Grow the root mapping
             fileGT.growIfRequired(toLine);
         } else {
@@ -75,15 +72,25 @@ public interface PCAnalysis {
             fileGT.setMatching(currentRange, counterpartRange);
         }
 
+        // Also consider the #endif in case of an annotation
+        toLine = (node.isAnnotation() && !node.isRoot()) ? toLine+1 : toLine;
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
             LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
             if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact")) {
                 // Never overwrite artifact pcs with annotation pcs
                 continue;
             }
-            LineAnnotation annotation = new LineAnnotation(lineNumber,
-                    new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
-                    node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
+            LineAnnotation annotation;
+            if (node.isAnnotation() && ignorePCChanges) {
+                // We set the PC and Mapping of all macro lines to '0', i.e., 'false
+                annotation = new LineAnnotation(lineNumber,
+                        new FeatureMapping("0"), new PresenceCondition("0"),
+                        node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
+            } else {
+                annotation = new LineAnnotation(lineNumber,
+                        new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
+                        node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
+            }
             fileGT.insert(annotation);
         }
     }

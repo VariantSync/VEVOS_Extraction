@@ -17,9 +17,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     // i.e., the matching line numbers before or after the changes have been applied
     // a match is -1 if there is no counterpart
     protected final ArrayList<Integer> matching;
-    // Set of annotation block starts and ends
-    protected final HashSet<Integer> blockEnds;
-    protected final HashSet<Integer> blockStarts;
     // List of annotation for each line
     private final ArrayList<LineAnnotation> annotations;
     // The set of variables occurring in the annotations of this file
@@ -30,8 +27,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     protected FileGT(String file) {
         this.annotations = new ArrayList<>();
         this.matching = new ArrayList<>();
-        this.blockStarts = new HashSet<>();
-        this.blockEnds = new HashSet<>();
         this.consumed = false;
         this.file = file;
         this.variables = new HashSet<>();
@@ -40,8 +35,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     protected FileGT(FileGT other) {
         this.annotations = other.annotations;
         this.matching = other.matching;
-        this.blockStarts = other.blockStarts;
-        this.blockEnds = other.blockEnds;
         this.consumed = false;
         this.file = other.file;
         this.variables = other.variables;
@@ -206,13 +199,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             return new Complete(this);
         }
 
-        public void markBlockEnd(int lineNumber) {
-            this.blockEnds.add(lineNumber);
-        }
-
-        public void markBlockStart(int lineNumber) {
-            this.blockStarts.add(lineNumber);
-        }
     }
 
     /**
