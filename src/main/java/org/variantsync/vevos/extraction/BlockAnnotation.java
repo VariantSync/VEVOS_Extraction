@@ -19,16 +19,22 @@ public final class BlockAnnotation implements Serializable {
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
     private static final Pattern semicolon = Pattern.compile(";");
-    private final String featureMapping;
-    private final String presenceCondition;
+    private final FeatureMapping featureMappingBefore;
+    private final PresenceCondition presenceConditionBefore;
+    private final FeatureMapping featureMappingAfter;
+    private final PresenceCondition presenceConditionAfter;
     private int lineStartInclusive;
     private int lineEndInclusive;
 
-    public BlockAnnotation(int lineStartInclusive, int lineEndInclusive, String featureMapping, String presenceCondition) {
+    public BlockAnnotation(int lineStartInclusive, int lineEndInclusive,
+                           FeatureMapping featureMappingBefore, PresenceCondition presenceConditionBefore,
+                           FeatureMapping featureMappingAfter, PresenceCondition presenceConditionAfter) {
         this.lineStartInclusive = lineStartInclusive;
         this.lineEndInclusive = lineEndInclusive;
-        this.featureMapping = featureMapping;
-        this.presenceCondition = presenceCondition;
+        this.featureMappingBefore = featureMappingBefore;
+        this.presenceConditionBefore = presenceConditionBefore;
+        this.featureMappingAfter = featureMappingAfter;
+        this.presenceConditionAfter = presenceConditionAfter;
     }
 
     public void setLineStartInclusive(int lineStartInclusive) {
@@ -48,19 +54,35 @@ public final class BlockAnnotation implements Serializable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (BlockAnnotation) obj;
-        return this.lineStartInclusive == that.lineStartInclusive &&
-                this.lineEndInclusive == that.lineEndInclusive &&
-                Objects.equals(this.featureMapping, that.featureMapping) &&
-                Objects.equals(this.presenceCondition, that.presenceCondition);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        BlockAnnotation that = (BlockAnnotation) o;
+        return lineStartInclusive == that.lineStartInclusive
+                && lineEndInclusive == that.lineEndInclusive
+                && Objects.equals(featureMappingBefore, that.featureMappingBefore)
+                && Objects.equals(presenceConditionBefore, that.presenceConditionBefore)
+                && Objects.equals(featureMappingAfter, that.featureMappingAfter)
+                && Objects.equals(presenceConditionAfter, that.presenceConditionAfter);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(lineStartInclusive, lineEndInclusive, featureMapping, presenceCondition);
+        return Objects.hash(featureMappingBefore, presenceConditionBefore, featureMappingAfter, presenceConditionAfter, lineStartInclusive, lineEndInclusive);
+    }
+
+    public boolean annotationEquals(BlockAnnotation other) {
+        return this.featureMappingBefore.equals(other.featureMappingBefore)
+                && this.featureMappingAfter.equals(other.featureMappingAfter)
+                && this.presenceConditionBefore.equals(other.presenceConditionBefore)
+                && this.presenceConditionAfter.equals(other.presenceConditionAfter);
+    }
+
+    public boolean annotationEquals(LineAnnotation other) {
+        return this.featureMappingBefore.equals(other.featureMappingBefore())
+                && this.featureMappingAfter.equals(other.featureMappingAfter())
+                && this.presenceConditionBefore.equals(other.presenceConditionBefore())
+                && this.presenceConditionAfter.equals(other.presenceConditionAfter());
     }
 
     @Override
@@ -68,12 +90,19 @@ public final class BlockAnnotation implements Serializable {
         return "BlockAnnotation[" +
                 "lineStartInclusive=" + lineStartInclusive + ", " +
                 "lineEndExclusive=" + lineEndInclusive + ", " +
-                "featureMapping=" + featureMapping + ", " +
-                "presenceCondition=" + presenceCondition + ']';
+                "featureMappingBefore=" + featureMappingBefore + ", " +
+                "presenceConditionBefore=" + presenceConditionBefore + ", " +
+                "featureMappingAfter=" + featureMappingAfter + ", " +
+                "presenceConditionAfter=" + presenceConditionAfter + ']';
     }
 
     public String asCSVLine() {
-        return "%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping), normalizeCondition(this.presenceCondition), this.lineStartInclusive, this.lineEndInclusive);
+        return "%s;%s;%s;%s;%d;%d".formatted(normalizeCondition(this.featureMappingBefore.mapping()),
+                normalizeCondition(this.presenceConditionBefore.condition()),
+                normalizeCondition(this.featureMappingAfter.mapping()),
+                normalizeCondition(this.presenceConditionAfter.condition()),
+                this.lineStartInclusive,
+                this.lineEndInclusive);
     }
 
     /**

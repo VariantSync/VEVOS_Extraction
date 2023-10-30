@@ -8,18 +8,36 @@ import java.util.regex.Pattern;
 /**
  * The ground truth for the files of a repository at a specific commit (i.e., version).
  *
- * @param fileGTs The ground truths for each file
+ * @param fileGTs   The ground truths for each file
  * @param variables The set of variables that can appear in the presence conditions
  */
 public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables)
-                implements Serializable {
+        implements Serializable {
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");
     private static final Pattern semicolon = Pattern.compile(";");
 
+    private static String variablesListAsString(Set<String> variables) {
+        List<String> variablesList = new ArrayList<>(variables);
+        Collections.sort(variablesList);
+
+        StringBuilder sb = new StringBuilder();
+        for (String name : variablesList) {
+            if (name.equals("True") || name.equals("False")) {
+                continue;
+            }
+            name = name.replaceAll(variableStart.pattern(), "");
+            name = name.replaceAll(variableEnd.pattern(), "");
+            name = name.replaceAll(quotation.pattern(), "");
+            name = name.replaceAll(semicolon.pattern(), "SEMICOLON");
+            sb.append(name).append(System.lineSeparator());
+        }
+        return sb.toString();
+    }
+
     public FileGT computeIfAbsent(String file,
-                    Function<? super String, ? extends FileGT> mappingFunction) {
+                                  Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
 
@@ -65,27 +83,9 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
         return variablesListAsString(variables);
     }
 
-    private static String variablesListAsString(Set<String> variables) {
-        List<String> variablesList = new ArrayList<>(variables);
-        Collections.sort(variablesList);
-
-        StringBuilder sb = new StringBuilder();
-        for (String name : variablesList) {
-            if (name.equals("True") || name.equals("False")) {
-                continue;
-            }
-            name = name.replaceAll(variableStart.pattern(), "");
-            name = name.replaceAll(variableEnd.pattern(), "");
-            name = name.replaceAll(quotation.pattern(), "");
-            name = name.replaceAll(semicolon.pattern(), "SEMICOLON");
-            sb.append(name).append(System.lineSeparator());
-        }
-        return sb.toString();
-    }
-
     public String asPcCsvString() {
         return generateCsv(
-                "Path;File Condition;Block Condition;Presence Condition;start;end",
+                "Path;File Condition;Block Condition Before;Presence Condition Before;Block Condition After;Presence Condition After;start;end",
                 FileGT.Complete::csvPCLines
         );
     }

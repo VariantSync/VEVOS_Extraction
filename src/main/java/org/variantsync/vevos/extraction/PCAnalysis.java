@@ -1,6 +1,7 @@
 package org.variantsync.vevos.extraction;
 
 import org.prop4j.Node;
+import org.variantsync.diffdetective.util.Assert;
 import org.variantsync.diffdetective.util.LineRange;
 import org.variantsync.diffdetective.variation.DiffLinesLabel;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
@@ -16,7 +17,7 @@ public interface PCAnalysis {
      *
      * @param fileGT The ground truth that is modified by analyzing the node
      * @param node   The node that is to be analyzed
-     * @param time Whether we should handle the node as before or after the edit
+     * @param time   Whether we should handle the node as before or after the edit
      */
     static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time) throws MatchingException {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
@@ -25,8 +26,23 @@ public interface PCAnalysis {
         if (time == Time.AFTER && node.diffType == DiffType.REM) {
             return;
         }
-        Node featureMapping = node.getFeatureMapping(time).toCNF(false);
-        Node presenceCondition = node.getPresenceCondition(time).toCNF(false);
+
+        Time beforeTime;
+        Time afterTime;
+        if (node.diffType == DiffType.NON) {
+            beforeTime = Time.BEFORE;
+            afterTime = Time.AFTER;
+        } else {
+            // In case of ADD or REM we can only use either BEFORE or AFTER, because the node only exists at one time
+            beforeTime = time;
+            afterTime = time;
+        }
+
+        Node featureMappingBefore = node.getFeatureMapping(beforeTime).toCNF(false);
+        Node presenceConditionBefore = node.getPresenceCondition(beforeTime).toCNF(false);
+        Node featureMappingAfter = node.getFeatureMapping(afterTime).toCNF(false);
+        Node presenceConditionAfter = node.getPresenceCondition(afterTime).toCNF(false);
+
         // The range of line numbers in which the artifact appears
         LineRange currentRange;
         LineRange counterpartRange;
@@ -59,14 +75,21 @@ public interface PCAnalysis {
         }
 
         // Insert the annotations
-        if (node.isAnnotation()) {
-            for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
-                LineAnnotation annotation = new LineAnnotation(lineNumber, featureMapping.toString(), presenceCondition.toString(), node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
-                fileGT.insert(annotation);
-            }
-        } else {
+        if (!node.isAnnotation()) {
             // set the matching
             fileGT.setMatching(currentRange, counterpartRange);
+        }
+
+        for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
+            // Sanity check: We assume that artifact nodes are processed after annotation nodes
+            if (fileGT.get(lineNumber) != null) {
+                Assert.assertFalse(fileGT.get(lineNumber).nodeType().equals("Artifact"));
+            }
+            LineAnnotation annotation = new LineAnnotation(lineNumber,
+                    new FeatureMapping(featureMappingBefore.toString()), new PresenceCondition(presenceConditionBefore.toString()),
+                    new FeatureMapping(featureMappingAfter.toString()), new PresenceCondition(presenceConditionAfter.toString()),
+                    node.getNodeType().name, presenceConditionBefore.getUniqueContainedFeatures());
+            fileGT.insert(annotation);
         }
     }
 

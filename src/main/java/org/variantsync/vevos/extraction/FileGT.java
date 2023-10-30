@@ -1,5 +1,6 @@
 package org.variantsync.vevos.extraction;
 
+import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 import org.variantsync.diffdetective.util.LineRange;
 
@@ -12,17 +13,17 @@ import java.util.*;
 public class FileGT implements Iterable<LineAnnotation>, Serializable {
     // The name of the file (its relative path from the root of the repo)
     protected final String file;
-    // List of annotation for each line
-    private final ArrayList<LineAnnotation> annotations;
     // A matching of this file's lines to counterparts associated with the same commit
     // i.e., the matching line numbers before or after the changes have been applied
     // a match is -1 if there is no counterpart
     protected final ArrayList<Integer> matching;
-    // The set of variables occurring in the annotations of this file
-    private final Set<String> variables;
     // Set of annotation block starts and ends
     protected final HashSet<Integer> blockEnds;
     protected final HashSet<Integer> blockStarts;
+    // List of annotation for each line
+    private final ArrayList<LineAnnotation> annotations;
+    // The set of variables occurring in the annotations of this file
+    private final Set<String> variables;
     // We can only use the before mapping until its being mutated
     protected boolean consumed;
 
@@ -83,7 +84,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
     /**
      * Set the match for the given line number.
-     * @param lineNumber The line number in the current version of the file
+     *
+     * @param lineNumber  The line number in the current version of the file
      * @param matchedLine The matching line number in the counterpart version of the file
      */
     protected void setMatching(int lineNumber, int matchedLine) throws MatchingException {
@@ -92,7 +94,10 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             return;
         }
         if (this.matching.get(lineNumber) != -1 && this.matching.get(lineNumber) != matchedLine) {
-            throw new MatchingException("line number mismatch for " + this.file + " -- " + lineNumber
+            // TODO: Handle this case
+//            throw new MatchingException("line number mismatch for " + this.file + " -- " + lineNumber
+//                    + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
+            Logger.error("line number mismatch for " + this.file + " -- " + lineNumber
                     + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
         }
         this.matching.set(lineNumber, matchedLine);
@@ -161,7 +166,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
         /**
          * Set the matching of line numbers between current file version and counterpart file version.
-         * @param currentRange The range of lines in the current file version
+         *
+         * @param currentRange     The range of lines in the current file version
          * @param counterpartRange The range of lines in the counterpart file version
          */
         public void setMatching(LineRange currentRange, LineRange counterpartRange) throws MatchingException {
@@ -174,9 +180,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
             if (matchedLine != -1) {
                 // If there is a match, the matched regions must have the same size
-                if(endNumber-lineNumber != matchEnd-matchedLine) {
+                if (endNumber - lineNumber != matchEnd - matchedLine) {
                     throw new MatchingException("line number mismatch for file" + this.file + " -- ; " +
-                            "ranges have different size " + (endNumber-lineNumber) + " : " + (matchEnd-matchedLine));
+                            "ranges have different size " + (endNumber - lineNumber) + " : " + (matchEnd - matchedLine));
                 }
                 // Set the matches
                 for (; lineNumber < currentRange.toExclusive(); lineNumber++, matchedLine++) {
@@ -273,7 +279,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         private static ArrayList<BlockAnnotation> aggregateBlocks(Complete complete) {
             ArrayList<BlockAnnotation> blocks = new ArrayList<>();
             // The root annotation is always true and covers all lines
-            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), "True", "True");
+            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), new FeatureMapping("True"), new PresenceCondition("True"), new FeatureMapping("True"), new PresenceCondition("True"));
 
             LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
             blockStack.push(rootBlock);
@@ -282,12 +288,17 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
 
                 if (blockStack.isEmpty()) {
                     // Push a new block onto the stack
-                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
-                    continue;
+//                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMappingBefore(),
+//                            line.presenceConditionBefore(), line.featureMappingAfter(), line.presenceConditionAfter()));
+//                    continue;
+                    throw new IllegalStateException();
                 }
 
+                // Does the next line have a different annotation than the current block?
+                boolean annotationChange = !blockStack.peek().annotationEquals(line) && !blockStack.peek().equals(rootBlock);
+
                 // new block, we have to unwind the stack in reverse order to find all completed blocks
-                if (complete.blockEnds.contains(line.lineNumber())) {
+                if (annotationChange) {
                     // The current line is nested in retrieved block
                     // Collect a completed block
                     BlockAnnotation block = blockStack.pop();
@@ -295,11 +306,18 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                     blocks.add(block);
                 }
 
+                if (blockStack.peek() == null) {
+                    continue;
+                }
+
+                // Does the next line have a different annotation than the current block?
+                annotationChange = !blockStack.peek().annotationEquals(line);
+
                 Assert.assertTrue(blockStack.peekFirst() != null, () -> "%s\nProblem while processing line %d of file %s".formatted(complete.toString(), line.lineNumber(), complete.file));
                 // If the current line is in a new block
-                if (complete.blockStarts.contains(line.lineNumber())) {
+                if (annotationChange) {
                     // Push a new block onto the stack
-                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition()));
+                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMappingBefore(), line.presenceConditionBefore(), line.featureMappingAfter(), line.presenceConditionAfter()));
                 }
             }
             // Unwind the stack fully
@@ -335,7 +353,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
          *
          * @return A String with the line matchings in csv format
          */
-        public String csvMatchingLines() { return this.csvMatchingText; }
+        public String csvMatchingLines() {
+            return this.csvMatchingText;
+        }
 
         /**
          * @return The list of block annotations for this file.
