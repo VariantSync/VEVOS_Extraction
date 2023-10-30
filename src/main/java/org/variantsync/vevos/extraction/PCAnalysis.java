@@ -57,23 +57,18 @@ public interface PCAnalysis {
         }
         int fromLine = currentRange.fromInclusive();
         int toLine = currentRange.toExclusive();
+        // Also consider the #endif in case of an annotation
+        toLine = (node.isAnnotation() && !node.isRoot()) ? toLine+1 : toLine;
 
-        if (node.isAnnotation()) {
-            // Grow the root mapping
-            fileGT.growIfRequired(toLine);
-        } else {
-            // Grow the root mapping
-            fileGT.growIfRequired(toLine);
-        }
+        // Grow the root mapping
+        fileGT.growIfRequired(toLine);
 
-        // Insert the annotations
+        // Insert the matchings
         if (!node.isAnnotation()) {
             // set the matching
             fileGT.setMatching(currentRange, counterpartRange);
         }
 
-        // Also consider the #endif in case of an annotation
-        toLine = (node.isAnnotation() && !node.isRoot()) ? toLine+1 : toLine;
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
             LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
             if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact")) {
