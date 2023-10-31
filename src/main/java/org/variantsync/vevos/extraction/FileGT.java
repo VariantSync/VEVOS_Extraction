@@ -90,7 +90,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             // TODO: Handle this case
 //            throw new MatchingException("line number mismatch for " + this.file + " -- " + lineNumber
 //                    + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
-            Logger.error("line number mismatch for " + this.file + " -- " + lineNumber
+            Logger.debug("line number mismatch for " + this.file + " -- " + lineNumber
                     + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
         }
         this.matching.set(lineNumber, matchedLine);
