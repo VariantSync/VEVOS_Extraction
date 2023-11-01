@@ -30,7 +30,9 @@ public interface PCAnalysis {
         Node featureMapping;
         Node presenceCondition;
 
-        if (ignorePCChanges && node.diffType == DiffType.NON) {
+        if (node.isArtifact() && ignorePCChanges && node.diffType == DiffType.NON) {
+            // If an artifact is unchanged but has a new PC, we ignore the change by assigning it the same PC before and after
+            // which is the PC before the change
             featureMapping = node.getFeatureMapping(Time.BEFORE).toCNF(false);
             presenceCondition = node.getPresenceCondition(Time.BEFORE).toCNF(false);
         } else {
@@ -58,7 +60,7 @@ public interface PCAnalysis {
         int fromLine = currentRange.fromInclusive();
         int toLine = currentRange.toExclusive();
         // Also consider the #endif in case of an annotation
-        toLine = (node.isAnnotation() && !node.isRoot()) ? toLine+1 : toLine;
+        toLine = (node.isAnnotation() && !node.isRoot()) ? toLine + 1 : toLine;
 
         // Grow the root mapping
         fileGT.growIfRequired(toLine);
