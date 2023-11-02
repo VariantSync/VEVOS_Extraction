@@ -3,6 +3,7 @@ package org.variantsync.vevos.extraction;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
+import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
 import org.variantsync.vevos.extraction.gt.GroundTruth;
@@ -10,12 +11,71 @@ import org.variantsync.vevos.extraction.gt.GroundTruth;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.Properties;
+import java.util.function.BiConsumer;
 
 import static org.variantsync.vevos.extraction.ConfigProperties.*;
 
-public class ExecutionUtilities {
+public abstract class GroundTruthExtraction {
+    protected final Properties properties;
+
+    protected GroundTruthExtraction(Properties properties) {
+        this.properties = properties;
+    }
+
+    /**
+     * Main method to start the extraction.
+     *
+     * @param args Command-line options.
+     * @throws IOException When copying the log file fails.
+     */
+    public static void main(String[] args) throws IOException {
+        checkOS();
+
+        // Load the configuration
+        Properties properties = getProperties(getPropertiesFile(args));
+        // TODO: load dynamically
+        Class<?> extractionClass;
+        try {
+            extractionClass = determineExtractionClass(args);
+        } catch (ClassNotFoundException e) {
+            Logger.error("The class " + args[1] + " provided as program argument was not found.");
+            throw new RuntimeException(e);
+        }
+        GroundTruthExtraction extraction;
+        try {
+            extraction = initializeExtraction(extractionClass, properties);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("The required constructor does not exist for the specified class " + args[1]);
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+            Logger.error("Was not able to instantiate extraction class with the propterties " + args[0]
+                    + " and the class name " + args[1]);
+            throw new RuntimeException(e);
+        }
+
+        var options = diffdetectiveOptions(properties);
+        Logger.info("Starting SPL history analysis.");
+        extraction.run(options);
+    }
+
+    private static Class<?> determineExtractionClass(String... args) throws ClassNotFoundException {
+        if (args.length > 1) {
+            return Class.forName(args[1]);
+        } else {
+            Logger.error("The second program argument must specify a valid GroundTruthExtraction class.");
+            throw new IllegalArgumentException("The second program argument must specify a valid GroundTruthExtraction class.");
+        }
+    }
+
+    private static GroundTruthExtraction initializeExtraction(Class<?> extractionClass, Properties properties)
+            throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        Constructor<?> constructor = extractionClass.getDeclaredConstructor(Properties.class);
+        constructor.setAccessible(true); // If the constructor is not public
+        return (GroundTruthExtraction) constructor.newInstance(properties);
+    }
 
     /**
      * Loads the properties in the given file.
@@ -74,7 +134,6 @@ public class ExecutionUtilities {
     public static void checkOS() {
         boolean isWindows = System.getProperty("os.name")
                 .toLowerCase().startsWith("windows");
-        Logger.info("OS NAME: " + System.getProperty("os.name"));
         if (isWindows) {
             Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
                     "checked out correctly.");
@@ -124,4 +183,16 @@ public class ExecutionUtilities {
             System.out.println(groundTruth.get(file));
         }
     }
+
+    /**
+     * Starts the extraction.
+     *
+     * @param options The options for DiffDetective
+     * @throws IOException If an IO error occurs in DiffDetective
+     */
+    public void run(AnalysisRunner.Options options) throws IOException {
+        AnalysisRunner.run(options, extractionRunner());
+    }
+
+    protected abstract BiConsumer<Repository, Path> extractionRunner();
 }

@@ -4,7 +4,6 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.tinylog.Logger;
-import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.vevos.extraction.analysis.FullVariabilityAnalysis;
@@ -22,40 +21,22 @@ import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import static org.variantsync.vevos.extraction.gt.GroundTruth.*;
-import static org.variantsync.vevos.extraction.ExecutionUtilities.*;
 import static org.variantsync.vevos.extraction.ConfigProperties.*;
+import static org.variantsync.vevos.extraction.gt.GroundTruth.*;
 
 
-public class FullGroundTruthExtraction {
-    private final Properties properties;
+public class FullGroundTruthExtraction extends GroundTruthExtraction {
 
     public FullGroundTruthExtraction(Properties properties) {
-        this.properties = properties;
+        super(properties);
+        Logger.info("Starting full ground truth extraction that extracts a ground truth for all files of each commit.");
     }
 
-    /**
-     * Main method to start the extraction.
-     *
-     * @param args Command-line options.
-     * @throws IOException When copying the log file fails.
-     */
-    public static void main(String[] args) throws IOException {
-        checkOS();
-
-        // Load the configuration
-        Properties properties = getProperties(getPropertiesFile(args));
-        var extraction = new FullGroundTruthExtraction(properties);
-
-        var options = diffdetectiveOptions(properties);
-        Logger.info("Starting SPL history analysis.");
-        extraction.run(options);
-    }
-
-
-    private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
+    protected BiConsumer<Repository, Path> extractionRunner() {
         return (repo, repoOutputDir) -> {
-            FullVariabilityAnalysis analysis = new FullVariabilityAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
+            FullVariabilityAnalysis analysis =
+                    new FullVariabilityAnalysis(Path.of(properties.getProperty(DD_OUTPUT_DIR)),
+                            Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(
@@ -92,15 +73,6 @@ public class FullGroundTruthExtraction {
         };
     }
 
-    /**
-     * Starts the extraction.
-     *
-     * @param options The options for DiffDetective
-     * @throws IOException If an IO error occurs in DiffDetective
-     */
-    public void run(AnalysisRunner.Options options) throws IOException {
-        AnalysisRunner.run(options, buildRunner(properties.getProperty(DD_OUTPUT_DIR)));
-    }
 
     /**
      * Incrementally combines the ground truths from the first to the last commit. The ground truth for unmodified files
