@@ -6,8 +6,6 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.vevos.extraction.analysis.FastVariabilityAnalysis;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -15,7 +13,8 @@ import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import static org.variantsync.vevos.extraction.Config.*;
+import static org.variantsync.vevos.extraction.ConfigProperties.*;
+import static org.variantsync.vevos.extraction.ExecutionUtilities.*;
 
 public class FastGroundTruthExtraction {
     private final Properties properties;
@@ -31,7 +30,6 @@ public class FastGroundTruthExtraction {
      * @throws IOException When copying the log file fails.
      */
     public static void main(String[] args) throws IOException {
-
         checkOS();
 
         // Load the configuration
@@ -41,68 +39,6 @@ public class FastGroundTruthExtraction {
         var options = diffdetectiveOptions(properties);
         Logger.info("Starting SPL history analysis.");
         extraction.run(options);
-    }
-
-
-
-    /**
-     * Parses the file in which the properties are located from the arguments.
-     *
-     * @param args the arguments to parse
-     * @return the properties file
-     */
-    private static File getPropertiesFile(String[] args) {
-        File propertiesFile = null;
-        if (args.length > 0) {
-            propertiesFile = new File(args[0]);
-        }
-
-        if (propertiesFile == null) {
-            Logger.error("You must specify a .properties file as first argument");
-            quitOnError();
-        }
-
-        return propertiesFile;
-    }
-
-    /**
-     * Loads the properties in the given file.
-     *
-     * @param propertiesFile The file to load
-     * @return The loaded properties
-     */
-    private static Properties getProperties(File propertiesFile) {
-        Properties props = new Properties();
-        try (FileInputStream input = new FileInputStream(propertiesFile)) {
-            props.load(input);
-        } catch (IOException e) {
-            Logger.error("problem while loading properties");
-            Logger.error(e);
-            quitOnError();
-        }
-        return props;
-    }
-
-    /**
-     * Throws an error if the host OS is Windows.
-     */
-    private static void checkOS() {
-        boolean isWindows = System.getProperty("os.name")
-                .toLowerCase().startsWith("windows");
-        Logger.info("OS NAME: " + System.getProperty("os.name"));
-        if (isWindows) {
-            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
-                    "checked out correctly.");
-            quitOnError();
-        }
-    }
-
-    /**
-     * Logs an error message and quits the extraction with an exception.
-     */
-    public static void quitOnError() {
-        Logger.error("An error occurred and the program has to quit.");
-        throw new IllegalStateException("Not able to continue analysis due to previous error");
     }
 
     private BiConsumer<Repository, Path> buildRunner() {

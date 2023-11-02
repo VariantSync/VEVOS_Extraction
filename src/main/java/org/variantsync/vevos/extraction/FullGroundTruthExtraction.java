@@ -12,7 +12,6 @@ import org.variantsync.vevos.extraction.gt.GroundTruth;
 import org.variantsync.vevos.extraction.io.Serde;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -23,8 +22,9 @@ import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import static org.variantsync.vevos.extraction.Config.*;
 import static org.variantsync.vevos.extraction.gt.GroundTruth.*;
+import static org.variantsync.vevos.extraction.ExecutionUtilities.*;
+import static org.variantsync.vevos.extraction.ConfigProperties.*;
 
 
 public class FullGroundTruthExtraction {
@@ -41,7 +41,6 @@ public class FullGroundTruthExtraction {
      * @throws IOException When copying the log file fails.
      */
     public static void main(String[] args) throws IOException {
-
         checkOS();
 
         // Load the configuration
@@ -53,80 +52,6 @@ public class FullGroundTruthExtraction {
         extraction.run(options);
     }
 
-    /**
-     * Prints the given ground truth to console.
-     *
-     * @param groundTruth GT to print
-     * @param commitName  The id of the commit for which the GT has been calculated
-     */
-    private static void print(GroundTruth groundTruth, String commitName) {
-        System.out.println();
-        System.out.printf("*****************   %s   ******************", commitName);
-        System.out.println();
-        for (String file : groundTruth.fileGTs().keySet()) {
-            System.out.println(groundTruth.get(file));
-        }
-    }
-
-     /**
-     * Parses the file in which the properties are located from the arguments.
-     *
-     * @param args the arguments to parse
-     * @return the properties file
-     */
-    private static File getPropertiesFile(String[] args) {
-        File propertiesFile = null;
-        if (args.length > 0) {
-            propertiesFile = new File(args[0]);
-        }
-
-        if (propertiesFile == null) {
-            Logger.error("You must specify a .properties file as first argument");
-            quitOnError();
-        }
-
-        return propertiesFile;
-    }
-
-    /**
-     * Loads the properties in the given file.
-     *
-     * @param propertiesFile The file to load
-     * @return The loaded properties
-     */
-    private static Properties getProperties(File propertiesFile) {
-        Properties props = new Properties();
-        try (FileInputStream input = new FileInputStream(propertiesFile)) {
-            props.load(input);
-        } catch (IOException e) {
-            Logger.error("problem while loading properties");
-            Logger.error(e);
-            quitOnError();
-        }
-        return props;
-    }
-
-    /**
-     * Throws an error if the host OS is Windows.
-     */
-    private static void checkOS() {
-        boolean isWindows = System.getProperty("os.name")
-                .toLowerCase().startsWith("windows");
-        Logger.info("OS NAME: " + System.getProperty("os.name"));
-        if (isWindows) {
-            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
-                    "checked out correctly.");
-            quitOnError();
-        }
-    }
-
-    /**
-     * Logs an error message and quits the extraction with an exception.
-     */
-    public static void quitOnError() {
-        Logger.error("An error occurred and the program has to quit.");
-        throw new IllegalStateException("Not able to continue analysis due to previous error");
-    }
 
     private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
         return (repo, repoOutputDir) -> {
