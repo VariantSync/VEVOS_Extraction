@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.fast;
+package org.variantsync.vevos.extraction;
 
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
@@ -7,6 +7,7 @@ import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
+import org.variantsync.vevos.extraction.analysis.fast.FastVariabilityAnalysis;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,7 +18,7 @@ import java.util.Properties;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-public class FastExtraction {
+public class FastGroundTruthExtraction {
     public static final String PRINT_ENABLED
             = "extraction.print-enabled";
     public static final String GT_SAVE_DIR
@@ -38,7 +39,7 @@ public class FastExtraction {
             = "extraction.extract-code-matching";
     private final Properties properties;
 
-    public FastExtraction(Properties properties) {
+    public FastGroundTruthExtraction(Properties properties) {
         this.properties = properties;
     }
 
@@ -54,7 +55,7 @@ public class FastExtraction {
 
         // Load the configuration
         Properties properties = getProperties(getPropertiesFile(args));
-        var extraction = new FastExtraction(properties);
+        var extraction = new FastGroundTruthExtraction(properties);
 
         var options = diffdetectiveOptions(properties);
         Logger.info("Starting SPL history analysis.");
@@ -160,7 +161,7 @@ public class FastExtraction {
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             boolean printEnabled = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
 
-            FastGTExtraction analysis = new FastGTExtraction(printEnabled, resultsRoot,
+            FastVariabilityAnalysis analysis = new FastVariabilityAnalysis(printEnabled, resultsRoot,
                     Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),
                     Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
@@ -188,7 +189,7 @@ public class FastExtraction {
 
             Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), batchSize, availableProcessors);
 
-            FastGTExtraction.numProcessed = 0;
+            FastVariabilityAnalysis.numProcessed = 0;
         };
     }
 

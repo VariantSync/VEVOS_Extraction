@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.analysis;
 
 import org.prop4j.Node;
 import org.variantsync.diffdetective.util.LineRange;
@@ -11,7 +11,7 @@ import org.variantsync.vevos.extraction.error.MatchingException;
 
 import java.util.Map;
 
-public interface GTExtraction {
+public interface VariabilityAnalysis {
 
     /**
      * Analyzes the given node and applies its annotation to the file's ground truth

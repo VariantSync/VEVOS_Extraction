@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.full;
+package org.variantsync.vevos.extraction.analysis.full;
 
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -7,7 +7,7 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.editclass.proposed.ProposedEditClasses;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.vevos.extraction.GTExtraction;
+import org.variantsync.vevos.extraction.analysis.VariabilityAnalysis;
 import org.variantsync.vevos.extraction.common.FileGT;
 import org.variantsync.vevos.extraction.common.GroundTruth;
 import org.variantsync.vevos.extraction.error.MatchingException;
@@ -23,7 +23,7 @@ import java.util.Hashtable;
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence conditions for each file,
  * a list of all variables, and commit metadata.
  */
-public class FullPCAnalysis implements Analysis.Hooks, GTExtraction {
+public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnalysis {
     public static int numProcessed = 0;
     private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Path diffDetectiveCache;
@@ -31,7 +31,7 @@ public class FullPCAnalysis implements Analysis.Hooks, GTExtraction {
     // TODO: extract code matching during full analysis
     private final boolean extractCodeMatching;
 
-    public FullPCAnalysis(Path diffDetectiveCache, boolean ignorePCChanges, boolean extractCodeMatching) {
+    public FullVariabilityAnalysis(Path diffDetectiveCache, boolean ignorePCChanges, boolean extractCodeMatching) {
         this.groundTruthMap = new Hashtable<>();
         this.diffDetectiveCache = diffDetectiveCache;
         this.ignorePCChanges = ignorePCChanges;
@@ -47,13 +47,13 @@ public class FullPCAnalysis implements Analysis.Hooks, GTExtraction {
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Complete all new or updated file ground truths
-        GTExtraction.makeComplete(groundTruth);
+        VariabilityAnalysis.makeComplete(groundTruth);
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit.getName());
-        synchronized (FullPCAnalysis.class) {
-            FullPCAnalysis.numProcessed++;
-            if (FullPCAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("Finished Commit ({}): {}", FullPCAnalysis.numProcessed, commit.name());
+        synchronized (FullVariabilityAnalysis.class) {
+            FullVariabilityAnalysis.numProcessed++;
+            if (FullVariabilityAnalysis.numProcessed % 1_000 == 0) {
+                Logger.info("Finished Commit ({}): {}", FullVariabilityAnalysis.numProcessed, commit.name());
             }
         }
     }
@@ -88,7 +88,7 @@ public class FullPCAnalysis implements Analysis.Hooks, GTExtraction {
         analysis.getCurrentVariationDiff().forAll(node -> {
 //            Logger.debug("Node: {}", node);
             try {
-                GTExtraction.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
+                VariabilityAnalysis.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
                         fileNameBefore,

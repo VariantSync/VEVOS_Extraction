@@ -1,21 +1,21 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                       http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-	<!-- Adjust group id for anonymous projects -->
+    <!-- Adjust group id for anonymous projects -->
     <groupId>org.variantsync.vevos.extraction</groupId>
-	<!-- Adjust the project name -->
+    <!-- Adjust the project name -->
     <artifactId>Extraction</artifactId>
     <version>1.1.0</version>
 
     <properties>
         <!-- Adjust your java version here -->
         <java.version>19</java.version>
-		<!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
-		<path.to.fast>${project.groupId}.FastExtraction</path.to.fast>
-		<path.to.full>${project.groupId}.FullExtraction</path.to.full>
+        <!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
+        <path.to.fast>${project.groupId}.FastGroundTruthExtraction</path.to.fast>
+        <path.to.full>${project.groupId}.FullGroundTruthExtraction</path.to.full>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>

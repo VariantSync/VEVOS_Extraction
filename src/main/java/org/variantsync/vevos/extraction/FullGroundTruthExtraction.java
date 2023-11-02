@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.full;
+package org.variantsync.vevos.extraction;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -10,6 +10,7 @@ import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
+import org.variantsync.vevos.extraction.analysis.full.FullVariabilityAnalysis;
 import org.variantsync.vevos.extraction.common.GroundTruth;
 import org.variantsync.vevos.extraction.io.Serde;
 
@@ -26,7 +27,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 
-public class FullExtraction {
+public class FullGroundTruthExtraction {
     public static final String PRINT_ENABLED
             = "extraction.print-enabled";
     public static final String IGNORE_PC_CHANGES
@@ -48,7 +49,7 @@ public class FullExtraction {
     private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     private final Properties properties;
 
-    public FullExtraction(Properties properties) {
+    public FullGroundTruthExtraction(Properties properties) {
         this.properties = properties;
     }
 
@@ -64,7 +65,7 @@ public class FullExtraction {
 
         // Load the configuration
         Properties properties = getProperties(getPropertiesFile(args));
-        var extraction = new FullExtraction(properties);
+        var extraction = new FullGroundTruthExtraction(properties);
 
         var options = diffdetectiveOptions(properties);
         Logger.info("Starting SPL history analysis.");
@@ -181,7 +182,7 @@ public class FullExtraction {
 
     private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
         return (repo, repoOutputDir) -> {
-            FullPCAnalysis analysis = new FullPCAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)), Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
+            FullVariabilityAnalysis analysis = new FullVariabilityAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)), Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(
@@ -214,7 +215,7 @@ public class FullExtraction {
                     threadPool.shutdown();
                 }
             }
-            FullPCAnalysis.numProcessed = 0;
+            FullVariabilityAnalysis.numProcessed = 0;
         };
     }
 
