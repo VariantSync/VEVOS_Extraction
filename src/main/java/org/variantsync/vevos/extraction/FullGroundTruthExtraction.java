@@ -10,8 +10,8 @@ import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
-import org.variantsync.vevos.extraction.analysis.full.FullVariabilityAnalysis;
-import org.variantsync.vevos.extraction.common.GroundTruth;
+import org.variantsync.vevos.extraction.analysis.FullVariabilityAnalysis;
+import org.variantsync.vevos.extraction.gt.GroundTruth;
 import org.variantsync.vevos.extraction.io.Serde;
 
 import java.io.File;

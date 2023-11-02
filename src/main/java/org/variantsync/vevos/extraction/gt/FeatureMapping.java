@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.common;
+package org.variantsync.vevos.extraction.gt;
 
 public record FeatureMapping(String mapping) {
 

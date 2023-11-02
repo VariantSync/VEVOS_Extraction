@@ -7,7 +7,7 @@ import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
-import org.variantsync.vevos.extraction.analysis.fast.FastVariabilityAnalysis;
+import org.variantsync.vevos.extraction.analysis.FastVariabilityAnalysis;
 
 import java.io.File;
 import java.io.FileInputStream;

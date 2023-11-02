@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.common;
+package org.variantsync.vevos.extraction.gt;
 
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
@@ -114,7 +114,6 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     /**
-     *
      * @return A flag that states whether this ground truth has been consumed by completing it. If true, the ground truth
      * can no longer be changed.
      */

@@ -2,10 +2,10 @@ package org.variantsync.vevos.extraction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.variantsync.vevos.extraction.common.FeatureMapping;
-import org.variantsync.vevos.extraction.common.FileGT;
-import org.variantsync.vevos.extraction.common.LineAnnotation;
-import org.variantsync.vevos.extraction.common.PresenceCondition;
+import org.variantsync.vevos.extraction.gt.FeatureMapping;
+import org.variantsync.vevos.extraction.gt.FileGT;
+import org.variantsync.vevos.extraction.gt.LineAnnotation;
+import org.variantsync.vevos.extraction.gt.PresenceCondition;
 
 import java.util.Collections;
 

@@ -6,8 +6,8 @@ import org.variantsync.diffdetective.variation.DiffLinesLabel;
 import org.variantsync.diffdetective.variation.diff.DiffNode;
 import org.variantsync.diffdetective.variation.diff.DiffType;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.vevos.extraction.common.*;
 import org.variantsync.vevos.extraction.error.MatchingException;
+import org.variantsync.vevos.extraction.gt.*;
 
 import java.util.Map;
 

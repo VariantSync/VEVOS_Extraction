@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction.analysis.fast;
+package org.variantsync.vevos.extraction.analysis;
 
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -7,10 +7,9 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.editclass.proposed.ProposedEditClasses;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.variation.diff.Time;
-import org.variantsync.vevos.extraction.analysis.VariabilityAnalysis;
-import org.variantsync.vevos.extraction.common.FileGT;
-import org.variantsync.vevos.extraction.common.GroundTruth;
 import org.variantsync.vevos.extraction.error.MatchingException;
+import org.variantsync.vevos.extraction.gt.FileGT;
+import org.variantsync.vevos.extraction.gt.GroundTruth;
 import org.variantsync.vevos.extraction.io.Serde;
 
 import java.io.IOException;
