@@ -14,8 +14,12 @@ RUN mvn package || exit
 
 FROM openjdk:19-alpine
 
+ARG GROUP_ID
+ARG USER_ID
+
 # Create a user
-RUN adduser --disabled-password  --home /home/user --gecos '' user
+RUN addgroup -g $GROUP_ID user
+RUN adduser --disabled-password -G user -u $USER_ID --home /home/user --gecos '' user
 
 # Prepare the environment
 RUN apk update
@@ -70,5 +74,3 @@ RUN chmod +x fix-perms.sh
 RUN chmod +x extract.sh
 
 ENTRYPOINT ["./entrypoint.sh", "./extract.sh"]
-# calculon user
-USER 1015

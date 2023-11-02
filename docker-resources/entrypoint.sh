@@ -2,6 +2,7 @@
 if [ "$(id -u)" = "0" ]; then
   # running on a developer laptop as root
   ls -l
+  echo "adjusting permissions for user"
   ./fix-perms.sh -r -u user -g user /home/user
   exec gosu user "$@"
 else
