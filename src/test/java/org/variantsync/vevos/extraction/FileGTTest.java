@@ -2,6 +2,10 @@ package org.variantsync.vevos.extraction;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.variantsync.vevos.extraction.common.FeatureMapping;
+import org.variantsync.vevos.extraction.common.FileGT;
+import org.variantsync.vevos.extraction.common.LineAnnotation;
+import org.variantsync.vevos.extraction.common.PresenceCondition;
 
 import java.util.Collections;
 
@@ -25,17 +29,17 @@ public class FileGTTest {
         FileGT.Mutable unstableAfter = new FileGT.Mutable("");
         var stableAfter = unstableAfter.finishMutation();
 
-        Assertions.assertFalse(completeBefore.consumed);
-        Assertions.assertTrue(unstableAfter.consumed);
+        Assertions.assertFalse(completeBefore.isConsumed());
+        Assertions.assertTrue(unstableAfter.isConsumed());
 
-        Assertions.assertFalse(stableAfter.consumed);
+        Assertions.assertFalse(stableAfter.isConsumed());
     }
 
     @Test
     public void firstGroundTruth() {
         var stableAfter = simpleFileGT();
 
-        Assertions.assertFalse(stableAfter.consumed);
+        Assertions.assertFalse(stableAfter.isConsumed());
         Assertions.assertEquals(3, stableAfter.size());
         Assertions.assertEquals(1, stableAfter.get(0).lineNumber());
         Assertions.assertEquals(2, stableAfter.get(1).lineNumber());

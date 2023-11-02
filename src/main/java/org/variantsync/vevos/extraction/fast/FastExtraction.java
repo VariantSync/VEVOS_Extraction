@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.fast;
 
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
@@ -160,7 +160,7 @@ public class FastExtraction {
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             boolean printEnabled = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
 
-            FastPCAnalysis analysis = new FastPCAnalysis(printEnabled, resultsRoot,
+            FastGTExtraction analysis = new FastGTExtraction(printEnabled, resultsRoot,
                     Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),
                     Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
@@ -188,7 +188,7 @@ public class FastExtraction {
 
             Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), batchSize, availableProcessors);
 
-            FastPCAnalysis.numProcessed = 0;
+            FastGTExtraction.numProcessed = 0;
         };
     }
 

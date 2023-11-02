@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.io;
 
 import org.tinylog.Logger;
 

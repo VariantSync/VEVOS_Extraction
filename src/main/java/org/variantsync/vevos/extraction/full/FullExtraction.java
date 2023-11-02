@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.full;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -10,6 +10,8 @@ import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
+import org.variantsync.vevos.extraction.common.GroundTruth;
+import org.variantsync.vevos.extraction.io.Serde;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -179,7 +181,7 @@ public class FullExtraction {
 
     private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
         return (repo, repoOutputDir) -> {
-            FullPCAnalysis analysis = new FullPCAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),  Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
+            FullPCAnalysis analysis = new FullPCAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)), Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(

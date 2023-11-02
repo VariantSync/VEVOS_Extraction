@@ -1,8 +1,9 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.common;
 
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.util.Assert;
 import org.variantsync.diffdetective.util.LineRange;
+import org.variantsync.vevos.extraction.error.MatchingException;
 
 import java.io.Serializable;
 import java.util.*;
@@ -53,7 +54,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
      * @param index Index in the range of [0, annotation.size())
      * @return The annotation at the given index
      */
-    protected LineAnnotation get(int index) {
+    public LineAnnotation get(int index) {
         return this.annotations.get(index);
     }
 
@@ -110,6 +111,15 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             this.annotations.add(LineAnnotation.rootAnnotation(lineNumber));
             this.matching.add(-1);
         }
+    }
+
+    /**
+     *
+     * @return A flag that states whether this ground truth has been consumed by completing it. If true, the ground truth
+     * can no longer be changed.
+     */
+    public boolean isConsumed() {
+        return consumed;
     }
 
     @Override

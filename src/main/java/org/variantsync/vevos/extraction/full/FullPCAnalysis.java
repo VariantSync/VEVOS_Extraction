@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.full;
 
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -7,6 +7,11 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.editclass.proposed.ProposedEditClasses;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.variation.diff.Time;
+import org.variantsync.vevos.extraction.GTExtraction;
+import org.variantsync.vevos.extraction.common.FileGT;
+import org.variantsync.vevos.extraction.common.GroundTruth;
+import org.variantsync.vevos.extraction.error.MatchingException;
+import org.variantsync.vevos.extraction.io.Serde;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +23,7 @@ import java.util.Hashtable;
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence conditions for each file,
  * a list of all variables, and commit metadata.
  */
-public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
+public class FullPCAnalysis implements Analysis.Hooks, GTExtraction {
     public static int numProcessed = 0;
     private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Path diffDetectiveCache;
@@ -42,7 +47,7 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
         GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Complete all new or updated file ground truths
-        PCAnalysis.makeComplete(groundTruth);
+        GTExtraction.makeComplete(groundTruth);
         Serde.serialize(resultFile.toFile(), groundTruth);
         this.groundTruthMap.remove(commit.getName());
         synchronized (FullPCAnalysis.class) {
@@ -83,7 +88,7 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
         analysis.getCurrentVariationDiff().forAll(node -> {
 //            Logger.debug("Node: {}", node);
             try {
-                PCAnalysis.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
+                GTExtraction.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
                         fileNameBefore,

@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.common;
 
 import java.io.Serializable;
 import java.util.*;

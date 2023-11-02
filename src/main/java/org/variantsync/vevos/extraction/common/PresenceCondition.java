@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.common;
 
 public record PresenceCondition(String condition) {
     @Override

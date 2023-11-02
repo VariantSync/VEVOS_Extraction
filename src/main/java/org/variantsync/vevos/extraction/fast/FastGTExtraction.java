@@ -1,4 +1,4 @@
-package org.variantsync.vevos.extraction;
+package org.variantsync.vevos.extraction.fast;
 
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.revwalk.RevCommit;
@@ -7,6 +7,11 @@ import org.variantsync.diffdetective.analysis.Analysis;
 import org.variantsync.diffdetective.editclass.proposed.ProposedEditClasses;
 import org.variantsync.diffdetective.metadata.EditClassCount;
 import org.variantsync.diffdetective.variation.diff.Time;
+import org.variantsync.vevos.extraction.GTExtraction;
+import org.variantsync.vevos.extraction.common.FileGT;
+import org.variantsync.vevos.extraction.common.GroundTruth;
+import org.variantsync.vevos.extraction.error.MatchingException;
+import org.variantsync.vevos.extraction.io.Serde;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -19,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence
  * conditions for each file, a list of all variables, and commit metadata.
  */
-public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
+public class FastGTExtraction implements Analysis.Hooks, GTExtraction {
     private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
     private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
     private final static String EMPTY_COMMIT_FILE = "EMPTY_COMMITS.txt";
@@ -39,7 +44,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private final Path resultsRoot;
     private final boolean extractCodeMatching;
 
-    public FastPCAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges, boolean extractCodeMatching) {
+    public FastGTExtraction(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges, boolean extractCodeMatching) {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
@@ -77,7 +82,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     }
 
     private void extractionFailed(RevCommit commit) {
-        synchronized (FastPCAnalysis.class) {
+        synchronized (FastGTExtraction.class) {
             Logger.warn("Was not able to extract ground truth for commit " + commit.getName());
             Serde.appendText(resultsRoot.resolve(ERROR_COMMIT_FILE), commit.getName() + "\n");
             failedCommits.add(commit.getName());
@@ -88,10 +93,10 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
     public void endCommit(Analysis analysis) {
         RevCommit commit = analysis.getCurrentCommit();
 
-        synchronized (FastPCAnalysis.class) {
-            FastPCAnalysis.numProcessed++;
-            if (FastPCAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("End Processing of Commit ({}): {}", FastPCAnalysis.numProcessed,
+        synchronized (FastGTExtraction.class) {
+            FastGTExtraction.numProcessed++;
+            if (FastGTExtraction.numProcessed % 1_000 == 0) {
+                Logger.info("End Processing of Commit ({}): {}", FastGTExtraction.numProcessed,
                         commit.name());
             }
         }
@@ -116,7 +121,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             // Return early and do not save any data, if the ground truths are both empty.
             // In this case, no changes have been analyzed, and we are not interested in the commit's
             // data.
-            synchronized (FastPCAnalysis.class) {
+            synchronized (FastGTExtraction.class) {
                 Logger.debug("No code changes for " + commit.getName());
                 Serde.appendText(resultsRoot.resolve(EMPTY_COMMIT_FILE), commit.getName() + "\n");
                 failedCommits.add(commit.getName());
@@ -124,8 +129,8 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
             return;
         }
 
-        PCAnalysis.makeComplete(groundTruthBefore);
-        PCAnalysis.makeComplete(groundTruthAfter);
+        GTExtraction.makeComplete(groundTruthBefore);
+        GTExtraction.makeComplete(groundTruthAfter);
 
         if (printEnabled) {
             print(groundTruthBefore, commit.getName());
@@ -169,7 +174,7 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
                 s -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), s),
                 () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), ""));
 
-        synchronized (FastPCAnalysis.class) {
+        synchronized (FastGTExtraction.class) {
             Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n");
         }
 
@@ -239,11 +244,11 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
                 // Logger.debug("Node: {}", node);
                 // If the file is not completely new, we consider the before case
                 if (!(changeType == DiffEntry.ChangeType.ADD)) {
-                    PCAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE, ignorePCChanges);
+                    GTExtraction.analyzeNode(fileGTBefore, node, Time.BEFORE, ignorePCChanges);
                 }
                 if (!(changeType == DiffEntry.ChangeType.DELETE)) {
                     // If the file has not been deleted, we consider the after case
-                    PCAnalysis.analyzeNode(fileGTAfter, node, Time.AFTER, ignorePCChanges);
+                    GTExtraction.analyzeNode(fileGTAfter, node, Time.AFTER, ignorePCChanges);
                 }
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
