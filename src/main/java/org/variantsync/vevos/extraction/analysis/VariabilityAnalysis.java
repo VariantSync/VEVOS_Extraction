@@ -54,10 +54,8 @@ public interface VariabilityAnalysis {
                 currentRange = node.getLinesAtTime(Time.AFTER);
                 counterpartRange = node.getLinesAtTime(Time.BEFORE);
             }
-            default -> {
-                // Because Java cannot assess statically that this case will never occur *sigh*
-                throw new IllegalStateException();
-            }
+            default -> // Because Java cannot assess statically that this case will never occur *sigh*
+                    throw new IllegalStateException();
         }
         int fromLine = currentRange.fromInclusive();
         int toLine = currentRange.toExclusive();

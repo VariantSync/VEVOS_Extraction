@@ -19,21 +19,13 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.variantsync.vevos.extraction.gt.GroundTruth.*;
+
 /**
  * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence
  * conditions for each file, a list of all variables, and commit metadata.
  */
 public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnalysis {
-    private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
-    private final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
-    private final static String EMPTY_COMMIT_FILE = "EMPTY_COMMITS.txt";
-    private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
-    private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
-    private static final String VARIABLES_FILE = "VARIABLES.txt";
-    private static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
-    private static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
-    private static final String CODE_MATCHING_CSV_BEFORE = "code-matching.before.spl.csv";
-    private static final String CODE_MATCHING_CSV_AFTER = "code-matching.after.spl.csv";
     public static int numProcessed = 0;
     private final ConcurrentHashMap<Long, ThreadBatch> threadBatches;
     private final Set<String> failedCommits;

@@ -6,10 +6,7 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.tinylog.Logger;
 import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.analysis.Analysis;
-import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
-import org.variantsync.diffdetective.diff.git.DiffFilter;
-import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
 import org.variantsync.vevos.extraction.analysis.FullVariabilityAnalysis;
 import org.variantsync.vevos.extraction.gt.GroundTruth;
 import org.variantsync.vevos.extraction.io.Serde;
@@ -26,27 +23,11 @@ import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
+import static org.variantsync.vevos.extraction.Config.*;
+import static org.variantsync.vevos.extraction.gt.GroundTruth.*;
+
 
 public class FullGroundTruthExtraction {
-    public static final String PRINT_ENABLED
-            = "extraction.print-enabled";
-    public static final String IGNORE_PC_CHANGES
-            = "extraction.ignore-pc-changes";
-    public static final String EXTRACT_CODE_MATCHING
-            = "extraction.extract-code-matching";
-    public static final String GT_SAVE_DIR
-            = "extraction.gt-save-dir";
-    public static final String DATASET_FILE
-            = "diff-detective.dataset-file";
-    public static final String DD_OUTPUT_DIR
-            = "diff-detective.output-dir";
-    public static final String REPO_SAVE_DIR
-            = "diff-detective.repo-storage-dir";
-    private final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
-    private static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
-    private static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
-    private static final String VARIABLES_FILE = "VARIABLES.txt";
-    private static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     private final Properties properties;
 
     public FullGroundTruthExtraction(Properties properties) {
@@ -87,40 +68,7 @@ public class FullGroundTruthExtraction {
         }
     }
 
-    /**
-     * Options for the execution of DiffDetective
-     *
-     * @param properties The properties loaded by main()
-     * @return The options instance
-     */
-    public static AnalysisRunner.Options diffdetectiveOptions(Properties properties) {
-
-        return new AnalysisRunner.Options(
-                Path.of(properties.getProperty(REPO_SAVE_DIR)),
-                Path.of(properties.getProperty(DD_OUTPUT_DIR)),
-                Path.of(properties.getProperty(DATASET_FILE)),
-                repo -> {
-                    final PatchDiffParseOptions repoDefault = repo.getParseOptions();
-                    return new PatchDiffParseOptions(
-                            PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
-                            new VariationDiffParseOptions(
-                                    repoDefault.variationDiffParseOptions().annotationParser(),
-                                    false,
-                                    false
-                            )
-                    );
-                },
-                repo -> new DiffFilter.Builder()
-                        .allowMerge(true)
-                        // TODO: make configurable
-                        .allowedFileExtensions("h", "hpp", "c", "cpp")
-                        .build(),
-                true,
-                false
-        );
-    }
-
-    /**
+     /**
      * Parses the file in which the properties are located from the arguments.
      *
      * @param args the arguments to parse
@@ -182,7 +130,7 @@ public class FullGroundTruthExtraction {
 
     private BiConsumer<Repository, Path> buildRunner(String diffDetectiveCache) {
         return (repo, repoOutputDir) -> {
-            FullVariabilityAnalysis analysis = new FullVariabilityAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)), Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
+            FullVariabilityAnalysis analysis = new FullVariabilityAnalysis(Path.of(diffDetectiveCache), Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(
@@ -292,6 +240,14 @@ public class FullGroundTruthExtraction {
                     () -> Serde.writeToFile(commitSaveDir.resolve(COMMIT_PARENTS_FILE), "")));
 
             threadPool.submit(() -> Serde.appendText(resultsRoot.resolve(SUCCESS_COMMIT_FILE), commit.getName() + "\n"));
+
+            if (Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING))) {
+                String matchingAsCSV = completedGroundTruth.asMatchingCsvString();
+
+                threadPool.submit(() -> Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV),
+                        matchingAsCSV));
+            }
+
             if (processedCount % 1_000 == 0) {
                 Logger.info("Saved ground truth for commit {} of {}", processedCount + 1, commits.size());
             }

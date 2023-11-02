@@ -13,6 +13,23 @@ import java.util.regex.Pattern;
  */
 public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables)
         implements Serializable {
+    // Constant file names of the ground truth
+    public final static String SUCCESS_COMMIT_FILE = "SUCCESS_COMMITS.txt";
+    public final static String ERROR_COMMIT_FILE = "ERROR_COMMITS.txt";
+    public final static String EMPTY_COMMIT_FILE = "EMPTY_COMMITS.txt";
+    public static final String COMMIT_PARENTS_FILE = "PARENTS.txt";
+    public static final String COMMIT_MESSAGE_FILE = "MESSAGE.txt";
+    public static final String VARIABLES_FILE = "VARIABLES.txt";
+    // Used by the full extraction, because there is only one set of PCs for each commit
+    public static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
+    public static final String CODE_MATCHING_CSV = "code-matching.spl.csv";
+    // Used by the fast extraction, because there is one set for before and after changes for each commit
+    public static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
+    public static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
+    public static final String CODE_MATCHING_CSV_BEFORE = "code-matching.before.spl.csv";
+    public static final String CODE_MATCHING_CSV_AFTER = "code-matching.after.spl.csv";
+
+    // Patterns for normalizing variables
     private static final Pattern variableStart = Pattern.compile("\\$\\{");
     private static final Pattern variableEnd = Pattern.compile("}");
     private static final Pattern quotation = Pattern.compile("\"");

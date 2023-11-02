@@ -27,14 +27,11 @@ public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
     private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Path diffDetectiveCache;
     private final boolean ignorePCChanges;
-    // TODO: extract code matching during full analysis
-    private final boolean extractCodeMatching;
 
-    public FullVariabilityAnalysis(Path diffDetectiveCache, boolean ignorePCChanges, boolean extractCodeMatching) {
+    public FullVariabilityAnalysis(Path diffDetectiveCache, boolean ignorePCChanges) {
         this.groundTruthMap = new Hashtable<>();
         this.diffDetectiveCache = diffDetectiveCache;
         this.ignorePCChanges = ignorePCChanges;
-        this.extractCodeMatching = extractCodeMatching;
     }
 
     @Override
