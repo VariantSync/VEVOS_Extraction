@@ -37,13 +37,15 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
     private final boolean ignorePCChanges;
     private final Path resultsRoot;
+    private final boolean extractCodeMatching;
 
-    public FastPCAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges) {
+    public FastPCAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges, boolean extractCodeMatching) {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
         this.failedCommits = ConcurrentHashMap.newKeySet();
         this.ignorePCChanges = ignorePCChanges;
+        this.extractCodeMatching = extractCodeMatching;
         try {
             Files.createDirectories(resultsRoot);
         } catch (IOException e) {
@@ -143,18 +145,21 @@ public class FastPCAnalysis implements Analysis.Hooks, PCAnalysis {
 
         String pcAsCSVBefore = groundTruthBefore.asPcCsvString();
         String pcAsCSVAfter = groundTruthAfter.asPcCsvString();
-        String matchingAsCSVBefore = groundTruthBefore.asMatchingCsvString();
-        String matchingAsCSVAfter = groundTruthAfter.asMatchingCsvString();
 
         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_BEFORE),
                 pcAsCSVBefore);
         Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER),
                 pcAsCSVAfter);
 
-        Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_BEFORE),
-                matchingAsCSVBefore);
-        Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_AFTER),
-                matchingAsCSVAfter);
+        if (extractCodeMatching) {
+            String matchingAsCSVBefore = groundTruthBefore.asMatchingCsvString();
+            String matchingAsCSVAfter = groundTruthAfter.asMatchingCsvString();
+
+            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_BEFORE),
+                    matchingAsCSVBefore);
+            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_AFTER),
+                    matchingAsCSVAfter);
+        }
 
         Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage());
 

@@ -34,6 +34,8 @@ public class FastExtraction {
             = "diff-detective.num-threads";
     public static final String BATCH_SIZE
             = "diff-detective.batch-size";
+    private static final String EXTRACT_CODE_MATCHING
+            = "extraction.extract-code-matching";
     private final Properties properties;
 
     public FastExtraction(Properties properties) {
@@ -158,7 +160,9 @@ public class FastExtraction {
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             boolean printEnabled = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
 
-            FastPCAnalysis analysis = new FastPCAnalysis(printEnabled, resultsRoot, Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)));
+            FastPCAnalysis analysis = new FastPCAnalysis(printEnabled, resultsRoot,
+                    Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),
+                    Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
             final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
                     "PCAnalysis",
                     List.of(
@@ -169,14 +173,14 @@ public class FastExtraction {
             );
             final int availableProcessors;
             String numThreads = this.properties.getProperty(NUM_THREADS);
-            if (numThreads == null || numThreads.trim().equals("") || numThreads.trim().equals("0")) {
+            if (numThreads == null || numThreads.trim().isEmpty() || numThreads.trim().equals("0")) {
                 availableProcessors = Runtime.getRuntime().availableProcessors();
             } else {
                 availableProcessors = Integer.parseInt(numThreads);
             }
             final int batchSize;
             String configuredSize = this.properties.getProperty(BATCH_SIZE);
-            if (configuredSize == null || configuredSize.trim().equals("") || configuredSize.trim().equals("0")) {
+            if (configuredSize == null || configuredSize.trim().isEmpty() || configuredSize.trim().equals("0")) {
                 batchSize = 256;
             } else {
                 batchSize = Integer.parseInt(configuredSize);

@@ -17,7 +17,7 @@ public interface PCAnalysis {
      * @param fileGT          The ground truth that is modified by analyzing the node
      * @param node            The node that is to be analyzed
      * @param time            Whether we should handle the node as before or after the edit
-     * @param ignorePCChanges
+     * @param ignorePCChanges Whether changes to only the presence condition should be ignored
      */
     static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time, boolean ignorePCChanges) throws MatchingException {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
@@ -65,9 +65,8 @@ public interface PCAnalysis {
         // Grow the root mapping
         fileGT.growIfRequired(toLine);
 
-        // Insert the matchings
+        // Insert the matching for artifacts
         if (!node.isAnnotation()) {
-            // set the matching
             fileGT.setMatching(currentRange, counterpartRange);
         }
 

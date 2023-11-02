@@ -23,11 +23,14 @@ public class FullPCAnalysis implements Analysis.Hooks, PCAnalysis {
     private final Hashtable<String, GroundTruth> groundTruthMap;
     private final Path diffDetectiveCache;
     private final boolean ignorePCChanges;
+    // TODO: extract code matching during full analysis
+    private final boolean extractCodeMatching;
 
-    public FullPCAnalysis(Path diffDetectiveCache, boolean ignorePCChanges) {
+    public FullPCAnalysis(Path diffDetectiveCache, boolean ignorePCChanges, boolean extractCodeMatching) {
         this.groundTruthMap = new Hashtable<>();
         this.diffDetectiveCache = diffDetectiveCache;
         this.ignorePCChanges = ignorePCChanges;
+        this.extractCodeMatching = extractCodeMatching;
     }
 
     @Override
