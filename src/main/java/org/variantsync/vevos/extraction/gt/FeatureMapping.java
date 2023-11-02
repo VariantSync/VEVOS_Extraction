@@ -1,6 +1,8 @@
 package org.variantsync.vevos.extraction.gt;
 
-public record FeatureMapping(String mapping) {
+import java.io.Serializable;
+
+public record FeatureMapping(String mapping) implements Serializable {
 
     @Override
     public String toString() {
