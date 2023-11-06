@@ -102,7 +102,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
 
     public String asPcCsvString() {
         return generateCsv(
-                "Path;File Condition;Block Condition;Presence Condition;start;end",
+                "Path;File Condition;Block Condition;Line Type;Presence Condition;start;end",
                 FileGT.Complete::csvPCLines
         );
     }

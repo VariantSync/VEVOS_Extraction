@@ -71,22 +71,20 @@ public interface VariabilityAnalysis {
         }
 
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
-            LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
+            LineAnnotation existingAnnotation = fileGT.get(lineNumber);
             if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact") && node.isAnnotation()) {
                 // Never overwrite artifact pcs with annotation pcs
                 continue;
             }
-            LineAnnotation annotation;
-            if (node.isAnnotation() && ignorePCChanges) {
-                // We set the PC and Mapping of all macro lines to '0', i.e., 'false
-                annotation = new LineAnnotation(lineNumber,
-                        new FeatureMapping("0"), new PresenceCondition("0"),
-                        node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
-            } else {
-                annotation = new LineAnnotation(lineNumber,
-                        new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
-                        node.getNodeType().name, presenceCondition.getUniqueContainedFeatures());
+            String nodeType = node.getNodeType().name;
+            if (node.isAnnotation() && lineNumber == toLine - 1) {
+                // The last line of any annotation is the 'endif'
+                // If it is an else, or elif, it will be overwritten by the next node
+                nodeType = "endif";
             }
+            LineAnnotation annotation = new LineAnnotation(lineNumber,
+                    new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
+                    nodeType, presenceCondition.getUniqueContainedFeatures());
             fileGT.insert(annotation);
         }
     }
