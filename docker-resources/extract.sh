@@ -29,16 +29,18 @@ else
     PROPS=without_linux.properties
 fi
 
+JAR=Extraction-jar-with-dependencies.jar
+
 if [ "$1" == 'fast' ] || [ "$2" == 'fast' ]
 then
-    JAR=FastExtraction-jar-with-dependencies.jar
+    EX_TYPE=org.variantsync.vevos.extraction.FastGroundTruthExtraction
 elif [ "$1" == 'full' ] || [ "$2" == 'full' ]
 then
-    JAR=FullExtraction-jar-with-dependencies.jar
+    EX_TYPE=org.variantsync.vevos.extraction.FullGroundTruthExtraction
 else
     echo "You either have to select the 'fast' or the 'full' extraction. See --help for more information"
     exit 1
 fi
 
-java -Xmx128g -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS
-#java -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS
+java -Xmx128g -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS $EX_TYPE
+#java -jar -Dtinylog.configuration=/home/user/tinylog.properties $JAR $PROPS $EX_TYPE
