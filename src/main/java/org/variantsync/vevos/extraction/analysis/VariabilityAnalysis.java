@@ -71,7 +71,7 @@ public interface VariabilityAnalysis {
         }
 
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
-            LineAnnotation existingAnnotation = fileGT.get(lineNumber);
+            LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
             if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact") && node.isAnnotation()) {
                 // Never overwrite artifact pcs with annotation pcs
                 continue;
