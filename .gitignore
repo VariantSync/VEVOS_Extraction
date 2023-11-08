@@ -20,3 +20,9 @@ __pycache__
 */latex/*.synctex.gz
 /out/
 /src/main/resources/META-INF/
+/results/
+/log.txt
+/warn.txt
+.classpath
+.project
+/logs/

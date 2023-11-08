@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM alpine:3.14
+FROM openjdk:19-alpine
 
 # Prepare the environment
 RUN apk add maven git
@@ -12,53 +12,65 @@ COPY pom.xml .
 RUN mvn package || exit
 
 
-FROM ubuntu:20.04
+FROM openjdk:19-alpine
+
+ARG GROUP_ID
+ARG USER_ID
 
 # Create a user
-RUN adduser --disabled-password  --home /home/user --gecos '' user
+RUN addgroup -g $GROUP_ID user
+RUN adduser --disabled-password -G user -u $USER_ID --home /home/user --gecos '' user
 
 # Prepare the environment
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata
-RUN apt-get install -y --no-install-recommends build-essential libelf-dev libssl-dev flex bison libselinux1-dev git
+RUN apk update
+RUN apk add git bash
 
-# Setup working directory
-WORKDIR /resources
-COPY ./docker-resources/ubuntu-repos.txt .
 
-# Install jdk-8 and gcc-4.4
-RUN apt-get remove -y openjdk-*
-RUN apt-get remove -y gcc
-RUN apt-get install -y --no-install-recommends openjdk-8-jdk
-RUN cat ubuntu-repos.txt >> /etc/apt/sources.list
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc-4.4
-RUN ln -s /bin/gcc-4.4 /bin/gcc
-RUN rm -rf Extraction
-RUN gcc --version
-RUN java -version
-RUN apt-get install -y --no-install-recommends bc
+
+ENV GOSU_VERSION 1.16
+RUN set -eux; \
+    \
+    apk add --no-cache --virtual .gosu-deps \
+    ca-certificates \
+    dpkg \
+    gnupg \
+    ; \
+    \
+    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+    wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
+    wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
+    \
+    # verify the signature
+    export GNUPGHOME="$(mktemp -d)"; \
+    gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4; \
+    gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+    command -v gpgconf && gpgconf --kill all || :; \
+    rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc; \
+    \
+    # clean up fetch dependencies
+    apk del --no-network .gosu-deps; \
+    \
+    chmod +x /usr/local/bin/gosu; \
+    # verify that the binary works
+    gosu --version; \
+    gosu nobody true
+
 
 
 WORKDIR /home/user
 # Copy JAR from previous stage
 COPY --from=0 /home/user/target /home/user/target
-RUN cp target/Extraction-jar-with* .
+RUN cp target/*Extraction-jar-with* .
 
 # Copy required scripts and properties
-COPY docker-resources/extract.sh /home/user/
-COPY docker-resources/entrypoint.sh /home/user/
-COPY docker-resources/fix-perms.sh /home/user/
-COPY docker-resources/KernelHaven.jar /home/user/
-COPY docker-resources/extraction_busybox.properties /home/user/
-COPY docker-resources/extraction_linux.properties /home/user/
-COPY docker-resources/extraction_generic.properties /home/user/
+COPY docker-resources/* /home/user/
+RUN mkdir -p /home/user/src/main/resources
 
-RUN mkdir -p /home/user/extraction-results/output
+RUN mkdir -p /home/user/ground-truth/
+# permissions for calculon
 RUN chown user:user /home/user -R
 RUN chmod +x entrypoint.sh
 RUN chmod +x fix-perms.sh
 RUN chmod +x extract.sh
 
 ENTRYPOINT ["./entrypoint.sh", "./extract.sh"]
-USER user
