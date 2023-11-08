@@ -1,20 +1,20 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                       http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-	<!-- Adjust group id for anonymous projects -->
+    <!-- Adjust group id for anonymous projects -->
     <groupId>org.variantsync.vevos.extraction</groupId>
-	<!-- Adjust the project name -->
+    <!-- Adjust the project name -->
     <artifactId>Extraction</artifactId>
-    <version>1.1.0</version>
+    <version>2.0.0</version>
 
     <properties>
         <!-- Adjust your java version here -->
-        <java.version>8</java.version>
-		<!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
-		<path.to.main>${project.groupId}.Extraction</path.to.main>
+        <java.version>19</java.version>
+        <!-- Adjust the path to the class that contains the main-method, that is to be executed, here -->
+        <path.to.main>${project.groupId}.GroundTruthExtraction</path.to.main>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -41,37 +41,27 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>${path.to.main}</mainClass>
-                        </manifest>
-                    </archive>
-                </configuration>
-            </plugin>
-            <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
+                        <id>Extraction</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
                         </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>${path.to.main}</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>Extraction</finalName>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>${path.to.main}</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -99,39 +89,24 @@
             <version>1.8</version>
         </dependency>
         <dependency>
-            <groupId>net.ssehub</groupId>
-            <artifactId>kernel_haven</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>fe_analysis</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>block_extractor</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>kbuildminer</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>kconfigreader</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ssehub.kernel_haven</groupId>
-            <artifactId>busyboot</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
             <groupId>net.lingala.zip4j</groupId>
             <artifactId>zip4j</artifactId>
             <version>2.10.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-api</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.tinylog</groupId>
+            <artifactId>tinylog-impl</artifactId>
+            <version>2.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.variantsync</groupId>
+            <artifactId>diffdetective</artifactId>
+            <version>2.0.0</version>
         </dependency>
     </dependencies>
 </project>

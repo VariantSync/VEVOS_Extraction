@@ -1,4 +1,4 @@
 @echo "Starting extraction"
 
 @echo "Starting the extraction"
-@docker run --rm -v "%cd%/extraction-results":"/home/user/extraction-results/output" extraction %*
+@docker run --rm -v "%cd%/ground-truth":"/home/user/ground-truth" extraction %*

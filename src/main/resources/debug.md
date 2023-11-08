@@ -1,0 +1,3 @@
+ Project name | Domain        | Source code available (**y**es/**n**o)? | Is it a git repository (**y**es/**n**o)? | Repository URL                                   | Clone URL                                        | Estimated number of commits 
+--------------|---------------|-----------------------------------------|------------------------------------------|--------------------------------------------------|--------------------------------------------------|-----------------------------
+ Marlin             | 3d printing             | y                                       | y                                        | https://github.com/MarlinFirmware/Marlin                     | https://github.com/DiffDetective/Marlin.git        | 19,258
