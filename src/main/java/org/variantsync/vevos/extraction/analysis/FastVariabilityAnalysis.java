@@ -35,7 +35,8 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
     private final Path resultsRoot;
     private final boolean extractCodeMatching;
 
-    public FastVariabilityAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges, boolean extractCodeMatching) {
+    public FastVariabilityAnalysis(boolean printEnabled, Path resultsRoot, boolean ignorePCChanges,
+            boolean extractCodeMatching) {
         this.printEnabled = printEnabled;
         this.resultsRoot = resultsRoot;
         this.threadBatches = new ConcurrentHashMap<>();
@@ -54,7 +55,7 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
      * Prints the given ground truth to console.
      *
      * @param groundTruth GT to print
-     * @param commitName  The id of the commit for which the GT has been calculated
+     * @param commitName The id of the commit for which the GT has been calculated
      */
     private static void print(GroundTruth groundTruth, String commitName) {
         System.out.println();
@@ -87,8 +88,8 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
         synchronized (FastVariabilityAnalysis.class) {
             FastVariabilityAnalysis.numProcessed++;
             if (FastVariabilityAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("End Processing of Commit ({}): {}", FastVariabilityAnalysis.numProcessed,
-                        commit.name());
+                Logger.info("End Processing of Commit ({}): {}",
+                        FastVariabilityAnalysis.numProcessed, commit.name());
             }
         }
 
@@ -110,7 +111,8 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
                 new GroundTruth(new HashMap<>(), new HashSet<>()));
         if (groundTruthBefore.isEmpty() && groundTruthAfter.isEmpty()) {
             // Return early and do not save any data, if the ground truths are both empty.
-            // In this case, no changes have been analyzed, and we are not interested in the commit's
+            // In this case, no changes have been analyzed, and we are not interested in the
+            // commit's
             // data.
             synchronized (FastVariabilityAnalysis.class) {
                 Logger.debug("No code changes for " + commit.getName());
@@ -142,19 +144,15 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
         String pcAsCSVBefore = groundTruthBefore.asPcCsvString();
         String pcAsCSVAfter = groundTruthAfter.asPcCsvString();
 
-        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_BEFORE),
-                pcAsCSVBefore);
-        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER),
-                pcAsCSVAfter);
+        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_BEFORE), pcAsCSVBefore);
+        Serde.writeToFile(commitSaveDir.resolve(CODE_VARIABILITY_CSV_AFTER), pcAsCSVAfter);
 
         if (extractCodeMatching) {
             String matchingAsCSVBefore = groundTruthBefore.asMatchingCsvString();
             String matchingAsCSVAfter = groundTruthAfter.asMatchingCsvString();
 
-            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_BEFORE),
-                    matchingAsCSVBefore);
-            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_AFTER),
-                    matchingAsCSVAfter);
+            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_BEFORE), matchingAsCSVBefore);
+            Serde.writeToFile(commitSaveDir.resolve(CODE_MATCHING_CSV_AFTER), matchingAsCSVAfter);
         }
 
         Serde.writeToFile(commitSaveDir.resolve(COMMIT_MESSAGE_FILE), commit.getFullMessage());
@@ -199,12 +197,12 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
         HashMap<String, GroundTruth> groundTruthMapBefore = currentBatch.groundTruthMapBefore;
         HashMap<String, GroundTruth> groundTruthMapAfter = currentBatch.groundTruthMapAfter;
 
-        GroundTruth groundTruthBefore = groundTruthMapBefore.computeIfAbsent(
-                analysis.getCurrentCommit().getName(),
-                commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
-        GroundTruth groundTruthAfter = groundTruthMapAfter.computeIfAbsent(
-                analysis.getCurrentCommit().getName(),
-                commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruthBefore =
+                groundTruthMapBefore.computeIfAbsent(analysis.getCurrentCommit().getName(),
+                        commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruthAfter =
+                groundTruthMapAfter.computeIfAbsent(analysis.getCurrentCommit().getName(),
+                        commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Show.diff(analysis.getCurrentVariationDiff()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
@@ -235,7 +233,8 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
                 // Logger.debug("Node: {}", node);
                 // If the file is not completely new, we consider the before case
                 if (!(changeType == DiffEntry.ChangeType.ADD)) {
-                    VariabilityAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE, ignorePCChanges);
+                    VariabilityAnalysis.analyzeNode(fileGTBefore, node, Time.BEFORE,
+                            ignorePCChanges);
                 }
                 if (!(changeType == DiffEntry.ChangeType.DELETE)) {
                     // If the file has not been deleted, we consider the after case
@@ -243,9 +242,7 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
                 }
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
-                        fileNameBefore,
-                        fileNameAfter,
-                        analysis.getCurrentCommit().getName());
+                        fileNameBefore, fileNameAfter, analysis.getCurrentCommit().getName());
                 Logger.error(e);
                 extractionFailed(analysis.getCurrentCommit());
             }
@@ -255,7 +252,7 @@ public class FastVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
     }
 
     private record ThreadBatch(HashMap<String, GroundTruth> groundTruthMapBefore,
-                               HashMap<String, GroundTruth> groundTruthMapAfter) {
+            HashMap<String, GroundTruth> groundTruthMapAfter) {
 
     }
 

@@ -65,7 +65,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     /**
      * Inserts the given annotation at the given index and replaces the previous annotation.
      *
-     * @param index      The index for insertion
+     * @param index The index for insertion
      * @param annotation The annotation that is to be inserted
      * @return The previous annotation
      */
@@ -79,7 +79,7 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     /**
      * Set the match for the given line number.
      *
-     * @param lineNumber  The line number in the current version of the file
+     * @param lineNumber The line number in the current version of the file
      * @param matchedLine The matching line number in the counterpart version of the file
      */
     protected void setMatching(int lineNumber, int matchedLine) throws MatchingException {
@@ -89,16 +89,18 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
         if (this.matching.get(lineNumber) != -1 && this.matching.get(lineNumber) != matchedLine) {
             // TODO: Handle this case
-//            throw new MatchingException("line number mismatch for " + this.file + " -- " + lineNumber
-//                    + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
-            Logger.debug("line number mismatch for " + this.file + " -- " + lineNumber
-                    + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
+            // throw new MatchingException("line number mismatch for " + this.file + " -- " +
+            // lineNumber
+            // + " : (" + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
+            Logger.debug("line number mismatch for " + this.file + " -- " + lineNumber + " : ("
+                    + this.matching.get(lineNumber) + " vs. " + matchedLine + ")");
         }
         this.matching.set(lineNumber, matchedLine);
     }
 
     /**
-     * Increases the size of the ground truth to the given size. All added items are filled with the root annotation (i.e., true)
+     * Increases the size of the ground truth to the given size. All added items are filled with the
+     * root annotation (i.e., true)
      *
      * @param size The size to grow to
      */
@@ -114,8 +116,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     /**
-     * @return A flag that states whether this ground truth has been consumed by completing it. If true, the ground truth
-     * can no longer be changed.
+     * @return A flag that states whether this ground truth has been consumed by completing it. If
+     *         true, the ground truth can no longer be changed.
      */
     public boolean isConsumed() {
         return consumed;
@@ -155,7 +157,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Inserts the given line annotation and replaces the previous annotation of the line identified by the line number.
+         * Inserts the given line annotation and replaces the previous annotation of the line
+         * identified by the line number.
          *
          * @param line The inserted line annotation
          * @return The previous annotation
@@ -167,12 +170,14 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Set the matching of line numbers between current file version and counterpart file version.
+         * Set the matching of line numbers between current file version and counterpart file
+         * version.
          *
-         * @param currentRange     The range of lines in the current file version
+         * @param currentRange The range of lines in the current file version
          * @param counterpartRange The range of lines in the counterpart file version
          */
-        public void setMatching(LineRange currentRange, LineRange counterpartRange) throws MatchingException {
+        public void setMatching(LineRange currentRange, LineRange counterpartRange)
+                throws MatchingException {
             Assert.assertTrue(!consumed);
             // They must span the same number of lines
             int lineNumber = currentRange.fromInclusive();
@@ -183,8 +188,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
             if (matchedLine != -1) {
                 // If there is a match, the matched regions must have the same size
                 if (endNumber - lineNumber != matchEnd - matchedLine) {
-                    throw new MatchingException("line number mismatch for file" + this.file + " -- ; " +
-                            "ranges have different size " + (endNumber - lineNumber) + " : " + (matchEnd - matchedLine));
+                    throw new MatchingException("line number mismatch for file" + this.file
+                            + " -- ; " + "ranges have different size " + (endNumber - lineNumber)
+                            + " : " + (matchEnd - matchedLine));
                 }
                 // Set the matches
                 for (; lineNumber < currentRange.toExclusive(); lineNumber++, matchedLine++) {
@@ -194,8 +200,9 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Finish the mutation of the ground truth and return an instance of an immutable file ground truth.
-         * After finishing the mutation, insert will throw an exception if it is called.
+         * Finish the mutation of the ground truth and return an instance of an immutable file
+         * ground truth. After finishing the mutation, insert will throw an exception if it is
+         * called.
          *
          * @return An immutable file ground truth
          */
@@ -211,7 +218,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     /**
-     * An immutable file ground truth that stores the annotations in annotated blocks and offers methods for file export.
+     * An immutable file ground truth that stores the annotations in annotated blocks and offers
+     * methods for file export.
      */
     public static class Complete extends FileGT {
         private final ArrayList<BlockAnnotation> aggregatedBlocks;
@@ -231,8 +239,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Determines the textual representation as csv lines which can be directly used for exporting the ground truth in
-         * KernelHaven format.
+         * Determines the textual representation as csv lines which can be directly used for
+         * exporting the ground truth in KernelHaven format.
          *
          * @return A String with the block annotations in KernelHaven's csv format
          */
@@ -266,33 +274,40 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Determines the block annotations by aggregating all lines in the ground truth to blocks sharing the same feature
-         * mapping. This is done the same way as previously done by KernelHaven.
+         * Determines the block annotations by aggregating all lines in the ground truth to blocks
+         * sharing the same feature mapping. This is done the same way as previously done by
+         * KernelHaven.
          *
          * @return The list of block annotations for this ground truth
          */
         private static ArrayList<BlockAnnotation> aggregateBlocks(Complete complete) {
             ArrayList<BlockAnnotation> blocks = new ArrayList<>();
             // The root annotation is always true and covers all lines
-            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(), new FeatureMapping("True"), new PresenceCondition("True"), "ROOT");
+            BlockAnnotation rootBlock = new BlockAnnotation(1, complete.size(),
+                    new FeatureMapping("True"), new PresenceCondition("True"), "ROOT");
 
             LinkedList<BlockAnnotation> blockStack = new LinkedList<>();
             blockStack.push(rootBlock);
             for (LineAnnotation line : complete) {
-                Assert.assertTrue(!line.equals(LineAnnotation.EMPTY), "Encountered unexpected `empty` annotation. The entire file should have been mapped");
+                Assert.assertTrue(!line.equals(LineAnnotation.EMPTY),
+                        "Encountered unexpected `empty` annotation. The entire file should have been mapped");
 
                 if (blockStack.isEmpty()) {
                     // Push a new block onto the stack
-//                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(),
-//                            line.presenceCondition(), line.featureMappingAfter(), line.presenceConditionAfter()));
-//                    continue;
+                    // blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(),
+                    // line.featureMapping(),
+                    // line.presenceCondition(), line.featureMappingAfter(),
+                    // line.presenceConditionAfter()));
+                    // continue;
                     throw new IllegalStateException();
                 }
 
                 // Does the next line have a different annotation than the current block?
-                boolean annotationChange = !blockStack.peek().annotationEquals(line) && !blockStack.peek().equals(rootBlock);
+                boolean annotationChange = !blockStack.peek().annotationEquals(line)
+                        && !blockStack.peek().equals(rootBlock);
 
-                // new block, we have to unwind the stack in reverse order to find all completed blocks
+                // new block, we have to unwind the stack in reverse order to find all completed
+                // blocks
                 if (annotationChange) {
                     // The current line is nested in retrieved block
                     // Collect a completed block
@@ -308,11 +323,14 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 // Does the next line have a different annotation than the current block?
                 annotationChange = !blockStack.peek().annotationEquals(line);
 
-                Assert.assertTrue(blockStack.peekFirst() != null, () -> "%s\nProblem while processing line %d of file %s".formatted(complete.toString(), line.lineNumber(), complete.file));
+                Assert.assertTrue(blockStack.peekFirst() != null,
+                        () -> "%s\nProblem while processing line %d of file %s"
+                                .formatted(complete.toString(), line.lineNumber(), complete.file));
                 // If the current line is in a new block
                 if (annotationChange) {
                     // Push a new block onto the stack
-                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(), line.featureMapping(), line.presenceCondition(), line.nodeType()));
+                    blockStack.push(new BlockAnnotation(line.lineNumber(), line.lineNumber(),
+                            line.featureMapping(), line.presenceCondition(), line.nodeType()));
                 }
             }
             // Unwind the stack fully
@@ -322,20 +340,23 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
                 blocks.add(block);
             }
             blocks.sort((blockAnnotation, t1) -> {
-                int c = Integer.compare(blockAnnotation.lineStartInclusive(), t1.lineStartInclusive());
+                int c = Integer.compare(blockAnnotation.lineStartInclusive(),
+                        t1.lineStartInclusive());
                 if (c != 0) {
                     return c;
                 } else {
-                    // If the start lines are the same, the block with the higher end line is taken first
-                    return -1 * Integer.compare(blockAnnotation.lineEndExclusive(), t1.lineEndExclusive());
+                    // If the start lines are the same, the block with the higher end line is taken
+                    // first
+                    return -1 * Integer.compare(blockAnnotation.lineEndExclusive(),
+                            t1.lineEndExclusive());
                 }
             });
             return blocks;
         }
 
         /**
-         * Returns the textual representation as csv lines which can be directly used for exporting the ground truth in
-         * KernelHaven format.
+         * Returns the textual representation as csv lines which can be directly used for exporting
+         * the ground truth in KernelHaven format.
          *
          * @return A String with the block annotations in KernelHaven's csv format
          */
@@ -344,7 +365,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
         }
 
         /**
-         * Returns the textual representation of the line matchings as csv lines which can be directly used for exporting.
+         * Returns the textual representation of the line matchings as csv lines which can be
+         * directly used for exporting.
          *
          * @return A String with the line matchings in csv format
          */
@@ -362,7 +384,8 @@ public class FileGT implements Iterable<LineAnnotation>, Serializable {
     }
 
     /**
-     * Represents a file ground truth that can be removed because the associated file has been deleted or renamed
+     * Represents a file ground truth that can be removed because the associated file has been
+     * deleted or renamed
      */
     public static class Removed extends FileGT {
 

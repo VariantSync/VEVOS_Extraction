@@ -5,7 +5,8 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Represents the ground truth annotation for a block of lines in a file with the same feature mapping
+ * Represents the ground truth annotation for a block of lines in a file with the same feature
+ * mapping
  */
 public final class BlockAnnotation implements Serializable {
     private static final Pattern t = Pattern.compile("True");
@@ -26,8 +27,7 @@ public final class BlockAnnotation implements Serializable {
     private String nodeType;
 
     public BlockAnnotation(int lineStartInclusive, int lineEndInclusive,
-                           FeatureMapping featureMapping, PresenceCondition presenceCondition,
-                           String nodeType) {
+            FeatureMapping featureMapping, PresenceCondition presenceCondition, String nodeType) {
         this.lineStartInclusive = lineStartInclusive;
         this.lineEndInclusive = lineEndInclusive;
         this.featureMapping = featureMapping;
@@ -51,12 +51,16 @@ public final class BlockAnnotation implements Serializable {
         return lineEndInclusive;
     }
 
-    public String nodeType() {return nodeType;}
+    public String nodeType() {
+        return nodeType;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         BlockAnnotation that = (BlockAnnotation) o;
         return lineStartInclusive == that.lineStartInclusive
                 && lineEndInclusive == that.lineEndInclusive
@@ -67,7 +71,8 @@ public final class BlockAnnotation implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(featureMapping, presenceCondition, lineStartInclusive, lineEndInclusive, nodeType);
+        return Objects.hash(featureMapping, presenceCondition, lineStartInclusive, lineEndInclusive,
+                nodeType);
     }
 
     public boolean annotationEquals(BlockAnnotation other) {
@@ -84,20 +89,15 @@ public final class BlockAnnotation implements Serializable {
 
     @Override
     public String toString() {
-        return "[" +
-                "lineStartInclusive=" + lineStartInclusive + ", " +
-                "lineEndExclusive=" + lineEndInclusive + ", " +
-                "nodeType=" + nodeType + ", " +
-                "featureMapping=" + featureMapping + ", " +
-                "presenceCondition=" + presenceCondition + ']';
+        return "[" + "lineStartInclusive=" + lineStartInclusive + ", " + "lineEndExclusive="
+                + lineEndInclusive + ", " + "nodeType=" + nodeType + ", " + "featureMapping="
+                + featureMapping + ", " + "presenceCondition=" + presenceCondition + ']';
     }
 
     public String asCSVLine() {
         return "%s;%s;%s;%d;%d".formatted(normalizeCondition(this.featureMapping.mapping()),
-                normalizeCondition(this.presenceCondition.condition()),
-                this.nodeType,
-                this.lineStartInclusive,
-                this.lineEndInclusive);
+                normalizeCondition(this.presenceCondition.condition()), this.nodeType,
+                this.lineStartInclusive, this.lineEndInclusive);
     }
 
     /**

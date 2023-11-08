@@ -13,11 +13,17 @@ import java.util.function.BiFunction;
 
 import static org.variantsync.vevos.extraction.ConfigProperties.*;
 
+/**
+ * A very fast ground truth extraction that only extracts the ground truths of changed files for
+ * each commit. This extraction is very useful for studies that are only interested in the evolution
+ * of a software family.
+ */
 public class FastGroundTruthExtraction extends GroundTruthExtraction {
 
     public FastGroundTruthExtraction(Properties properties) {
         super(properties);
-        Logger.info("Starting a fast ground truth extraction that only extracts a ground truth for the changed files of each commit.");
+        Logger.info(
+                "Starting a fast ground truth extraction that only extracts a ground truth for the changed files of each commit.");
     }
 
     protected BiConsumer<Repository, Path> extractionRunner() {
@@ -26,33 +32,14 @@ public class FastGroundTruthExtraction extends GroundTruthExtraction {
             Path resultsRoot = extractionDir.resolve(repo.getRepositoryName());
             boolean printEnabled = Boolean.parseBoolean(this.properties.getProperty(PRINT_ENABLED));
 
-            FastVariabilityAnalysis analysis = new FastVariabilityAnalysis(printEnabled, resultsRoot,
-                    Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),
+            FastVariabilityAnalysis analysis = new FastVariabilityAnalysis(printEnabled,
+                    resultsRoot, Boolean.parseBoolean(properties.getProperty(IGNORE_PC_CHANGES)),
                     Boolean.parseBoolean(properties.getProperty(EXTRACT_CODE_MATCHING)));
-            final BiFunction<Repository, Path, Analysis> AnalysisFactory = (r, out) -> new Analysis(
-                    "PCAnalysis",
-                    List.of(
-                            analysis
-                    ),
-                    r,
-                    out
-            );
-            final int availableProcessors;
-            String numThreads = this.properties.getProperty(NUM_THREADS);
-            if (numThreads == null || numThreads.trim().isEmpty() || numThreads.trim().equals("0")) {
-                availableProcessors = Runtime.getRuntime().availableProcessors();
-            } else {
-                availableProcessors = Integer.parseInt(numThreads);
-            }
-            final int batchSize;
-            String configuredSize = this.properties.getProperty(BATCH_SIZE);
-            if (configuredSize == null || configuredSize.trim().isEmpty() || configuredSize.trim().equals("0")) {
-                batchSize = 256;
-            } else {
-                batchSize = Integer.parseInt(configuredSize);
-            }
+            final BiFunction<Repository, Path, Analysis> AnalysisFactory =
+                    (r, out) -> new Analysis("PCAnalysis", List.of(analysis), r, out);
 
-            Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir), batchSize, availableProcessors);
+            Analysis.forEachCommit(() -> AnalysisFactory.apply(repo, repoOutputDir),
+                    diffDetectiveBatchSize(), numProcessors());
 
             FastVariabilityAnalysis.numProcessed = 0;
         };

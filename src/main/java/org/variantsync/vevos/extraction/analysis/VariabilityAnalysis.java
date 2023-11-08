@@ -16,12 +16,13 @@ public interface VariabilityAnalysis {
     /**
      * Analyzes the given node and applies its annotation to the file's ground truth
      *
-     * @param fileGT          The ground truth that is modified by analyzing the node
-     * @param node            The node that is to be analyzed
-     * @param time            Whether we should handle the node as before or after the edit
+     * @param fileGT The ground truth that is modified by analyzing the node
+     * @param node The node that is to be analyzed
+     * @param time Whether we should handle the node as before or after the edit
      * @param ignorePCChanges Whether changes to only the presence condition should be ignored
      */
-    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time, boolean ignorePCChanges) throws MatchingException {
+    static void analyzeNode(FileGT.Mutable fileGT, DiffNode<DiffLinesLabel> node, Time time,
+            boolean ignorePCChanges) throws MatchingException {
         if (time == Time.BEFORE && node.diffType == DiffType.ADD) {
             return;
         }
@@ -33,7 +34,8 @@ public interface VariabilityAnalysis {
         Node presenceCondition;
 
         if (node.isArtifact() && ignorePCChanges && node.diffType == DiffType.NON) {
-            // If an artifact is unchanged but has a new PC, we ignore the change by assigning it the same PC before and after
+            // If an artifact is unchanged but has a new PC, we ignore the change by assigning it
+            // the same PC before and after
             // which is the PC before the change
             featureMapping = node.getFeatureMapping(Time.BEFORE).toCNF(false);
             presenceCondition = node.getPresenceCondition(Time.BEFORE).toCNF(false);
@@ -54,7 +56,8 @@ public interface VariabilityAnalysis {
                 currentRange = node.getLinesAtTime(Time.AFTER);
                 counterpartRange = node.getLinesAtTime(Time.BEFORE);
             }
-            default -> // Because Java cannot assess statically that this case will never occur *sigh*
+            default -> // Because Java cannot assess statically that this case will never occur
+                       // *sigh*
                     throw new IllegalStateException();
         }
         int fromLine = currentRange.fromInclusive();
@@ -72,7 +75,8 @@ public interface VariabilityAnalysis {
 
         for (int lineNumber = fromLine; lineNumber < toLine; lineNumber++) {
             LineAnnotation existingAnnotation = fileGT.get(lineNumber - 1);
-            if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact") && node.isAnnotation()) {
+            if (existingAnnotation != null && existingAnnotation.nodeType().equals("artifact")
+                    && node.isAnnotation()) {
                 // Never overwrite artifact pcs with annotation pcs
                 continue;
             }
@@ -82,9 +86,10 @@ public interface VariabilityAnalysis {
                 // If it is an else, or elif, it will be overwritten by the next node
                 nodeType = "endif";
             }
-            LineAnnotation annotation = new LineAnnotation(lineNumber,
-                    new FeatureMapping(featureMapping.toString()), new PresenceCondition(presenceCondition.toString()),
-                    nodeType, presenceCondition.getUniqueContainedFeatures());
+            LineAnnotation annotation =
+                    new LineAnnotation(lineNumber, new FeatureMapping(featureMapping.toString()),
+                            new PresenceCondition(presenceCondition.toString()), nodeType,
+                            presenceCondition.getUniqueContainedFeatures());
             fileGT.insert(annotation);
         }
     }

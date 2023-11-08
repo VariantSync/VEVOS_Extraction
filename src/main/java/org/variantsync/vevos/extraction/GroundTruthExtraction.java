@@ -19,25 +19,42 @@ import java.util.function.BiConsumer;
 
 import static org.variantsync.vevos.extraction.ConfigProperties.*;
 
+/**
+ * Base class for ground truth extractions. This class offers basic utilities for any ground truth
+ * extraction and expects the implementation of an extraction runner that is provided in form of a
+ * supplier method.
+ *
+ * Each GroundTruthExtraction must be initialized with a set of properties that configure the
+ * extraction.
+ */
 public abstract class GroundTruthExtraction {
     protected final Properties properties;
 
+    /**
+     * Initialize the basic GroundTruth extraction with a set of extraction properties.
+     */
     protected GroundTruthExtraction(Properties properties) {
         this.properties = properties;
     }
 
     /**
-     * Main method to start the extraction.
+     * Main method to start the extraction. The method first loads the properties from the specified
+     * file and then intializes the specified extraction class with those properties. Lastly, it
+     * starts the ground truth extraction with the configuration specified in the properties.
      *
-     * @param args Command-line options.
-     * @throws IOException When copying the log file fails.
+     * @param args Two arguments are expected: First, a path to a properties file in which the
+     *        extraction is configured, and second, the full specifier of a GroundTruthExtraction
+     *        subclass. The subclass' constructor must match the constructor of
+     *        GroundTruthExtraction.
+     * @throws IOException When loading the properties fails.
      */
     public static void main(String[] args) throws IOException {
         checkOS();
 
         // Load the configuration
         Properties properties = getProperties(getPropertiesFile(args));
-        // TODO: load dynamically
+
+        //
         Class<?> extractionClass;
         try {
             extractionClass = determineExtractionClass(args);
@@ -49,10 +66,11 @@ public abstract class GroundTruthExtraction {
         try {
             extraction = initializeExtraction(extractionClass, properties);
         } catch (NoSuchMethodException e) {
-            throw new RuntimeException("The required constructor does not exist for the specified class " + args[1]);
+            throw new RuntimeException(
+                    "The required constructor does not exist for the specified class " + args[1]);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            Logger.error("Was not able to instantiate extraction class with the propterties " + args[0]
-                    + " and the class name " + args[1]);
+            Logger.error("Was not able to instantiate extraction class with the propterties "
+                    + args[0] + " and the class name " + args[1]);
             throw new RuntimeException(e);
         }
 
@@ -65,13 +83,16 @@ public abstract class GroundTruthExtraction {
         if (args.length > 1) {
             return Class.forName(args[1]);
         } else {
-            Logger.error("The second program argument must specify a valid GroundTruthExtraction class.");
-            throw new IllegalArgumentException("The second program argument must specify a valid GroundTruthExtraction class.");
+            Logger.error(
+                    "The second program argument must specify a valid GroundTruthExtraction class.");
+            throw new IllegalArgumentException(
+                    "The second program argument must specify a valid GroundTruthExtraction class.");
         }
     }
 
-    private static GroundTruthExtraction initializeExtraction(Class<?> extractionClass, Properties properties)
-            throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    private static GroundTruthExtraction initializeExtraction(Class<?> extractionClass,
+            Properties properties) throws NoSuchMethodException, InvocationTargetException,
+            InstantiationException, IllegalAccessException {
         Constructor<?> constructor = extractionClass.getDeclaredConstructor(Properties.class);
         constructor.setAccessible(true); // If the constructor is not public
         return (GroundTruthExtraction) constructor.newInstance(properties);
@@ -103,40 +124,30 @@ public abstract class GroundTruthExtraction {
      */
     public static AnalysisRunner.Options diffdetectiveOptions(Properties properties) {
 
-        return new AnalysisRunner.Options(
-                Path.of(properties.getProperty(REPO_SAVE_DIR)),
+        return new AnalysisRunner.Options(Path.of(properties.getProperty(REPO_SAVE_DIR)),
                 Path.of(properties.getProperty(DD_OUTPUT_DIR)),
-                Path.of(properties.getProperty(DATASET_FILE)),
-                repo -> {
+                Path.of(properties.getProperty(DATASET_FILE)), repo -> {
                     final PatchDiffParseOptions repoDefault = repo.getParseOptions();
                     return new PatchDiffParseOptions(
                             PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
                             new VariationDiffParseOptions(
                                     repoDefault.variationDiffParseOptions().annotationParser(),
-                                    false,
-                                    false
-                            )
-                    );
-                },
-                repo -> new DiffFilter.Builder()
-                        .allowMerge(true)
+                                    false, false));
+                }, repo -> new DiffFilter.Builder().allowMerge(true)
                         // TODO: make configurable
-                        .allowedFileExtensions("h", "hpp", "c", "cpp")
-                        .build(),
-                true,
-                false
-        );
+                        .allowedFileExtensions("h", "hpp", "c", "cpp").build(),
+                true, false);
     }
 
     /**
      * Throws an error if the host OS is Windows.
      */
     public static void checkOS() {
-        boolean isWindows = System.getProperty("os.name")
-                .toLowerCase().startsWith("windows");
+        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
         if (isWindows) {
-            Logger.error("Running the analysis under Windows is not supported as the Linux/BusyBox sources are not" +
-                    "checked out correctly.");
+            Logger.error(
+                    "Running the analysis under Windows is not supported as the Linux/BusyBox sources are not"
+                            + "checked out correctly.");
             quitOnError();
         }
     }
@@ -173,7 +184,7 @@ public abstract class GroundTruthExtraction {
      * Prints the given ground truth to console.
      *
      * @param groundTruth GT to print
-     * @param commitName  The id of the commit for which the GT has been calculated
+     * @param commitName The id of the commit for which the GT has been calculated
      */
     public static void print(GroundTruth groundTruth, String commitName) {
         System.out.println();
@@ -194,5 +205,33 @@ public abstract class GroundTruthExtraction {
         AnalysisRunner.run(options, extractionRunner());
     }
 
+    protected int numProcessors() {
+        final int availableProcessors;
+        String numThreads = this.properties.getProperty(NUM_THREADS);
+        if (numThreads == null || numThreads.trim().isEmpty() || numThreads.trim().equals("0")) {
+            availableProcessors = Runtime.getRuntime().availableProcessors();
+        } else {
+            availableProcessors = Integer.parseInt(numThreads);
+        }
+        return availableProcessors;
+    }
+
+    protected int diffDetectiveBatchSize() {
+        final int batchSize;
+        String configuredSize = this.properties.getProperty(BATCH_SIZE);
+        if (configuredSize == null || configuredSize.trim().isEmpty()
+                || configuredSize.trim().equals("0")) {
+            batchSize = 256;
+        } else {
+            batchSize = Integer.parseInt(configuredSize);
+        }
+        return batchSize;
+    }
+
+    /**
+     * Return a runner for the ground truth extraction. The runner receives pairs of repositories
+     * and paths to result output directories and then starts a DiffDetective analysis. See
+     * {@link FastGroundTruthExtraction} and {@link FullGroundTruthExtraction} for examples.
+     */
     protected abstract BiConsumer<Repository, Path> extractionRunner();
 }

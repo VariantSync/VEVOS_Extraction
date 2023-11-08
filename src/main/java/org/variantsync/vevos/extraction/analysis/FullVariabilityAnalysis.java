@@ -19,8 +19,8 @@ import java.util.HashSet;
 import java.util.Hashtable;
 
 /**
- * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence conditions for each file,
- * a list of all variables, and commit metadata.
+ * Extracts ground truths for all repositories in a dataset. The ground truth consists of presence
+ * conditions for each file, a list of all variables, and commit metadata.
  */
 public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnalysis {
     public static int numProcessed = 0;
@@ -38,10 +38,12 @@ public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
     public void endCommit(Analysis analysis) throws Exception {
         RevCommit commit = analysis.getCurrentCommit();
         var repo = analysis.getRepository();
-        Path resultFile = diffDetectiveCache.resolve("pc").resolve(repo.getRepositoryName()).resolve(commit.getName() + ".gt");
+        Path resultFile = diffDetectiveCache.resolve("pc").resolve(repo.getRepositoryName())
+                .resolve(commit.getName() + ".gt");
         Files.createDirectories(resultFile.getParent());
 
-        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(), new GroundTruth(new HashMap<>(), new HashSet<>()));
+        GroundTruth groundTruth = this.groundTruthMap.getOrDefault(commit.getName(),
+                new GroundTruth(new HashMap<>(), new HashSet<>()));
         // Complete all new or updated file ground truths
         VariabilityAnalysis.makeComplete(groundTruth);
         Serde.serialize(resultFile.toFile(), groundTruth);
@@ -49,7 +51,8 @@ public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
         synchronized (FullVariabilityAnalysis.class) {
             FullVariabilityAnalysis.numProcessed++;
             if (FullVariabilityAnalysis.numProcessed % 1_000 == 0) {
-                Logger.info("Finished Commit ({}): {}", FullVariabilityAnalysis.numProcessed, commit.name());
+                Logger.info("Finished Commit ({}): {}", FullVariabilityAnalysis.numProcessed,
+                        commit.name());
             }
         }
     }
@@ -61,15 +64,20 @@ public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
 
     @Override
     public boolean analyzeVariationDiff(Analysis analysis) throws Exception {
-        GroundTruth groundTruth = this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit().getName(), commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
-//        Show.diff(analysis.getCurrentVariationDiff()).showAndAwait();
+        GroundTruth groundTruth =
+                this.groundTruthMap.computeIfAbsent(analysis.getCurrentCommit().getName(),
+                        commit -> new GroundTruth(new HashMap<>(), new HashSet<>()));
+        // Show.diff(analysis.getCurrentVariationDiff()).showAndAwait();
         // Get the ground truth for this file
         String fileNameBefore = analysis.getCurrentPatch().getFileName(Time.BEFORE);
         String fileNameAfter = analysis.getCurrentPatch().getFileName(Time.AFTER);
-//        Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore, fileNameAfter));
+        // Logger.debug("Name of processed file is %s -> %s".formatted(fileNameBefore,
+        // fileNameAfter));
         DiffEntry.ChangeType changeType = analysis.getCurrentPatch().getChangeType();
-        if (changeType == DiffEntry.ChangeType.DELETE || (changeType != DiffEntry.ChangeType.ADD && !fileNameBefore.equals(fileNameAfter))) {
-            // We set the entry of the old name as removed if the file was deleted or the name changed without the file being added as new
+        if (changeType == DiffEntry.ChangeType.DELETE || (changeType != DiffEntry.ChangeType.ADD
+                && !fileNameBefore.equals(fileNameAfter))) {
+            // We set the entry of the old name as removed if the file was deleted or the name
+            // changed without the file being added as new
             groundTruth.fileGTs().put(fileNameBefore, new FileGT.Removed(fileNameBefore));
         }
 
@@ -79,17 +87,16 @@ public class FullVariabilityAnalysis implements Analysis.Hooks, VariabilityAnaly
         }
 
         // At this point, it must be an instance of FileGT.Mutable
-        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileNameAfter, k -> new FileGT.Mutable(fileNameAfter));
+        final FileGT.Mutable fileGT = (FileGT.Mutable) groundTruth.computeIfAbsent(fileNameAfter,
+                k -> new FileGT.Mutable(fileNameAfter));
 
         analysis.getCurrentVariationDiff().forAll(node -> {
-//            Logger.debug("Node: {}", node);
+            // Logger.debug("Node: {}", node);
             try {
                 VariabilityAnalysis.analyzeNode(fileGT, node, Time.AFTER, ignorePCChanges);
             } catch (MatchingException e) {
                 Logger.error("unhandled exception while analyzing {} -> {} for commit {}.",
-                        fileNameBefore,
-                        fileNameAfter,
-                        analysis.getCurrentCommit().getName());
+                        fileNameBefore, fileNameAfter, analysis.getCurrentCommit().getName());
             }
         });
 

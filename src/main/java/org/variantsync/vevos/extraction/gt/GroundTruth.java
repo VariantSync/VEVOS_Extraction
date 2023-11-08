@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 /**
  * The ground truth for the files of a repository at a specific commit (i.e., version).
  *
- * @param fileGTs   The ground truths for each file
+ * @param fileGTs The ground truths for each file
  * @param variables The set of variables that can appear in the presence conditions
  */
 public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables)
@@ -23,7 +23,8 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     // Used by the full extraction, because there is only one set of PCs for each commit
     public static final String CODE_VARIABILITY_CSV = "code-variability.spl.csv";
     public static final String CODE_MATCHING_CSV = "code-matching.spl.csv";
-    // Used by the fast extraction, because there is one set for before and after changes for each commit
+    // Used by the fast extraction, because there is one set for before and after changes for each
+    // commit
     public static final String CODE_VARIABILITY_CSV_BEFORE = "code-variability.before.spl.csv";
     public static final String CODE_VARIABILITY_CSV_AFTER = "code-variability.after.spl.csv";
     public static final String CODE_MATCHING_CSV_BEFORE = "code-matching.before.spl.csv";
@@ -54,7 +55,7 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     }
 
     public FileGT computeIfAbsent(String file,
-                                  Function<? super String, ? extends FileGT> mappingFunction) {
+            Function<? super String, ? extends FileGT> mappingFunction) {
         return this.fileGTs.computeIfAbsent(file, mappingFunction);
     }
 
@@ -103,15 +104,11 @@ public record GroundTruth(HashMap<String, FileGT> fileGTs, Set<String> variables
     public String asPcCsvString() {
         return generateCsv(
                 "Path;File Condition;Block Condition;Presence Condition;Line Type;start;end",
-                FileGT.Complete::csvPCLines
-        );
+                FileGT.Complete::csvPCLines);
     }
 
     public String asMatchingCsvString() {
-        return generateCsv(
-                "Path;Line Number; Counterpart",
-                FileGT.Complete::csvMatchingLines
-        );
+        return generateCsv("Path;Line Number; Counterpart", FileGT.Complete::csvMatchingLines);
     }
 
     private String generateCsv(String header, Function<FileGT.Complete, String> lineGenerator) {
