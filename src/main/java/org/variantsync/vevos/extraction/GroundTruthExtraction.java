@@ -123,6 +123,14 @@ public abstract class GroundTruthExtraction {
      * @return The options instance
      */
     public static AnalysisRunner.Options diffdetectiveOptions(Properties properties) {
+        final String[] allowedFileExtensions;
+        String propertyValue = properties.getProperty(FILE_EXTENSIONS);
+        if (propertyValue == null) {
+            final String[] defaultExtensions = {"h", "hpp", "c", "cpp"};
+            allowedFileExtensions = defaultExtensions;
+        } else {
+            allowedFileExtensions = propertyValue.split("\\w*,\\w*");
+        }
 
         return new AnalysisRunner.Options(Path.of(properties.getProperty(REPO_SAVE_DIR)),
                 Path.of(properties.getProperty(DD_OUTPUT_DIR)),
@@ -134,8 +142,7 @@ public abstract class GroundTruthExtraction {
                                     repoDefault.variationDiffParseOptions().annotationParser(),
                                     false, false));
                 }, repo -> new DiffFilter.Builder().allowMerge(true)
-                        // TODO: make configurable
-                        .allowedFileExtensions("h", "hpp", "c", "cpp").build(),
+                        .allowedFileExtensions(allowedFileExtensions).build(),
                 true, false);
     }
 
