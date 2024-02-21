@@ -5,6 +5,8 @@ import org.variantsync.diffdetective.AnalysisRunner;
 import org.variantsync.diffdetective.datasets.PatchDiffParseOptions;
 import org.variantsync.diffdetective.datasets.Repository;
 import org.variantsync.diffdetective.diff.git.DiffFilter;
+import org.variantsync.diffdetective.feature.AnnotationParser;
+import org.variantsync.diffdetective.feature.PreprocessorAnnotationParser;
 import org.variantsync.diffdetective.variation.diff.parse.VariationDiffParseOptions;
 import org.variantsync.vevos.extraction.gt.GroundTruth;
 
@@ -132,6 +134,14 @@ public abstract class GroundTruthExtraction {
             allowedFileExtensions = propertyValue.split("\\w*,\\w*");
         }
 
+        AnnotationParser parser;
+        switch (properties.getProperty(PARSER)) {
+            case "jpp" -> parser = PreprocessorAnnotationParser.JPPAnnotationParser;
+            case "cpp" -> parser = PreprocessorAnnotationParser.CPPAnnotationParser;
+            default -> throw new IllegalArgumentException("The parser " + properties.getProperty(PARSER) +
+                    " is not supported. Choose between 'jpp' and 'cpp'");
+        }
+
         return new AnalysisRunner.Options(Path.of(properties.getProperty(REPO_SAVE_DIR)),
                 Path.of(properties.getProperty(DD_OUTPUT_DIR)),
                 Path.of(properties.getProperty(DATASET_FILE)), repo -> {
@@ -140,7 +150,7 @@ public abstract class GroundTruthExtraction {
                             PatchDiffParseOptions.DiffStoragePolicy.DO_NOT_REMEMBER,
                             new VariationDiffParseOptions(
                                     repoDefault.variationDiffParseOptions().annotationParser(),
-                                    false, false));
+                                    false, false)).withAnnotationParser(parser);
                 }, repo -> new DiffFilter.Builder().allowMerge(true)
                         .allowedFileExtensions(allowedFileExtensions).build(),
                 true, false);

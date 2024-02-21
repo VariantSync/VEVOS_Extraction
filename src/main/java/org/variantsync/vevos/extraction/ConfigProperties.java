@@ -9,6 +9,7 @@ public class ConfigProperties {
     public static final String REPO_SAVE_DIR = "diff-detective.repo-storage-dir";
     public static final String NUM_THREADS = "diff-detective.num-threads";
     public static final String BATCH_SIZE = "diff-detective.batch-size";
+    public static final String PARSER = "diff-detective.parser";
     public static final String EXTRACT_CODE_MATCHING = "extraction.extract-code-matching";
     public static final String FILE_EXTENSIONS = "extraction.file-extensions";
 }
