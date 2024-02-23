@@ -1,4 +1,4 @@
-# VEVOS: Ground Truth Extraction v2.0.0
+# VEVOS: Ground Truth Extraction v2.1.0
 
 VEVOS is a tool suite for the simulation of the evolution of clone-and-own projects and consists of two main components:
 The ground truth extraction, called VEVOS/Extraction and the variant simulation called VEVOS/Simulation.
